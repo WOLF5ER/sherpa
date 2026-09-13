@@ -49,6 +49,10 @@ DEFAULT_CONFIG = {
     "on_top": True,
     "hotkey_toggle": "F10",
     "hotkey_on_top": "F9",
+    "hotkey_minimap": "F8",
+    # мини-карта: размер окна (px) и отступ от правого верхнего угла экрана
+    "minimap_size": 320,
+    "minimap_margin": 16,
     # «Ты здесь»: следить за папкой скриншотов игры (в имени файла — координаты). Выключено по умолчанию.
     "screenshots_watch": False,
     "screenshots_path": "",
@@ -413,6 +417,9 @@ class Api:
                 pass
 
     _lan_url: str | None = None
+    _mini = None  # окно мини-карты
+    _cfg: dict = {}
+    _port: int = 4879
     _tunnel_url: str | None = None
     _tunnel_state: str = "off"  # off | starting | up | missing
 
@@ -456,13 +463,59 @@ class Api:
                         pos = parse_screenshot_name(newest[1])
                         if pos:
                             publish_pos(pos)
-                            if self._window:
-                                self._window.evaluate_js(
-                                    f"window.dispatchEvent(new CustomEvent('sherpa:pos', {{detail: {json.dumps(pos)}}}))"
-                                )
+                            # во все окна: главное и мини-карту
+                            for w in [self._window, self._mini]:
+                                if w is None:
+                                    continue
+                                try:
+                                    w.evaluate_js(f"window.dispatchEvent(new CustomEvent('sherpa:pos', {{detail: {json.dumps(pos)}}}))")
+                                except Exception:  # noqa: BLE001
+                                    pass
             except Exception:  # noqa: BLE001
                 pass
             threading.Event().wait(1.0)
+
+    # ── мини-карта: отдельное окно без рамки, поверх игры, справа сверху ──
+    def open_minimap(self):
+        import webview
+        if self._mini is not None:
+            return
+        size = int(self._cfg.get("minimap_size", 320))
+        margin = int(self._cfg.get("minimap_margin", 16))
+        try:
+            scr = webview.screens[0]
+            x = int(scr.width) - size - margin
+        except Exception:  # noqa: BLE001
+            x = 1600 - size - margin
+        win = webview.create_window(
+            "Sherpa Mini", f"http://127.0.0.1:{self._port}/#/mini",
+            # pywebview считает размер как клиентский и потом «снимает» рамку — компенсируем стандартную рамку Windows
+            x=x, y=margin, width=size + 16, height=size + 39,
+            frameless=True, easy_drag=True, on_top=True, focus=False, resizable=True, min_size=(160, 160),
+            background_color="#0d0f0c", js_api=self,
+        )
+        self._mini = win
+
+        def closed():
+            self._mini = None
+        win.events.closed += closed
+
+    def close_minimap(self):
+        w = self._mini
+        self._mini = None
+        if w is not None:
+            try:
+                w.destroy()
+            except Exception:  # noqa: BLE001
+                pass
+
+    @timed
+    def toggle_minimap(self):
+        if self._mini is None:
+            self.open_minimap()
+            return True
+        self.close_minimap()
+        return False
 
     # ── хоткеи ──
     def toggle_visible(self):
@@ -519,7 +572,7 @@ def parse_screenshot_name(name: str) -> dict | None:
 def hotkey_loop(api: Api, cfg: dict):
     """Отдельный поток с очередью сообщений Windows для RegisterHotKey."""
     ids = {}
-    for hid, key in ((1, cfg["hotkey_toggle"]), (2, cfg["hotkey_on_top"])):
+    for hid, key in ((1, cfg["hotkey_toggle"]), (2, cfg["hotkey_on_top"]), (3, cfg.get("hotkey_minimap", "F8"))):
         vk = VK.get(str(key).upper())
         if not vk:
             print(f"[sherpa] неизвестная клавиша '{key}', допустимы F1–F24, INSERT, HOME, END, PAUSE, SCROLL")
@@ -530,7 +583,8 @@ def hotkey_loop(api: Api, cfg: dict):
             print(f"[sherpa] не удалось занять {key} — возможно, её держит другая программа")
     if not ids:
         return
-    print("[sherpa] хоткеи: " + ", ".join(f"{k} — {'показать/скрыть' if i == 1 else 'поверх окон'}" for i, k in ids.items()))
+    names = {1: "показать/скрыть", 2: "поверх окон", 3: "мини-карта"}
+    print("[sherpa] хоткеи: " + ", ".join(f"{k} — {names.get(i, '')}" for i, k in ids.items()))
     msg = wt.MSG()
     while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
         if msg.message == WM_HOTKEY:
@@ -538,6 +592,8 @@ def hotkey_loop(api: Api, cfg: dict):
                 api.toggle_visible()
             elif msg.wParam == 2:
                 api.toggle_on_top()
+            elif msg.wParam == 3:
+                api.toggle_minimap()
         user32.TranslateMessage(ctypes.byref(msg))
         user32.DispatchMessageW(ctypes.byref(msg))
 
@@ -581,6 +637,8 @@ def main():
     global DEBUG_API
     DEBUG_API = api
     api._lan_url = lan_url
+    api._cfg = cfg
+    api._port = port
     if cfg.get("squad_tunnel"):
         def got_url(url: str):
             api._tunnel_url = url

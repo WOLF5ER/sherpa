@@ -100,6 +100,6 @@ export const useUI = create<UIState>()(
       currentMapId: null,
       setCurrentMapId: (currentMapId) => set({ currentMapId }),
     }),
-    { name: 'sherpa:ui', partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, marks: s.marks, squad: s.squad, theme: s.theme }) },
+    { name: 'sherpa:ui', partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, marks: s.marks, squad: s.squad, theme: s.theme, currentMapId: s.currentMapId }) },
   ),
 )

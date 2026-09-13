@@ -17,6 +17,7 @@ import { RaidPage } from '@/pages/Raid'
 import { HideoutPage } from '@/pages/Hideout'
 import { AmmoPage } from '@/pages/Ammo'
 import { BuilderPage } from '@/pages/Builder'
+import { MiniPage } from '@/pages/Mini'
 import type { PlayerPos } from '@/lib/pywebview'
 import { fetchTarkovTracker, mapProgress } from '@/lib/tarkovtracker'
 import { canPickFolder, folderPermission, savedFolder, watchFolder } from '@/lib/screenshots'
@@ -31,6 +32,8 @@ export function App() {
   useEffect(() => { void load(mode) }, [load, mode])
 
   const launcher = useLauncher()
+  // мини-карта живёт в отдельном окне: синхронизации, сквад и слежение за папкой — только в главном
+  const isMini = location.hash.startsWith('#/mini')
 
   // тема: атрибут на <html>, чтобы CSS-переменные переключались целиком
   const theme = useUI((s) => s.theme)
@@ -56,7 +59,7 @@ export function App() {
   // без лаунчера: папка скриншотов через File System Access API
   const folderStatus = useUI((s) => s.folderStatus)
   useEffect(() => {
-    if (launcher) return
+    if (launcher || isMini) return
     if (!canPickFolder()) { useUI.getState().setFolderStatus('unsupported'); return }
     let stop: (() => void) | null = null
     let cancelled = false
@@ -83,7 +86,7 @@ export function App() {
     return stop
   }, [squadActive, squad.url, squad.room])
   useEffect(() => {
-    if (!squadActive || !squad.share || !squad.name) return
+    if (!squadActive || !squad.share || !squad.name || isMini) return // мини-карта только слушает
     const mapName = currentMapId && data ? data.maps[currentMapId]?.normalizedName ?? '' : ''
     void publishSquad(squad.url, squad.room, squad.name, playerPos, mapName)
     const t = setInterval(() => void publishSquad(squad.url, squad.room, squad.name, useUI.getState().playerPos, mapName), 60_000)
@@ -110,7 +113,7 @@ export function App() {
   // автосинхронизация с TarkovTracker раз в 10 минут, если задан токен
   const ttToken = useProfile((s) => s.ttToken)
   useEffect(() => {
-    if (!ttToken || !data) return
+    if (!ttToken || !data || isMini) return
     let stop = false
     const sync = async () => {
       try {
@@ -130,6 +133,7 @@ export function App() {
 
   return (
     <Routes>
+      <Route path="/mini" element={<MiniPage />} />
       <Route element={<Shell />}>
         <Route index element={<Navigate to="/tasks" replace />} />
         <Route path="/tasks" element={<TasksPage />} />

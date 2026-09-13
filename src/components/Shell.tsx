@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon,
+  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon, Radar,
 } from 'lucide-react'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
 import { MODE_LABEL, type GameMode } from '@/data/loader'
@@ -100,6 +100,7 @@ export function Shell() {
           <ScavTimer />
           <Freshness />
           <ThemeButton />
+          <MiniMapButton />
           <OnTopButton />
           <button
             type="button"
@@ -186,6 +187,23 @@ function ThemeButton() {
       className="h-8 w-8 grid place-items-center rounded-[4px] border border-line-2 text-ink-3 hover:text-ink hover:border-ink-4 transition-colors"
     >
       {light ? <Moon size={14} /> : <Sun size={14} />}
+    </button>
+  )
+}
+
+/** Мини-карта отдельным окном — только внутри лаунчера. */
+function MiniMapButton() {
+  const api = useLauncher()
+  if (!api?.toggle_minimap) return null
+  return (
+    <button
+      type="button"
+      onClick={() => api.toggle_minimap?.().catch(() => {})}
+      title="Мини-карта поверх игры (F8)"
+      className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[4px] border border-line-2 text-ink-3 hover:text-ink hover:border-ink-4 transition-colors text-[12px] font-display uppercase tracking-[.1em]"
+    >
+      <Radar size={14} />
+      Мини
     </button>
   )
 }
