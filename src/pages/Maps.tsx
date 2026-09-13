@@ -56,6 +56,9 @@ export function MapsPage() {
   const overlay = useUI((s) => s.overlay)
   const openItem = useUI((s) => s.openItem)
   const gameMode = useProfile((s) => s.gameMode)
+  const objectivesDone = useProfile((s) => s.objectivesDone)
+  const toggleObjective = useProfile((s) => s.toggleObjective)
+  const toggleTask = useProfile((s) => s.toggleTask)
   const playerPos = useUI((s) => s.playerPos)
   const trail = useUI((s) => s.trail)
   const follow = useUI((s) => s.followPlayer)
@@ -327,15 +330,39 @@ export function MapsPage() {
       const questZones: { v: TaskView; o: Objective; z: Zone }[] = []
       for (const v of views.values()) {
         if (taskParam ? v.task.id !== taskParam : (v.status === 'done' || (questScope === 'available' && v.status !== 'available'))) continue
-        for (const o of v.task.objectives) for (const z of o.zones ?? []) if (z.map === gmap.id) questZones.push({ v, o, z })
+        // выполненные пункты прячем; в режиме «показать задание» оставляем их бледными, чтобы можно было вернуть
+        for (const o of v.task.objectives) for (const z of o.zones ?? []) if (z.map === gmap.id && (taskParam || !objectivesDone[o.id])) questZones.push({ v, o, z })
       }
       // при большом числе зон подписи только по наведению — иначе каша
       const withLabels = questZones.length <= 14 || !!taskParam
+      // всплывашка с кнопками: отметить пункт / всё задание. Реальные DOM-узлы — с обработчиками, без innerHTML
+      const popupFor = (v: TaskView, o: Objective, isDone: boolean) => {
+        const el = document.createElement('div')
+        el.className = 'qpop'
+        const zoneObjs = v.task.objectives.filter((x) => x.zones?.length)
+        const doneCount = zoneObjs.filter((x) => objectivesDone[x.id]).length
+        const add = (tag: string, cls: string, text: string) => { const n = document.createElement(tag); n.className = cls; n.textContent = text; el.appendChild(n); return n }
+        add('div', 'qpop-title', v.task.name)
+        add('div', 'qpop-desc', o.description)
+        if (zoneObjs.length > 1) add('div', 'qpop-meta', `пунктов на картах: ${doneCount} / ${zoneObjs.length}${isDone ? ' · этот выполнен' : ''}`)
+        const row = add('div', 'qpop-actions', '')
+        const btn = (text: string, cls: string, fn: () => void) => {
+          const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = text
+          b.onclick = (e) => { e.stopPropagation(); map.closePopup(); fn() }
+          row.appendChild(b)
+        }
+        if (!isDone) btn('✓ Пункт выполнен', 'chip chip-on', () => toggleObjective(o.id, true))
+        else btn('Вернуть пункт', 'chip', () => toggleObjective(o.id, false))
+        btn('Задание выполнено', 'chip', () => toggleTask(v.task.id, true))
+        return el
+      }
       for (const { v, o, z } of questZones) {
-        const dim = !onLevel(z.position)
+        const isDone = !!objectivesDone[o.id]
+        const dim = !onLevel(z.position) || isDone
         if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: COLORS.quest, weight: 1, fillOpacity: dim ? 0.04 : 0.1, interactive: false }))
         const m = L.marker(pos(z.position), { icon: icon('flag', COLORS.quest, withLabels ? v.task.name : undefined, { size: 20, dim }) })
-        tip(m, `<b>${v.task.name}</b><br>${o.description}`)
+        tip(m, `<b>${v.task.name}</b><br>${o.description}<br><span style="opacity:.6">${isDone ? 'пункт выполнен · ' : ''}клик — отметить</span>`)
+        m.bindPopup(() => popupFor(v, o, isDone), { closeButton: false, offset: [0, -10], className: 'qpop-wrap', maxWidth: 320 })
         group.addLayer(m)
         zoneBounds.push(pos(z.position))
       }
@@ -355,7 +382,7 @@ export function MapsPage() {
       const pts = gmap.locks.filter((l) => l.key === keyParam).map((l) => pos(l.position))
       if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.8), { maxZoom: meta.maxZoom - 1 })
     }
-  }, [gmap, meta, floor, toggles, questScope, lootType, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode])
+  }, [gmap, meta, floor, toggles, questScope, lootType, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
 
   // ── авто-этаж: по высоте последней точки ──
   useEffect(() => {

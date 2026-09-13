@@ -17,6 +17,8 @@ export interface ProfileData {
   fleaDisabled: boolean
   /** выполненные квесты */
   completed: Record<string, true>
+  /** выполненные пункты заданий (id objective): «камера заложена» — отметка исчезает с карты */
+  objectivesDone: Record<string, true>
   /** уровни станций схрона: id → level */
   stations: Record<string, number>
   /** сколько уже собрано: itemId → count */
@@ -44,6 +46,7 @@ export interface ProfileState extends ProfileData {
   setSeasonal: (v: boolean) => void
   setFleaDisabled: (v: boolean) => void
   toggleTask: (id: string, done?: boolean) => void
+  toggleObjective: (id: string, done?: boolean) => void
   completeMany: (ids: string[]) => void
   uncompleteMany: (ids: string[]) => void
   setStation: (id: string, level: number) => void
@@ -63,11 +66,11 @@ export interface ProfileState extends ProfileData {
 
 export const blankProfile = (name: string, seasonal = false, gameMode: GameMode = 'regular'): ProfileData => ({
   name, level: 1, faction: 'USEC', gameMode, seasonal, fleaDisabled: false,
-  completed: {}, stations: {}, have: {}, traderLevels: {}, achievements: {}, ttToken: '', ttSyncedAt: null,
+  completed: {}, objectivesDone: {}, stations: {}, have: {}, traderLevels: {}, achievements: {}, ttToken: '', ttSyncedAt: null,
 })
 
 const PROFILE_KEYS: (keyof ProfileData)[] = [
-  'name', 'level', 'faction', 'gameMode', 'seasonal', 'fleaDisabled', 'completed', 'stations', 'have', 'traderLevels', 'achievements',
+  'name', 'level', 'faction', 'gameMode', 'seasonal', 'fleaDisabled', 'completed', 'objectivesDone', 'stations', 'have', 'traderLevels', 'achievements',
   'ttToken', 'ttSyncedAt',
 ]
 
@@ -98,6 +101,13 @@ export const useProfile = create<ProfileState>()(
         if (target) next[id] = true
         else delete next[id]
         return { completed: next }
+      }),
+      toggleObjective: (id, done) => set((s) => {
+        const next = { ...s.objectivesDone }
+        const target = done ?? !next[id]
+        if (target) next[id] = true
+        else delete next[id]
+        return { objectivesDone: next }
       }),
       completeMany: (ids) => set((s) => {
         const next = { ...s.completed }
@@ -170,7 +180,7 @@ export const useProfile = create<ProfileState>()(
     }),
     {
       name: 'sherpa:profile',
-      version: 5,
+      version: 6,
       migrate: (persisted, version) => {
         let p = (persisted ?? {}) as Partial<ProfileState>
         if (version < 2) {
@@ -195,6 +205,12 @@ export const useProfile = create<ProfileState>()(
           if (p.seasonal) p.gameMode = 'pvp-season'
           const profiles = { ...(p.profiles ?? {}) }
           for (const id of Object.keys(profiles)) if (profiles[id].seasonal) profiles[id] = { ...profiles[id], gameMode: 'pvp-season' }
+          p.profiles = profiles
+        }
+        if (version < 6) {
+          p = { ...p, objectivesDone: p.objectivesDone ?? {} }
+          const profiles = { ...(p.profiles ?? {}) }
+          for (const id of Object.keys(profiles)) profiles[id] = { ...profiles[id], objectivesDone: profiles[id].objectivesDone ?? {} }
           p.profiles = profiles
         }
         return p as ProfileState

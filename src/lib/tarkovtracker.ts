@@ -9,6 +9,7 @@ import type { Faction } from '@/store/profile'
 
 export interface TTProgress {
   tasksProgress: { id: string; complete: boolean; failed?: boolean; invalid?: boolean }[]
+  taskObjectivesProgress?: { id: string; complete: boolean; count?: number; invalid?: boolean }[]
   hideoutModulesProgress: { id: string; complete: boolean }[]
   playerLevel: number
   pmcFaction: string
@@ -19,6 +20,7 @@ export interface TTResult {
   level: number
   faction: Faction
   completed: Record<string, true>
+  objectivesDone: Record<string, true>
   stations: Record<string, number>
   gameMode: string
   displayName: string
@@ -56,6 +58,8 @@ export function mapProgress(data: GameData, p: TTProgress, gameMode: string): TT
     if (data.tasks[t.id]) completed[t.id] = true
     else unknownTasks++
   }
+  const objectivesDone: Record<string, true> = {}
+  for (const o of p.taskObjectivesProgress ?? []) if (o.complete && !o.invalid) objectivesDone[o.id] = true
   // id уровня станции у tarkov.dev — «<station>-<level>»; берём максимальный завершённый
   const stations: Record<string, number> = {}
   const levelById = new Map<string, { station: string; level: number }>()
@@ -71,6 +75,7 @@ export function mapProgress(data: GameData, p: TTProgress, gameMode: string): TT
     level: Math.max(1, Math.min(79, Number(p.playerLevel) || 1)),
     faction,
     completed,
+    objectivesDone,
     stations,
     gameMode,
     displayName: p.displayName ?? '',

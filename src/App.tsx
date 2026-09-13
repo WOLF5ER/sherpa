@@ -136,7 +136,7 @@ export function App() {
         const r = mapProgress(data, prog, gameMode)
         // пустой ответ (новый аккаунт, не тот токен) не должен стереть локальный прогресс
         if (!Object.keys(r.completed).length && Object.keys(useProfile.getState().completed).length) return
-        useProfile.getState().applyImport({ level: r.level, faction: r.faction, completed: r.completed, stations: r.stations, ttSyncedAt: Date.now() })
+        useProfile.getState().applyImport({ level: r.level, faction: r.faction, completed: r.completed, objectivesDone: r.objectivesDone, stations: r.stations, ttSyncedAt: Date.now() })
       } catch { /* тихо: ручной импорт покажет ошибку */ }
     }
     const t = setInterval(sync, 10 * 60 * 1000)

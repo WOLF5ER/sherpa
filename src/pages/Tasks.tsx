@@ -116,6 +116,8 @@ function TaskRow({ view }: { view: TaskView }) {
   const data = useGame()
   const views = useTaskViews()
   const toggle = useProfile((s) => s.toggleTask)
+  const objectivesDone = useProfile((s) => s.objectivesDone)
+  const toggleObjective = useProfile((s) => s.toggleObjective)
   const completeMany = useProfile((s) => s.completeMany)
   const uncompleteMany = useProfile((s) => s.uncompleteMany)
   const [open, setOpen] = useState(false)
@@ -162,6 +164,7 @@ function TaskRow({ view }: { view: TaskView }) {
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-3">
             {t.minPlayerLevel > 0 && <span className={`num ${view.levelLocked ? 'text-danger' : ''}`}>{t.minPlayerLevel} ур.</span>}
+            {!done && t.objectives.some((o) => objectivesDone[o.id]) && <span className="num text-fir">{t.objectives.filter((o) => objectivesDone[o.id]).length}/{t.objectives.length} пунктов</span>}
             {t.map && <span className="inline-flex items-center gap-1"><MapPin size={11} />{data.maps[t.map]?.name}</span>}
             {locked && view.missing.length > 0 && (
               <span className="inline-flex items-center gap-1 truncate"><Lock size={11} />после: {view.missing.map((m) => m.name).join(', ')}</span>
@@ -192,8 +195,17 @@ function TaskRow({ view }: { view: TaskView }) {
                 const it = o.items?.[0] ? data.items[o.items[0]] : null
                 const qi = o.questItem ? data.questItems[o.questItem] : null
                 const mapId = o.maps[0] ?? t.map
+                const od = !!objectivesDone[o.id]
                 return (
-                  <li key={o.id} className={`flex items-start gap-2 text-[13px] ${o.optional ? 'text-ink-3' : ''}`}>
+                  <li key={o.id} className={`flex items-start gap-2 text-[13px] ${o.optional ? 'text-ink-3' : ''} ${od ? 'opacity-50' : ''}`}>
+                    <button
+                      type="button"
+                      onClick={() => toggleObjective(o.id)}
+                      title={od ? 'Пункт выполнен — снять отметку' : 'Отметить пункт выполненным'}
+                      className={`mt-[3px] w-[18px] h-[18px] shrink-0 rounded-[3px] border grid place-items-center transition-colors ${od ? 'bg-fir/20 border-fir text-fir' : 'border-line-2 text-transparent hover:border-brass hover:text-brass/60'}`}
+                    >
+                      <Check size={12} strokeWidth={3} />
+                    </button>
                     <span className="eyebrow mt-[3px] w-[76px] shrink-0 text-right">{objectiveLabel(o.type)}</span>
                     {it && <ItemCell item={it} size={30} count={o.count} fir={o.foundInRaid} />}
                     {qi?.iconLink && <img src={qi.iconLink} alt="" className="w-[30px] h-[30px] object-contain rounded-[3px] border border-line-2 ibg-yellow" title={qi.name} />}

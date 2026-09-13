@@ -307,6 +307,22 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 }
 .leaflet-tooltip.tip-wide { max-width: 320px; white-space: normal; line-height: 1.35; }
 
+/* всплывашка задания на карте: пункт выполнен / задание выполнено */
+.qpop-wrap .leaflet-popup-content-wrapper {
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-line-2);
+  color: var(--color-ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  padding: 0;
+}
+.qpop-wrap .leaflet-popup-content { margin: 10px 12px; font-family: var(--font-sans); font-size: 12px; line-height: 1.35; }
+.qpop-wrap .leaflet-popup-tip { background: var(--color-bg-2); border: 1px solid var(--color-line-2); border-top: 0; border-left: 0; }
+.qpop-title { font-family: var(--font-display); font-size: 15px; letter-spacing: .02em; color: var(--color-ink); }
+.qpop-desc { margin-top: 3px; color: var(--color-ink-2); max-width: 280px; }
+.qpop-meta { margin-top: 4px; font-size: 11px; color: var(--color-ink-3); font-family: var(--font-mono); }
+.qpop-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+
 .off-level { opacity: .28; filter: saturate(.4); }
 
 @media (prefers-reduced-motion: reduce) {

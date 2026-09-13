@@ -31,7 +31,7 @@ export function TarkovTrackerImport() {
     try {
       const { data: prog, gameMode } = await fetchTarkovTracker(token)
       const r = mapProgress(data, prog, gameMode)
-      applyImport({ level: r.level, faction: r.faction, completed: r.completed, stations: r.stations, ttSyncedAt: Date.now() })
+      applyImport({ level: r.level, faction: r.faction, completed: r.completed, objectivesDone: r.objectivesDone, stations: r.stations, ttSyncedAt: Date.now() })
       const n = Object.keys(r.completed).length
       const st = Object.keys(r.stations).length
       setMsg({

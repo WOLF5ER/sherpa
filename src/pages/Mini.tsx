@@ -33,6 +33,7 @@ export function MiniPage() {
   const squadMembers = useUI((s) => s.squadMembers)
   const squadMarks = useUI((s) => s.squadMarks)
   const squadName = useUI((s) => s.squad.name)
+  const objectivesDone = useProfile((s) => s.objectivesDone)
   const launcher = useLauncher()
   const [prefs, setPrefs] = useState<MiniPrefs>(readPrefs)
   const [hover, setHover] = useState(false)
@@ -137,14 +138,14 @@ export function MiniPage() {
     for (const v of views.values()) {
       if (v.status !== 'available') continue
       for (const o of v.task.objectives) for (const z of o.zones ?? []) {
-        if (z.map !== gmap.id) continue
+        if (z.map !== gmap.id || objectivesDone[o.id]) continue
         if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: COLORS.quest, weight: 1, fillOpacity: 0.12, interactive: false }))
         group.addLayer(L.marker(pos(z.position), { icon: icon('flag', COLORS.quest, prefs.labels ? v.task.name : undefined, { size: 16 }) }))
       }
     }
     for (const mk of marks[gmap.id] ?? []) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#e06ba0', prefs.labels ? mk.name : undefined, { size: 16 }) }))
     for (const mk of Object.values(squadMarks)) if (mk.map === gmap.normalizedName) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#5fd0d0', prefs.labels ? `${mk.label} · ${mk.by}` : undefined, { size: 16 }) }))
-  }, [gmap, meta, data, views, gameMode, marks, squadMarks, prefs.labels])
+  }, [gmap, meta, data, views, gameMode, marks, squadMarks, prefs.labels, objectivesDone])
 
   // ── живое: я, след, друзья; центрирование и поворот ──
   const hd = playerPos && meta ? mapHeading(meta, playerPos.rotation) : 0
