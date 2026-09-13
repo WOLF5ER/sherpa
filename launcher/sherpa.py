@@ -336,6 +336,17 @@ def port_free(port: int) -> bool:
         return s.connect_ex(("127.0.0.1", port)) != 0
 
 
+def is_sherpa_server(port: int) -> bool:
+    """На порту именно Sherpa (или её dev-сервер), а не что-то чужое."""
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/pos/last", timeout=2) as r:
+            return r.status in (200, 204) and "json" in (r.headers.get("Content-Type") or "")
+    except urllib.error.HTTPError:
+        return False
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def serve(port: int, host: str = "127.0.0.1") -> ThreadingHTTPServer:
     handler = partial(QuietHandler, directory=str(DIST))
     httpd = ThreadingHTTPServer((host, port), handler)
@@ -867,8 +878,15 @@ def main():
     lan = bool(cfg.get("lan"))
     lan_url = None
     if not port_free(port):
-        # уже поднят dev-сервер или прошлый запуск — просто откроем его
-        print(f"[sherpa] порт {port} занят, подключаюсь к нему")
+        if is_sherpa_server(port):
+            # уже поднят dev-сервер или прошлый запуск — просто откроем его
+            print(f"[sherpa] порт {port} занят Sherpa, подключаюсь к нему")
+        else:
+            # порт занят чужой программой — иначе окно откроет пустую страницу
+            busy = port
+            port = next((p for p in range(busy + 10, busy + 40) if port_free(p)), busy)
+            print(f"[sherpa] порт {busy} занят другой программой — использую {port}")
+            serve(port, "0.0.0.0" if lan else "127.0.0.1")
     else:
         serve(port, "0.0.0.0" if lan else "127.0.0.1")
         if lan:
@@ -902,6 +920,26 @@ def main():
         text_select=False,
     )
     api._window = window
+
+    # сторож: если страница не сообщила о загрузке за 12 с — перезагружаем адрес (в UI-потоке, как и всё окно)
+    loaded = threading.Event()
+    try:
+        window.events.loaded += lambda: loaded.set()
+    except Exception:  # noqa: BLE001
+        pass
+
+    def boot_watchdog():
+        url = f"http://127.0.0.1:{port}/"
+        for attempt in range(3):
+            if loaded.wait(12):
+                return
+            print(f"[sherpa] окно не загрузилось за 12 с — повторяю ({attempt + 1}/3)")
+            try:
+                from System import Action
+                window.native.BeginInvoke(Action(lambda: window.load_url(url)))
+            except Exception as e:  # noqa: BLE001
+                print(f"[sherpa] не удалось перезагрузить окно: {e}")
+    threading.Thread(target=boot_watchdog, daemon=True).start()
 
     threading.Thread(target=hotkey_loop, args=(api, cfg), daemon=True).start()
     # профиль WebView2 (localStorage/IndexedDB с прогрессом) — в AppData, а не в папке проекта
