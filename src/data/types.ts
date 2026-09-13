@@ -354,6 +354,8 @@ export interface GameData {
   barters: Barter[]
   maps: Record<string, GameMap>
   lootContainerNames: Record<string, string>
+  /** id контейнера → normalizedName tarkov.dev (duffle-bag, weapon-box…) — для иконок */
+  lootContainerTypes: Record<string, string>
   mobNames: Record<string, string>
   achievements: Achievement[]
   flea: FleaSettings

@@ -115,7 +115,7 @@ export function Shell() {
           </button>
         </header>
 
-        <main className={`flex-1 min-h-0 ${isMap ? '' : 'overflow-y-auto'}`}>
+        <main className={`flex-1 min-h-0 relative isolate ${isMap ? '' : 'overflow-y-auto'}`}>
           <Outlet />
         </main>
       </div>

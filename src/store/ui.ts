@@ -31,6 +31,9 @@ interface UIState {
   setFollowPlayer: (v: boolean) => void
   autoFloor: boolean
   setAutoFloor: (v: boolean) => void
+  /** подложка карты: схема (SVG) или 3D-рендер (тайлы) — там, где есть обе */
+  mapStyle: MapStyle
+  setMapStyle: (v: MapStyle) => void
   /** источник позиции без лаунчера: папка в браузере */
   folderStatus: 'unsupported' | 'none' | 'prompt' | 'granted'
   setFolderStatus: (s: 'unsupported' | 'none' | 'prompt' | 'granted') => void
@@ -57,6 +60,7 @@ interface UIState {
   setCurrentMapId: (id: string | null) => void
 }
 
+export type MapStyle = 'scheme' | 'render'
 export interface SquadSettings { url: string; room: string; name: string; share: boolean; followMap: boolean }
 
 export interface MapMark { id: string; x: number; z: number; y?: number; name: string; ts: number }
@@ -89,6 +93,8 @@ export const useUI = create<UIState>()(
       setFollowPlayer: (followPlayer) => set({ followPlayer }),
       autoFloor: true,
       setAutoFloor: (autoFloor) => set({ autoFloor }),
+      mapStyle: 'scheme',
+      setMapStyle: (mapStyle) => set({ mapStyle }),
       folderStatus: 'none',
       setFolderStatus: (folderStatus) => set({ folderStatus }),
       marks: {},
@@ -122,6 +128,6 @@ export const useUI = create<UIState>()(
         const p = (persisted ?? {}) as Partial<UIState>
         return { ...current, ...p, squad: { ...current.squad, ...(p.squad ?? {}) } }
       },
-      partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, marks: s.marks, squad: s.squad, theme: s.theme, currentMapId: s.currentMapId }) },
+      partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, mapStyle: s.mapStyle, marks: s.marks, squad: s.squad, theme: s.theme, currentMapId: s.currentMapId }) },
   ),
 )

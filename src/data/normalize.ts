@@ -291,7 +291,11 @@ export function normalize(raw: RawBundle): GameData {
   const mobNames: Record<string, string> = {}
   for (const m of Object.values<any>(raw.maps.data.mobs ?? {})) mobNames[m.id] = tMap(m.name)
   const lootContainerNames: Record<string, string> = {}
-  for (const c of Object.values<any>(raw.maps.data.lootContainers ?? {})) lootContainerNames[c.id] = tMap(c.name)
+  const lootContainerTypes: Record<string, string> = {}
+  for (const c of Object.values<any>(raw.maps.data.lootContainers ?? {})) {
+    lootContainerNames[c.id] = tMap(c.name)
+    lootContainerTypes[c.id] = c.normalizedName ?? ''
+  }
 
   const maps: Record<string, GameMap> = {}
   const keyMaps: Record<string, Set<string>> = {}
@@ -351,7 +355,7 @@ export function normalize(raw: RawBundle): GameData {
   return {
     fetchedAt: Date.now(),
     items, traders, tasks, questItems, stations, crafts, barters, maps,
-    lootContainerNames, mobNames, achievements, flea, categoryNames,
+    lootContainerNames, lootContainerTypes, mobNames, achievements, flea, categoryNames,
     scavCooldownSeconds: raw.items.data.settings?.scavCooldownSeconds ?? 1500,
     priceScanAt,
     priceAggregateStale: Date.now() - priceScanAt > 12 * 3600 * 1000,

@@ -6,9 +6,10 @@ import { useGame } from '@/store/data'
 import { useUI } from '@/store/ui'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
-import { findMeta, type MapMeta } from '@/data/mapMeta'
-import { makeCRS, pos, boundsOf, scaledBounds, icon, dot, COLORS } from '@/lib/leaflet'
+import { findMeta } from '@/data/mapMeta'
+import { makeCRS, pos, boundsOf, scaledBounds, icon, dot, COLORS, svgBaseFor, applySvgFloor, containerIcon, MARKER_SVG, type IconKind } from '@/lib/leaflet'
 import { fleaPrice } from '@/lib/flea'
+import { computeNeeds, CURRENCY } from '@/lib/needs'
 import { extractsOf, FACTION_RU } from '@/lib/extracts'
 import { TRANSIT_NOTE } from '@/data/extractRules'
 import { rubShort } from '@/lib/format'
@@ -23,32 +24,78 @@ import { ItemCell } from '@/components/ItemCell'
 
 const MAP_ORDER = ['customs', 'factory', 'woods', 'shoreline', 'interchange', 'reserve', 'lighthouse', 'streets-of-tarkov', 'ground-zero', 'the-lab', 'the-labyrinth', 'terminal', 'icebreaker', 'night-factory', 'ground-zero-21', 'the-lab-dark']
 
-type ToggleKey = 'extracts' | 'spawnsPmc' | 'spawnsScav' | 'spawnsSeason' | 'bosses' | 'locks' | 'hazards' | 'transits' | 'switches' | 'btr' | 'weapons' | 'loot' | 'quests'
+type ToggleKey =
+  | 'exitsPmc' | 'exitsScav' | 'exitsShared' | 'transits'
+  | 'quests'
+  | 'spawnsPmc' | 'spawnsScav' | 'snipers' | 'spawnsSeason' | 'bosses'
+  | 'locks' | 'keySpawns'
+  | 'containers' | 'loose'
+  | 'hazards' | 'switches' | 'weapons' | 'btr'
 type Toggles = Record<ToggleKey, boolean>
 
 const DEFAULT_TOGGLES: Toggles = {
-  extracts: true, spawnsPmc: true, spawnsScav: false, spawnsSeason: true, bosses: true, locks: true, hazards: true,
-  transits: true, switches: false, btr: true, weapons: false, loot: false, quests: true,
+  exitsPmc: true, exitsScav: false, exitsShared: true, transits: true,
+  quests: true,
+  spawnsPmc: true, spawnsScav: false, snipers: false, spawnsSeason: true, bosses: true,
+  locks: true, keySpawns: false,
+  containers: false, loose: false,
+  hazards: true, switches: false, weapons: false, btr: true,
 }
 
 const allToggles = (v: boolean): Toggles =>
   Object.fromEntries(Object.keys(DEFAULT_TOGGLES).map((k) => [k, v])) as Toggles
 
-const TOGGLE_LABELS: { key: ToggleKey; label: string; color: string }[] = [
-  { key: 'extracts', label: 'Выходы', color: COLORS.shared },
-  { key: 'transits', label: 'Транзиты', color: COLORS.transit },
-  { key: 'spawnsPmc', label: 'Спавны ЧВК', color: COLORS.pmc },
-  { key: 'spawnsScav', label: 'Спавны диких', color: COLORS.scav },
-  { key: 'spawnsSeason', label: 'Сезонные спавны', color: COLORS.season },
-  { key: 'bosses', label: 'Боссы', color: COLORS.boss },
-  { key: 'locks', label: 'Двери и ключи', color: COLORS.key },
-  { key: 'hazards', label: 'Опасности', color: COLORS.hazard },
-  { key: 'quests', label: 'Мои квесты', color: COLORS.quest },
-  { key: 'switches', label: 'Рубильники', color: COLORS.switch },
-  { key: 'btr', label: 'БТР', color: COLORS.btr },
-  { key: 'weapons', label: 'Стационарки', color: COLORS.weapon },
-  { key: 'loot', label: 'Контейнеры', color: COLORS.loot },
+/** меню слоёв: секции как у tarkov-navigator, у каждой строки — иконка маркера и счётчик по карте */
+const LAYER_SECTIONS: { title: string; rows: { key: ToggleKey; label: string; color: string; icon: IconKind | 'dot' }[] }[] = [
+  { title: 'Выходы', rows: [
+    { key: 'exitsPmc', label: 'Выходы ЧВК', color: COLORS.pmc, icon: 'exit' },
+    { key: 'exitsScav', label: 'Выходы диких', color: COLORS.scav, icon: 'exit' },
+    { key: 'exitsShared', label: 'Общие выходы', color: COLORS.shared, icon: 'exit' },
+    { key: 'transits', label: 'Переходы', color: COLORS.transit, icon: 'transit' },
+  ] },
+  { title: 'Квесты', rows: [
+    { key: 'quests', label: 'Мои квесты', color: COLORS.quest, icon: 'flag' },
+  ] },
+  { title: 'Спавны и боссы', rows: [
+    { key: 'spawnsPmc', label: 'Спавн ЧВК', color: COLORS.pmc, icon: 'dot' },
+    { key: 'spawnsScav', label: 'Спавн диких', color: COLORS.scav, icon: 'dot' },
+    { key: 'snipers', label: 'Снайперы', color: COLORS.scav, icon: 'cross' },
+    { key: 'spawnsSeason', label: 'Сезонные спавны', color: COLORS.season, icon: 'dot' },
+    { key: 'bosses', label: 'Боссы', color: COLORS.boss, icon: 'skull' },
+  ] },
+  { title: 'Ключи', rows: [
+    { key: 'locks', label: 'Двери и замки', color: COLORS.key, icon: 'key' },
+    { key: 'keySpawns', label: 'Спавн ключей', color: COLORS.key, icon: 'dot' },
+  ] },
+  { title: 'Лут', rows: [
+    { key: 'containers', label: 'Контейнеры', color: COLORS.loot, icon: 'box' },
+    { key: 'loose', label: 'Рассыпной лут', color: COLORS.item, icon: 'dot' },
+  ] },
+  { title: 'Разное', rows: [
+    { key: 'hazards', label: 'Опасности', color: COLORS.hazard, icon: 'warn' },
+    { key: 'switches', label: 'Рубильники', color: COLORS.switch, icon: 'bolt' },
+    { key: 'weapons', label: 'Стационарные пулемёты', color: COLORS.weapon, icon: 'cross' },
+    { key: 'btr', label: 'БТР', color: COLORS.btr, icon: 'bus' },
+  ] },
 ]
+
+const LEGEND: { label: string; color: string }[] = [
+  { label: 'ЧВК', color: COLORS.pmc }, { label: 'Дикие', color: COLORS.scav }, { label: 'Общий', color: COLORS.shared },
+  { label: 'Переход', color: COLORS.transit }, { label: 'Квест', color: COLORS.quest }, { label: 'Сезон', color: COLORS.season },
+]
+
+/** категории рассыпного лута — по категориям предметов tarkov.dev (id ветки; предмет попадает, если ветка среди его categories) */
+const LOOSE_CATEGORIES: { id: string; label: string; cats?: string[] }[] = [
+  { id: 'all', label: 'Весь лут' },
+  { id: 'needed', label: 'Нужное мне' },
+  { id: 'barter', label: 'Ценности и бартер', cats: ['5448eb774bdc2d0a728b4567', '5448ecbe4bdc2d60728b4568'] },
+  { id: 'cases', label: 'Кейсы', cats: ['566162e44bdc2d3f298b4573'] },
+  { id: 'keys', label: 'Ключи', cats: ['543be5e94bdc2df1348b4568'] },
+  { id: 'meds', label: 'Медицина', cats: ['543be5664bdc2dd4348b4569'] },
+  { id: 'food', label: 'Еда и вода', cats: ['543be6674bdc2df1348b4569'] },
+  { id: 'other', label: 'Прочее' },
+]
+const KEY_CATEGORY = '543be5e94bdc2df1348b4568'
 
 export function MapsPage() {
   const data = useGame()
@@ -63,6 +110,8 @@ export function MapsPage() {
   const trail = useUI((s) => s.trail)
   const follow = useUI((s) => s.followPlayer)
   const autoFloor = useUI((s) => s.autoFloor)
+  const mapStyle = useUI((s) => s.mapStyle)
+  const setMapStyle = useUI((s) => s.setMapStyle)
   const marks = useUI((s) => s.marks)
   const addMark = useUI((s) => s.addMark)
   const removeMark = useUI((s) => s.removeMark)
@@ -131,14 +180,72 @@ export function MapsPage() {
     if (squadActive && squad.followMap && data.maps[id]) void publishSquadMap(squad.url, squad.room, squad.name, data.maps[id].normalizedName)
   }
 
+  // v2: слои разбиты по фракциям/категориям — старый ключ не читаем
   const [toggles, setToggles] = useState<Toggles>(() => {
-    try { return { ...DEFAULT_TOGGLES, ...JSON.parse(localStorage.getItem('sherpa:mapToggles') ?? '{}') } } catch { return DEFAULT_TOGGLES }
+    try { return { ...DEFAULT_TOGGLES, ...JSON.parse(localStorage.getItem('sherpa:mapToggles2') ?? '{}') } } catch { return DEFAULT_TOGGLES }
   })
-  useEffect(() => { try { localStorage.setItem('sherpa:mapToggles', JSON.stringify(toggles)) } catch { /* ignore */ } }, [toggles])
+  useEffect(() => { try { localStorage.setItem('sherpa:mapToggles2', JSON.stringify(toggles)) } catch { /* ignore */ } }, [toggles])
   const [floor, setFloor] = useState<number>(-1)
   const [questScope, setQuestScope] = useState<'available' | 'all'>('available')
   const [lootType, setLootType] = useState<string>('')
+  const [looseCat, setLooseCat] = useState<string>('all')
+  const stations = useProfile((s) => s.stations)
+  const have = useProfile((s) => s.have)
+  const kappaOnly = useProfile((s) => s.kappaOnly)
+  // «нужное мне»: предметы из списка «что нести» (доступные квесты + следующий уровень схрона), которых ещё не хватает
+  const neededIds = useMemo(() => {
+    const needs = computeNeeds(data, views, stations, have, { includeLocked: false, allHideoutLevels: false, kappaOnly })
+    return new Set(needs.filter((n) => !CURRENCY.has(n.item.id) && n.have < n.total).map((n) => n.item.id))
+  }, [data, views, stations, have, kappaOnly])
+  // точки рассыпного лута по категориям: точка попадает, если хотя бы один её предмет в категории
+  const loosePoints = useMemo(() => {
+    const out: Record<string, GameMap['lootLoose']> = {}
+    if (!gmap) return out
+    const known = LOOSE_CATEGORIES.flatMap((c) => c.cats ?? [])
+    const inCat = (id: string, cats: string[]) => data.items[id]?.categories.some((c) => cats.includes(c))
+    for (const c of LOOSE_CATEGORIES) {
+      out[c.id] = gmap.lootLoose.filter((l) =>
+        c.id === 'all' ? true
+          : c.id === 'needed' ? l.items.some((id) => neededIds.has(id))
+            : c.id === 'other' ? l.items.some((id) => data.items[id] && !inCat(id, known))
+              : l.items.some((id) => inCat(id, c.cats!)))
+    }
+    return out
+  }, [gmap, data, neededIds])
+  // счётчики для меню слоёв
+  const layerCounts = useMemo((): Record<ToggleKey, number> => {
+    const z = Object.fromEntries(Object.keys(DEFAULT_TOGGLES).map((k) => [k, 0])) as Record<ToggleKey, number>
+    if (!gmap) return z
+    for (const x of extractsOf(data, gmap, gameMode)) {
+      if (!x.extract) continue
+      if (x.faction === 'pmc') z.exitsPmc++; else if (x.faction === 'scav') z.exitsScav++; else z.exitsShared++
+    }
+    z.transits = gmap.transits.length
+    for (const s of gmap.spawns) {
+      if (s.categories.includes('boss')) continue
+      if (s.categories.some((c) => /^season/i.test(c))) z.spawnsSeason++
+      else if (s.categories.includes('sniper')) z.snipers++
+      else if (s.sides.includes('scav') && !s.sides.includes('pmc') && !s.sides.includes('all')) z.spawnsScav++
+      else z.spawnsPmc++
+    }
+    z.bosses = gmap.bosses.reduce((n, b) => n + b.positions.length, 0)
+    z.locks = gmap.locks.length
+    z.keySpawns = loosePoints.keys?.length ?? 0
+    z.containers = gmap.lootContainers.length
+    z.loose = gmap.lootLoose.length
+    z.hazards = gmap.hazards.length
+    z.switches = gmap.switches.length
+    z.weapons = gmap.stationaryWeapons.length
+    z.btr = gmap.btrStops.filter((b) => b.position).length
+    for (const v of views.values()) {
+      if (v.status === 'done' || (questScope === 'available' && v.status !== 'available')) continue
+      for (const o of v.task.objectives) for (const zz of o.zones ?? []) if (zz.map === gmap.id && !objectivesDone[o.id]) z.quests++
+    }
+    return z
+  }, [gmap, data, gameMode, loosePoints, views, questScope, objectivesDone])
   const [panelOpen, setPanelOpen] = useState(!overlay)
+  const panelPadRef = useRef(0)
+  panelPadRef.current = panelOpen ? (overlay ? 220 : 280) : 0
   useEffect(() => { setFloor(-1) }, [mapId])
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -158,21 +265,25 @@ export function MapsPage() {
     const map = L.map(containerRef.current, {
       crs, minZoom: meta.minZoom - 1, maxZoom, zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 90,
       attributionControl: false, zoomControl: false, preferCanvas: true,
-      maxBounds: scaledBounds(meta.bounds, 1.5), maxBoundsViscosity: 0.6,
+      maxBounds: scaledBounds(meta.bounds, 2), maxBoundsViscosity: 0.6,
     })
-    L.control.zoom({ position: 'bottomright' }).addTo(map)
+    L.control.zoom({ position: 'bottomleft' }).addTo(map)
+    // SVG-подложка — в свой pane под overlayPane: у svg в overlayPane z-index 200 и он накрывал canvas-точки (спавны, лут)
+    map.createPane('base').style.zIndex = '250'
+    map.createPane('floor').style.zIndex = '260' // тайлы этажа — над подложкой любого вида
     mapRef.current = map
     const bounds = boundsOf(meta.bounds)
     const base: typeof baseRef.current = {}
     const tileSize = meta.tileSize ?? 256
-    if (meta.tilePath) {
+    const useSvg = svgBaseFor(meta, mapStyle)
+    if (meta.tilePath && !useSvg) {
       base.tile = L.tileLayer(meta.tilePath, { tileSize, bounds, minNativeZoom: meta.minZoom, maxNativeZoom: meta.maxZoom, maxZoom, className: 'base-tiles' }).addTo(map)
     }
-    if (meta.svgPath && !meta.tilePath) {
+    if (meta.svgPath && useSvg) {
       const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
       svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
       base.svgEl = svgEl
-      base.svg = L.svgOverlay(svgEl, meta.svgBounds ? boundsOf(meta.svgBounds) : bounds, { className: 'base-svg' }).addTo(map)
+      base.svg = L.svgOverlay(svgEl, meta.svgBounds ? boundsOf(meta.svgBounds) : bounds, { className: 'base-svg', pane: 'base' }).addTo(map)
       fetch(meta.svgPath).then((r) => r.text()).then((txt) => {
         svgEl.innerHTML = txt
         const inner = svgEl.children[0] as SVGSVGElement | undefined
@@ -182,9 +293,11 @@ export function MapsPage() {
     }
     baseRef.current = base
     markersRef.current = L.layerGroup().addTo(map)
-    map.fitBounds(bounds, { animate: false })
+    // панель слоёв лежит поверх карты — вписываем карту в свободную часть
+    const fit = () => map.fitBounds(bounds, { animate: false, paddingBottomRight: [panelPadRef.current, 0] })
+    fit()
     // контейнер мог ещё не получить размер — подгоняем после раскладки
-    const raf = requestAnimationFrame(() => { map.invalidateSize(false); map.fitBounds(bounds, { animate: false }) })
+    const raf = requestAnimationFrame(() => { map.invalidateSize(false); fit() })
     const ro = new ResizeObserver(() => map.invalidateSize(false))
     ro.observe(containerRef.current!)
     return () => {
@@ -195,7 +308,7 @@ export function MapsPage() {
       markersRef.current = null
       baseRef.current = {}
     }
-  }, [gmap, meta])
+  }, [gmap, meta, mapStyle])
 
   // ── этажи ──
   useEffect(() => {
@@ -205,14 +318,14 @@ export function MapsPage() {
     base.floorTile?.remove()
     base.floorTile = undefined
     const layer = floor >= 0 ? meta.layers[floor] : undefined
-    if (layer?.tilePath) {
+    if (layer?.tilePath && !(base.svgEl && layer.svgLayer)) {
       const maxZoom = Math.max(7, meta.maxZoom)
-      base.floorTile = L.tileLayer(layer.tilePath, { tileSize: meta.tileSize ?? 256, bounds: boundsOf(meta.bounds), minNativeZoom: meta.minZoom, maxNativeZoom: meta.maxZoom, maxZoom }).addTo(map)
+      base.floorTile = L.tileLayer(layer.tilePath, { pane: 'floor', tileSize: meta.tileSize ?? 256, bounds: boundsOf(meta.bounds), minNativeZoom: meta.minZoom, maxNativeZoom: meta.maxZoom, maxZoom }).addTo(map)
       base.floorTile.bringToFront()
     }
     base.tile?.getContainer()?.classList.toggle('off-level', !!layer && !layer.show)
     if (base.svgEl) applySvgFloor(base.svgEl, meta, floor)
-  }, [floor, meta])
+  }, [floor, meta, mapStyle])
 
   // ── маркеры ──
   useEffect(() => {
@@ -226,10 +339,11 @@ export function MapsPage() {
     const onLevel = (p: XYZ) => !range || (p.y >= range[0] && p.y <= range[1])
     const tip = (m: L.Layer, html: string, opts: L.TooltipOptions = {}) => m.bindTooltip(html, { direction: 'top', offset: [0, -12], ...opts })
 
-    if (toggles.extracts) {
+    if (toggles.exitsPmc || toggles.exitsScav || toggles.exitsShared) {
       for (const x of extractsOf(data, gmap, gameMode)) {
         const e = x.extract
         if (!e) continue
+        if (!(x.faction === 'pmc' ? toggles.exitsPmc : x.faction === 'scav' ? toggles.exitsScav : toggles.exitsShared)) continue
         const color = x.faction === 'pmc' ? COLORS.pmc : x.faction === 'scav' ? COLORS.scav : x.faction === 'shared' ? COLORS.shared : COLORS.btr
         const dim = !onLevel(e.position)
         const label = x.tag ? `${x.label} <i class="mk-req">${x.tag}</i>` : x.label
@@ -252,13 +366,13 @@ export function MapsPage() {
         if (t.outline?.length) group.addLayer(L.polygon(t.outline.map(pos), { color: COLORS.transit, weight: 1, fillOpacity: 0.12, interactive: false }))
       }
     }
-    if (toggles.spawnsPmc || toggles.spawnsScav || toggles.spawnsSeason) {
+    if (toggles.spawnsPmc || toggles.spawnsScav || toggles.snipers || toggles.spawnsSeason) {
       for (const s of gmap.spawns) {
         if (s.categories.includes('boss')) continue
         const season = s.categories.some((c) => /^season/i.test(c))
-        const scav = s.sides.includes('scav') && !s.sides.includes('pmc') && !s.sides.includes('all')
         const sniper = s.categories.includes('sniper')
-        if (season) { if (!toggles.spawnsSeason) continue } else if (scav || sniper) { if (!toggles.spawnsScav) continue } else if (!toggles.spawnsPmc) continue
+        const scav = !sniper && s.sides.includes('scav') && !s.sides.includes('pmc') && !s.sides.includes('all')
+        if (season) { if (!toggles.spawnsSeason) continue } else if (sniper) { if (!toggles.snipers) continue } else if (scav) { if (!toggles.spawnsScav) continue } else if (!toggles.spawnsPmc) continue
         const color = season ? COLORS.season : scav || sniper ? COLORS.scav : COLORS.pmc
         const m = L.circleMarker(pos(s.position), dot(color, season ? 7 : sniper ? 6 : 5, { dim: !onLevel(s.position) }))
         tip(m, season ? `<b>Сезонный спавн</b><br>${s.zoneName}` : sniper ? 'Снайпер-дикий' : scav ? 'Спавн диких' : 'Спавн ЧВК')
@@ -317,11 +431,40 @@ export function MapsPage() {
         group.addLayer(m)
       }
     }
-    if (toggles.loot) {
+    if (toggles.containers) {
       for (const c of gmap.lootContainers) {
         if (lootType && c.container !== lootType) continue
-        const m = L.circleMarker(pos(c.position), dot(COLORS.loot, 3, { dim: !onLevel(c.position) }))
+        const ci = containerIcon(data.lootContainerTypes[c.container] ?? '')
+        const m = L.marker(pos(c.position), { icon: icon(ci.kind, ci.color, undefined, { size: 16, square: true, dim: !onLevel(c.position) }) })
         tip(m, data.lootContainerNames[c.container] ?? 'Контейнер')
+        group.addLayer(m)
+      }
+    }
+    // рассыпной лут и спавн ключей — точки с перечнем того, что там бывает
+    const looseTip = (l: GameMap['lootLoose'][number], only?: (id: string) => boolean) => {
+      const names = l.items.filter((id) => data.items[id] && (!only || only(id))).map((id) => neededIds.has(id) ? `<b style="color:${COLORS.quest}">${data.items[id].shortName}</b>` : data.items[id].shortName)
+      const shown = names.slice(0, 8)
+      return `${shown.join(' · ')}${names.length > shown.length ? ` <span style="opacity:.6">+${names.length - shown.length}</span>` : ''}`
+    }
+    if (toggles.loose) {
+      const cat = LOOSE_CATEGORIES.find((c) => c.id === looseCat)
+      const only = cat?.cats ? (id: string) => !!data.items[id]?.categories.some((c) => cat.cats!.includes(c)) : looseCat === 'needed' ? (id: string) => neededIds.has(id) : undefined
+      const color = looseCat === 'needed' ? COLORS.quest : COLORS.item
+      for (const l of loosePoints[looseCat] ?? []) {
+        const m = L.circleMarker(pos(l.position), dot(color, looseCat === 'all' ? 3 : 4, { dim: !onLevel(l.position) }))
+        tip(m, looseTip(l, only), { className: 'tip-wide' })
+        const first = l.items.find((id) => (!only || only(id)) && data.items[id])
+        if (first) m.on('click', () => openItem(first))
+        group.addLayer(m)
+      }
+    }
+    if (toggles.keySpawns && !(toggles.loose && looseCat === 'keys')) {
+      const isKey = (id: string) => !!data.items[id]?.categories.includes(KEY_CATEGORY)
+      for (const l of loosePoints.keys ?? []) {
+        const m = L.circleMarker(pos(l.position), dot(COLORS.key, 4, { dim: !onLevel(l.position) }))
+        tip(m, `<b>Спавн ключей</b><br>${looseTip(l, isKey)}`, { className: 'tip-wide' })
+        const first = l.items.find(isKey)
+        if (first) m.on('click', () => openItem(first))
         group.addLayer(m)
       }
     }
@@ -382,7 +525,7 @@ export function MapsPage() {
       const pts = gmap.locks.filter((l) => l.key === keyParam).map((l) => pos(l.position))
       if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.8), { maxZoom: meta.maxZoom - 1 })
     }
-  }, [gmap, meta, floor, toggles, questScope, lootType, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
+  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
 
   // ── авто-этаж: по высоте последней точки ──
   useEffect(() => {
@@ -495,7 +638,7 @@ export function MapsPage() {
 
       {/* контекст из ссылки: квест / ключ / предмет */}
       {(highlightTask || highlightKey || highlightItem) && (
-        <div className="absolute left-3 top-3 z-[500] panel px-3 py-2 flex items-center gap-3 shadow-[0_10px_30px_rgba(0,0,0,.5)] max-w-[420px]">
+        <div className="absolute left-3 top-3 z-[500] panel glass px-3 py-2 flex items-center gap-3 shadow-[0_10px_30px_rgba(0,0,0,.5)] max-w-[420px]">
           {highlightItem && <ItemCell item={highlightItem} size={32} />}
           {highlightKey && <ItemCell item={highlightKey} size={32} />}
           <div className="min-w-0 text-[13px]">
@@ -530,7 +673,7 @@ export function MapsPage() {
         {panelOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
       </button>
       {panelOpen && (
-        <aside className={`shrink-0 h-full overflow-y-auto border-l border-line bg-bg-1 flex flex-col gap-4 p-3 ${overlay ? 'w-[220px]' : 'w-[280px]'}`}>
+        <aside className={`absolute right-0 top-0 bottom-0 z-[500] overflow-y-auto border-l border-line glass flex flex-col gap-4 p-3 ${overlay ? 'w-[220px]' : 'w-[280px]'}`}>
           <div>
             <Eyebrow>Карта</Eyebrow>
             <div className="mt-1.5 flex flex-wrap gap-1">
@@ -545,6 +688,13 @@ export function MapsPage() {
               </div>
             )}
           </div>
+
+          {meta?.svgPath && meta.tilePath && (
+            <div>
+              <Eyebrow>Подложка</Eyebrow>
+              <div className="mt-1.5"><Segmented value={mapStyle} onChange={setMapStyle} options={[{ value: 'scheme', label: 'Схема' }, { value: 'render', label: 'Рендер' }]} /></div>
+            </div>
+          )}
 
           {meta && meta.layers.length > 0 && (
             <div>
@@ -566,20 +716,73 @@ export function MapsPage() {
                 <button type="button" onClick={() => setToggles(allToggles(false))} className="text-ink-3 hover:text-ink">ничего</button>
               </div>
             </div>
-            <div className="mt-1.5 flex flex-col gap-0.5">
-              {TOGGLE_LABELS.map(({ key, label, color }) => (
-                <label key={key} className="flex items-center gap-2 h-7 px-1.5 rounded hover:bg-bg-2 cursor-pointer text-[13px] select-none">
-                  <input type="checkbox" checked={toggles[key]} onChange={(e) => setToggles({ ...toggles, [key]: e.target.checked })} className="accent-brass" />
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-                  <span className={toggles[key] ? 'text-ink' : 'text-ink-3'}>{label}</span>
-                </label>
+            <div className="mt-1.5 flex flex-col gap-2.5">
+              {LAYER_SECTIONS.map((sec) => (
+                <div key={sec.title}>
+                  <div className="eyebrow text-[10px] text-ink-4 mb-0.5">{sec.title}</div>
+                  <div className="flex flex-col gap-px">
+                    {sec.rows.map(({ key, label, color, icon: ic }) => {
+                      const n = layerCounts[key]
+                      const on = toggles[key] && n > 0
+                      return (
+                        <div key={key}>
+                          <button
+                            type="button" disabled={n === 0} onClick={() => setToggles({ ...toggles, [key]: !toggles[key] })}
+                            className={`layer-row ${on ? 'layer-on' : ''}`} style={on ? { borderColor: color } : undefined}
+                          >
+                            <span className="layer-ic" style={{ color }}>
+                              {ic === 'dot' ? <span className="w-2 h-2 rounded-full" style={{ background: color }} /> : <span dangerouslySetInnerHTML={{ __html: MARKER_SVG[ic] }} />}
+                            </span>
+                            <span className="truncate flex-1 text-left">{label}</span>
+                            <span className="num text-[11px]">{n}</span>
+                          </button>
+                          {key === 'loose' && on && (
+                            <div className="ml-6 mt-1 mb-1 flex flex-col gap-px">
+                              {LOOSE_CATEGORIES.map((c) => {
+                                const cn = loosePoints[c.id]?.length ?? 0
+                                return (
+                                  <button key={c.id} type="button" disabled={cn === 0} onClick={() => setLooseCat(c.id)}
+                                    className={`layer-row h-6 text-[12px] ${looseCat === c.id ? 'layer-on' : ''}`} style={looseCat === c.id ? { borderColor: c.id === 'needed' ? COLORS.quest : COLORS.item } : undefined}>
+                                    <span className="truncate flex-1 text-left">{c.label}</span>
+                                    <span className="num text-[11px]">{cn}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                          {key === 'containers' && on && (
+                            <div className="ml-6 mt-1 mb-1 flex flex-col gap-px">
+                              <button type="button" onClick={() => setLootType('')} className={`layer-row h-6 text-[12px] ${lootType === '' ? 'layer-on' : ''}`} style={lootType === '' ? { borderColor: color } : undefined}>
+                                <span className="truncate flex-1 text-left">Все типы</span>
+                                <span className="num text-[11px]">{gmap?.lootContainers.length ?? 0}</span>
+                              </button>
+                              {lootTypes.map((t) => {
+                                const ci = containerIcon(data.lootContainerTypes[t.id] ?? '')
+                                return (
+                                  <button key={t.id} type="button" onClick={() => setLootType(t.id)} className={`layer-row h-6 text-[12px] ${lootType === t.id ? 'layer-on' : ''}`} style={lootType === t.id ? { borderColor: ci.color } : undefined}>
+                                    <span className="layer-ic" style={{ color: ci.color }}><span dangerouslySetInnerHTML={{ __html: MARKER_SVG[ci.kind] }} /></span>
+                                    <span className="truncate flex-1 text-left">{t.name}</span>
+                                    <span className="num text-[11px]">{t.n}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               ))}
+            </div>
+            <div className="mt-2 pt-2 border-t border-line flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-3">
+              {LEGEND.map((l) => <span key={l.label} className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: l.color }} />{l.label}</span>)}
             </div>
           </div>
 
           <PositionPanel
             cardinalRotation={gmap?.coordinateToCardinalRotation ?? 0}
-            floorName={floor >= 0 && meta ? floorName(meta.layers[floor].name) : null}
+            floorName={meta?.layers[floor] ? floorName(meta.layers[floor].name) : null}
           />
           <div className="text-[11px] text-ink-4">Правый клик по карте — своя метка, клик по метке — убрать.</div>
 
@@ -589,16 +792,6 @@ export function MapsPage() {
             <div>
               <Eyebrow>Квесты на карте</Eyebrow>
               <div className="mt-1.5"><Segmented value={questScope} onChange={setQuestScope} options={[{ value: 'available', label: 'Доступные' }, { value: 'all', label: 'Все' }]} /></div>
-            </div>
-          )}
-
-          {toggles.loot && (
-            <div>
-              <Eyebrow>Тип контейнера</Eyebrow>
-              <select value={lootType} onChange={(e) => setLootType(e.target.value)} className="input focus:input-focus mt-1.5 w-full h-8 text-[12px]">
-                <option value="">Все ({gmap?.lootContainers.length ?? 0})</option>
-                {lootTypes.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.n})</option>)}
-              </select>
             </div>
           )}
 
@@ -637,25 +830,4 @@ function floorName(n: string): string {
     'Second Level': '2 уровень', 'Technical': 'Технический',
   }
   return m[n] ?? n
-}
-
-/** Для SVG-карт: показать нужную группу этажа, приглушить основную. */
-function applySvgFloor(svgEl: SVGSVGElement, meta: MapMeta, floor: number) {
-  const inner = svgEl.children[0]
-  if (!inner) return
-  const groups = [...inner.children].filter((c): c is SVGGElement => c.nodeName === 'g' && !!c.id)
-  const baseId = meta.svgLayer
-  const floorId = floor >= 0 ? meta.layers[floor]?.svgLayer : undefined
-  const layerIds = new Set(meta.layers.map((l) => l.svgLayer).filter(Boolean))
-  for (const g of groups) {
-    const isBase = g.id === baseId || g.dataset.keepWithGroup === baseId
-    const isFloorLayer = layerIds.has(g.id)
-    if (isBase) {
-      g.style.display = ''
-      g.style.opacity = floorId ? '0.3' : ''
-    } else if (isFloorLayer) {
-      g.style.display = g.id === floorId ? '' : 'none'
-      g.style.opacity = ''
-    }
-  }
 }

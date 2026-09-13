@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Plus, Minus, Circle, Square, Navigation, Compass, X, Tag } from 'lucide-react'
 import { useGame } from '@/store/data'
-import { useUI } from '@/store/ui'
+import { useUI, type MapStyle } from '@/store/ui'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
 import { useLauncher } from '@/lib/pywebview'
 import { findMeta, type MapMeta } from '@/data/mapMeta'
-import { makeCRS, pos, boundsOf, icon, COLORS } from '@/lib/leaflet'
+import { makeCRS, pos, boundsOf, icon, COLORS, svgBaseFor, applySvgFloor } from '@/lib/leaflet'
 import { extractsOf } from '@/lib/extracts'
 import { floorForPosition, heading } from '@/lib/floors'
 
@@ -47,13 +47,13 @@ export function MiniPage() {
 
   // карта: своя в настройках мини-карты, иначе — та, что открыта в главном окне / брифинге
   const mapsWithMeta = useMemo(() => Object.values(data.maps).filter((m) => findMeta(m.normalizedName)), [data])
-  const [mainMapId, setMainMapId] = useState<string | null>(() => {
-    try { return (JSON.parse(localStorage.getItem('sherpa:ui') ?? '{}').state ?? {}).currentMapId ?? localStorage.getItem('sherpa:raidMap') } catch { return null }
-  })
+  const readMainUI = (raw: string | null) => { try { return (JSON.parse(raw ?? '{}').state ?? {}) as { currentMapId?: string | null; mapStyle?: MapStyle } } catch { return {} } }
+  const [mainMapId, setMainMapId] = useState<string | null>(() => readMainUI(localStorage.getItem('sherpa:ui')).currentMapId ?? localStorage.getItem('sherpa:raidMap'))
+  const [mapStyle, setMapStyle] = useState<MapStyle>(() => readMainUI(localStorage.getItem('sherpa:ui')).mapStyle ?? 'scheme')
   useEffect(() => {
-    // главное окно сменило карту — подхватываем через событие storage
+    // главное окно сменило карту или подложку — подхватываем через событие storage
     const on = (e: StorageEvent) => {
-      if (e.key === 'sherpa:ui') { try { setMainMapId((JSON.parse(e.newValue ?? '{}').state ?? {}).currentMapId ?? null) } catch { /* ignore */ } }
+      if (e.key === 'sherpa:ui') { const u = readMainUI(e.newValue); setMainMapId(u.currentMapId ?? null); setMapStyle(u.mapStyle ?? 'scheme') }
       if (e.key === 'sherpa:raidMap') setMainMapId(e.newValue)
     }
     window.addEventListener('storage', on)
@@ -68,7 +68,10 @@ export function MiniPage() {
   const staticRef = useRef<L.LayerGroup | null>(null)
   const liveRef = useRef<L.LayerGroup | null>(null)
   const floorTileRef = useRef<L.TileLayer | null>(null)
+  const svgElRef = useRef<SVGSVGElement | null>(null)
   const [floor, setFloor] = useState(-1)
+  const floorRef = useRef(floor)
+  floorRef.current = floor
 
   // ── карта ──
   useEffect(() => {
@@ -81,32 +84,33 @@ export function MiniPage() {
       zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false,
     })
     mapRef.current = map
+    // SVG-подложка — в свой pane под overlayPane: у svg в overlayPane z-index 200 и он накрывал canvas-точки (спавны, лут)
+    map.createPane('base').style.zIndex = '250'
+    map.createPane('floor').style.zIndex = '260' // тайлы этажа — над подложкой любого вида
     const bounds = boundsOf(meta.bounds)
     const tileSize = meta.tileSize ?? 256
-    if (meta.tilePath) {
-      L.tileLayer(meta.tilePath, { tileSize, bounds, minNativeZoom: meta.minZoom, maxNativeZoom: meta.maxZoom, maxZoom }).addTo(map)
-    } else if (meta.svgPath) {
+    if (svgBaseFor(meta, mapStyle)) {
       const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
       svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-      L.svgOverlay(svgEl, meta.svgBounds ? boundsOf(meta.svgBounds) : bounds).addTo(map)
-      fetch(meta.svgPath).then((r) => r.text()).then((txt) => {
+      svgElRef.current = svgEl
+      L.svgOverlay(svgEl, meta.svgBounds ? boundsOf(meta.svgBounds) : bounds, { pane: 'base' }).addTo(map)
+      fetch(meta.svgPath!).then((r) => r.text()).then((txt) => {
         svgEl.innerHTML = txt
         const inner = svgEl.children[0] as SVGSVGElement | undefined
         if (inner?.getAttribute('viewBox')) svgEl.setAttribute('viewBox', inner.getAttribute('viewBox')!)
-        // только основной уровень: слои этажей прячем
-        for (const g of [...(inner?.children ?? [])] as SVGGElement[]) {
-          if (g.nodeName === 'g' && g.id && meta.layers.some((l) => l.svgLayer === g.id)) g.style.display = 'none'
-        }
+        applySvgFloor(svgEl, meta, floorRef.current)
       }).catch(() => {})
+    } else if (meta.tilePath) {
+      L.tileLayer(meta.tilePath, { tileSize, bounds, minNativeZoom: meta.minZoom, maxNativeZoom: meta.maxZoom, maxZoom }).addTo(map)
     }
     staticRef.current = L.layerGroup().addTo(map)
     liveRef.current = L.layerGroup().addTo(map)
     map.fitBounds(bounds, { animate: false })
     const ro = new ResizeObserver(() => map.invalidateSize(false))
     ro.observe(containerRef.current)
-    return () => { ro.disconnect(); map.remove(); mapRef.current = null; staticRef.current = null; liveRef.current = null; floorTileRef.current = null }
+    return () => { ro.disconnect(); map.remove(); mapRef.current = null; staticRef.current = null; liveRef.current = null; floorTileRef.current = null; svgElRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gmap, meta, prefs.rotate])
+  }, [gmap, meta, prefs.rotate, mapStyle])
 
   // ── этаж по высоте ──
   useEffect(() => {
@@ -119,10 +123,11 @@ export function MiniPage() {
     floorTileRef.current?.remove()
     floorTileRef.current = null
     const layer = floor >= 0 ? meta.layers[floor] : undefined
-    if (layer?.tilePath) {
-      floorTileRef.current = L.tileLayer(layer.tilePath, { tileSize: meta.tileSize ?? 256, bounds: boundsOf(meta.bounds), minNativeZoom: meta.minZoom, maxNativeZoom: meta.maxZoom, maxZoom: Math.max(7, meta.maxZoom) }).addTo(map)
+    if (layer?.tilePath && !(svgElRef.current && layer.svgLayer)) {
+      floorTileRef.current = L.tileLayer(layer.tilePath, { pane: 'floor', tileSize: meta.tileSize ?? 256, bounds: boundsOf(meta.bounds), minNativeZoom: meta.minZoom, maxNativeZoom: meta.maxZoom, maxZoom: Math.max(7, meta.maxZoom) }).addTo(map)
     }
-  }, [floor, meta])
+    if (svgElRef.current) applySvgFloor(svgElRef.current, meta, floor)
+  }, [floor, meta, mapStyle])
 
   // ── статичные слои: выходы, транзиты, зоны доступных квестов, метки ──
   useEffect(() => {
@@ -185,7 +190,7 @@ export function MiniPage() {
       />
       {/* компас */}
       <div className="absolute left-1/2 top-2 -translate-x-1/2 num text-[11px] text-white/90 drop-shadow-[0_0_3px_#000] pointer-events-none">
-        {playerPos ? `${heading(playerPos.rotation, gmap?.coordinateToCardinalRotation ?? 0).label} · ${floor >= 0 && meta ? meta.layers[floor].name : gmap?.name ?? ''}` : gmap?.name ?? 'Ожидаю скриншот…'}
+        {playerPos ? `${heading(playerPos.rotation, gmap?.coordinateToCardinalRotation ?? 0).label} · ${meta?.layers[floor]?.name ?? gmap?.name ?? ''}` : gmap?.name ?? 'Ожидаю скриншот…'}
       </div>
       {/* курс: север */}
       {prefs.rotate && (

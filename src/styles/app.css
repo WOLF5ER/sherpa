@@ -168,6 +168,43 @@ button:disabled { cursor: not-allowed; }
   border-radius: var(--radius-md);
 }
 
+/* полупрозрачные панели поверх карты */
+@utility glass {
+  background: color-mix(in srgb, var(--color-bg-1) 84%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* строка меню слоёв: иконка · название · счётчик; включённая — с цветной левой кромкой */
+@utility layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px 0 6px;
+  border-left: 2px solid transparent;
+  border-radius: 3px;
+  color: var(--color-ink-3);
+  font-size: 13px;
+  text-align: left;
+  transition: background .12s, color .12s;
+  &:hover:not(:disabled) { background: var(--color-bg-2); color: var(--color-ink-2); }
+  &:disabled { opacity: .4; cursor: default; }
+}
+@utility layer-on {
+  background: color-mix(in srgb, var(--color-brass) 10%, transparent);
+  color: var(--color-ink);
+}
+@utility layer-ic {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  & svg { width: 14px; height: 14px; stroke-width: 2; }
+}
+
 @utility chip {
   display: inline-flex;
   align-items: center;
@@ -250,6 +287,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 .leaflet-container {
   background: #0d0f0c;
   font-family: var(--font-sans);
+  /* панели Leaflet (z 200–1000) не должны вылезать поверх шторки предмета (z-50) */
+  isolation: isolate;
 }
 .leaflet-container .leaflet-tile { image-rendering: auto; }
 .leaflet-control-attribution { display: none; }
@@ -278,6 +317,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
   transform: translate(-11px, -11px);
 }
 .mk svg { width: 13px; height: 13px; stroke-width: 2.4; }
+.mk-xs svg { width: 11px; height: 11px; stroke-width: 2.2; }
 .mk-sq { border-radius: 4px; }
 .mk-dim { opacity: .55; }
 

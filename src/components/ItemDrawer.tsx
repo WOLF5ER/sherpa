@@ -19,8 +19,8 @@ export function ItemDrawer() {
   if (!id) return null
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={close} />
-      <aside className="fixed right-0 top-0 bottom-0 z-50 w-[440px] max-w-full panel rounded-none border-y-0 border-r-0 overflow-y-auto shadow-[var(--shadow-pop)]">
+      <div className="fixed inset-0 z-40 bg-black/25" onClick={close} />
+      <aside className="fixed right-0 top-0 bottom-0 z-50 w-[440px] max-w-full panel glass rounded-none border-y-0 border-r-0 overflow-y-auto shadow-[var(--shadow-pop)]">
         <ItemDetail id={id} onClose={close} />
       </aside>
     </>
