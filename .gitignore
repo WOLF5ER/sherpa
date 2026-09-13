@@ -5,3 +5,4 @@ launcher/__pycache__
 *.log
 release
 build-pyi
+launcher/bin/

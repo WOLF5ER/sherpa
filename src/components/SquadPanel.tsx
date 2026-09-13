@@ -45,7 +45,7 @@ export function SquadPanel({ currentMap, mapNames }: { currentMap: string; mapNa
         </button>
       )}
       <div className="mt-1 text-[11px] text-ink-3 leading-4">
-        Правый клик по карте в скваде — общая метка, видна всем с твоим ником. Хост — лаунчер одного из вас: в его <span className="num">config.json</span> «lan»: true (одна Wi-Fi) или «squad_tunnel»: true (через интернет, нужен cloudflared). Друзья вводят адрес хоста и тот же код комнаты.
+        Правый клик по карте в скваде — общая метка, видна всем с твоим ником. Хост — лаунчер одного из вас: LAN (одна Wi-Fi) или туннель через интернет включаются в <Link to="/squad" className="text-brass hover:underline">лобби</Link>, ничего ставить не нужно. Друзья вводят адрес хоста и тот же код комнаты.
       </div>
 
       {squad.room && (

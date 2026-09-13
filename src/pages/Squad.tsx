@@ -121,11 +121,12 @@ export function SquadPage() {
               <div className="flex items-start gap-3">
                 <Globe size={16} className="mt-1 text-ink-3 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <Toggle value={state?.tunnel_state === 'up' || state?.tunnel_state === 'starting'} onChange={toggleTunnel} label={busy === 'tunnel' ? 'Включаю…' : 'Через интернет (туннель Cloudflare)'} />
+                  <Toggle value={state?.tunnel_state === 'up' || state?.tunnel_state === 'starting' || state?.tunnel_state === 'downloading'} onChange={toggleTunnel} label={busy === 'tunnel' ? 'Включаю…' : 'Через интернет (туннель Cloudflare)'} />
                   <div className="mt-1 text-[12px] num text-ink-2 select-all truncate">
                     {state?.tunnel_state === 'up' && state.tunnel_url ? state.tunnel_url
                       : state?.tunnel_state === 'starting' ? <span className="text-ink-3">поднимаю туннель… (5–15 с)</span>
-                      : state?.tunnel_state === 'missing' ? <span className="text-danger">нужен cloudflared: <span className="select-all">winget install --id Cloudflare.cloudflared</span></span>
+                      : state?.tunnel_state === 'downloading' ? <span className="text-ink-3">скачиваю cloudflared (~55 МБ, один раз)…</span>
+                      : state?.tunnel_state === 'missing' ? <span className="text-danger">не удалось запустить туннель — проверь интернет или положи cloudflared.exe рядом с Sherpa.exe</span>
                       : <span className="text-ink-4">публичный адрес появится здесь</span>}
                   </div>
                 </div>

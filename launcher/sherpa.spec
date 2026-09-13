@@ -14,7 +14,9 @@ a = Analysis(
     [os.path.join(root, 'launcher', 'sherpa.py')],
     pathex=[root],
     binaries=wv_bins + clr_bins + pn_bins,
-    datas=[(os.path.join(root, 'dist'), 'dist')] + wv_datas + clr_datas + pn_datas,
+    datas=[(os.path.join(root, 'dist'), 'dist')]
+        + ([(os.path.join(root, 'launcher', 'bin', 'cloudflared.exe'), 'bin')] if os.path.exists(os.path.join(root, 'launcher', 'bin', 'cloudflared.exe')) else [])
+        + wv_datas + clr_datas + pn_datas,
     hiddenimports=wv_hidden + clr_hidden + pn_hidden + collect_submodules('webview.platforms') + ['clr', 'winreg'],
     hookspath=[],
     runtime_hooks=[],

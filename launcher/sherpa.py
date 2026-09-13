@@ -336,11 +336,47 @@ def serve(port: int, host: str = "127.0.0.1") -> ThreadingHTTPServer:
     return httpd
 
 
-def start_tunnel(port: int, on_url) -> subprocess.Popen | None:
-    """cloudflared quick tunnel: публичный https-адрес без аккаунта. Нужен установленный cloudflared."""
-    exe = shutil.which("cloudflared")
+CLOUDFLARED_URL = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+
+
+def find_cloudflared(download: bool = True, on_status=None) -> str | None:
+    """Где cloudflared: рядом с exe (в архиве), в LOCALAPPDATA/Sherpa/bin, в PATH — иначе скачиваем с официального релиза."""
+    candidates = [
+        ROOT / "cloudflared.exe",
+        Path(getattr(sys, "_MEIPASS", ROOT)) / "bin" / "cloudflared.exe",
+        ROOT / "launcher" / "bin" / "cloudflared.exe",
+        Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "Sherpa" / "bin" / "cloudflared.exe",
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c)
+    found = shutil.which("cloudflared")
+    if found:
+        return found
+    if not download:
+        return None
+    dest = candidates[-1]
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if on_status:
+            on_status("downloading")
+        print(f"[sherpa] качаю cloudflared с {CLOUDFLARED_URL} …")
+        tmp = dest.with_suffix(".part")
+        with urllib.request.urlopen(urllib.request.Request(CLOUDFLARED_URL, headers={"User-Agent": TT_UA}), timeout=60) as r, open(tmp, "wb") as f:
+            shutil.copyfileobj(r, f)
+        os.replace(tmp, dest)
+        print(f"[sherpa] cloudflared сохранён: {dest}")
+        return str(dest)
+    except Exception as e:  # noqa: BLE001
+        print(f"[sherpa] не удалось скачать cloudflared: {e}")
+        return None
+
+
+def start_tunnel(port: int, on_url, on_status=None) -> subprocess.Popen | None:
+    """cloudflared quick tunnel: публичный https-адрес без аккаунта."""
+    exe = find_cloudflared(download=True, on_status=on_status)
     if not exe:
-        print("[sherpa] cloudflared не найден — для сквада через интернет установи:  winget install --id Cloudflare.cloudflared")
+        print("[sherpa] cloudflared недоступен — проверь интернет или положи cloudflared.exe рядом с Sherpa.exe")
         return None
     try:
         proc = subprocess.Popen(
@@ -353,10 +389,17 @@ def start_tunnel(port: int, on_url) -> subprocess.Popen | None:
         return None
 
     def reader():
+        # адрес печатается раньше, чем туннель реально подключён — отдаём его после «Registered tunnel connection»
+        url = None
         for line in proc.stdout or []:
             m = re.search(r"https://[a-z0-9-]+\.trycloudflare\.com", line)
-            if m:
-                on_url(m.group(0))
+            if m and not url:
+                url = m.group(0)
+            if url and "Registered tunnel connection" in line:
+                on_url(url)
+                url = None  # переподключения не дёргают состояние повторно
+            if " ERR " in line or " WRN " in line:
+                print("[cloudflared] " + line.strip()[:300])
     threading.Thread(target=reader, daemon=True).start()
     return proc
 
@@ -575,15 +618,26 @@ class Api:
     @timed
     def enable_tunnel(self, on: bool = True):
         """Публичный адрес через cloudflared — для сквада через интернет."""
-        if on and self._tunnel_proc is None and self._tunnel_state != "up":
+        if on and self._tunnel_proc is None and self._tunnel_state not in ("up", "starting", "downloading"):
             def got_url(url: str):
                 self._tunnel_url = url
                 self._tunnel_state = "up"
                 print(f"[sherpa] адрес для друзей: {url}")
+
+            def status(st: str):
+                self._tunnel_state = st
+
+            def run():
+                # скачивание (~55 МБ) и запуск — в фоне, чтобы не держать вызов со страницы
+                proc = start_tunnel(self._port, got_url, on_status=status)
+                if proc is None:
+                    self._tunnel_state = "missing"
+                else:
+                    self._tunnel_proc = proc
+                    if self._tunnel_state == "downloading":
+                        self._tunnel_state = "starting"
             self._tunnel_state = "starting"
-            self._tunnel_proc = start_tunnel(self._port, got_url)
-            if self._tunnel_proc is None:
-                self._tunnel_state = "missing"
+            threading.Thread(target=run, daemon=True).start()
         if not on and self._tunnel_proc is not None:
             try:
                 self._tunnel_proc.terminate()

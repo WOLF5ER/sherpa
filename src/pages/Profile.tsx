@@ -167,7 +167,7 @@ export function ProfilePage() {
               {tunnel.state === 'up' && tunnel.url
                 ? <>адрес для друзей — <span className="num text-brass-2 select-all">{tunnel.url}</span> (живёт, пока запущен лаунчер).</>
                 : tunnel.state === 'starting' ? 'поднимаю туннель…'
-                : tunnel.state === 'missing' ? <>нужен cloudflared: <span className="num select-all">winget install --id Cloudflare.cloudflared</span>, затем перезапуск.</>
+                : tunnel.state === 'missing' ? <>туннель не запустился — проверь интернет; cloudflared идёт в комплекте или качается автоматически.</>
                 : <>в <span className="num">launcher/config.json</span> поставь <span className="num">"squad_tunnel": true</span> — лаунчер создаст публичный адрес через Cloudflare (без аккаунта).</>}
             </div>
           )}
