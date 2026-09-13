@@ -161,6 +161,7 @@ function TaskRow({ view }: { view: TaskView }) {
             <span className={`display text-[17px] truncate ${locked ? 'text-ink-2' : 'text-ink'}`}>{t.name}</span>
             {t.kappaRequired && <span className="shrink-0 display text-[10px] text-brass border border-brass-3 rounded-[3px] px-1 leading-[14px]" title="Нужен для Каппы">К</span>}
             {t.lightkeeperRequired && <span className="shrink-0 display text-[10px] text-info border border-info/50 rounded-[3px] px-1 leading-[14px]" title="Нужен для Смотрителя">С</span>}
+            {t.seasonal && <span className="shrink-0 display text-[10px] text-season border border-season/50 rounded-[3px] px-1 leading-[14px]" title="Сезонный квест — только для сезонного персонажа; данные собраны вручную, без точек на карте">СЕЗОН</span>}
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-3">
             {t.minPlayerLevel > 0 && <span className={`num ${view.levelLocked ? 'text-danger' : ''}`}>{t.minPlayerLevel} ур.</span>}
@@ -248,7 +249,8 @@ function TaskRow({ view }: { view: TaskView }) {
                 </div>
               </div>
             </div>
-            <a href={t.wikiLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-brass-2">Вики <ExternalLink size={11} /></a>
+            {t.note && <div className="text-[12px] text-ink-2 leading-4 border-l-2 border-season/60 pl-2">{t.note}</div>}
+            <a href={t.wikiLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-brass-2">{t.seasonal ? 'tarkov.help' : 'Вики'} <ExternalLink size={11} /></a>
             {!done && missingPrereqs.length > 0 && (
               <Toggle value={false} onChange={() => completeMany([t.id, ...missingPrereqs])} label={`Выполнено вместе с ${missingPrereqs.length} предыдущими`} />
             )}

@@ -46,6 +46,8 @@ export interface Item {
   keyMaps?: string[]
   /** время последней точки истории, если цена обновлена точечно (см. data/prices.ts) */
   priceFresh?: number
+  /** время последнего скана барахолки у tarkov.dev (ms) */
+  priceScanAt?: number
   ammo?: AmmoProps
   armor?: ArmorProps
   weapon?: WeaponProps
@@ -185,6 +187,10 @@ export interface Task {
   neededKeys: { keys: string[]; map: string | null }[]
   rewardItems: { item: string; count: number }[]
   rewardStanding: { trader: string; standing: number }[]
+  /** сезонная цепочка (KORD BREACH), собранная вручную — в данных tarkov.dev её нет */
+  seasonal?: boolean
+  /** заметка от составителя: условия выбора, подводные камни */
+  note?: string
 }
 
 export interface QuestItem {

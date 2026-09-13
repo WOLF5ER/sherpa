@@ -1,4 +1,5 @@
 import { get, set, del } from 'idb-keyval'
+import { mergeSeasonTasks } from './seasonTasks'
 import { normalize, type RawBundle } from './normalize'
 import type { GameData } from './types'
 
@@ -9,7 +10,7 @@ export const MODE_LABEL: Record<GameMode, string> = { regular: 'PvP', pve: 'PvE'
 const BASE = 'https://json.tarkov.dev'
 export const PRICE_TTL_MS = 15 * 60 * 1000
 
-const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v8`
+const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v9`
 
 async function getJson<T = unknown>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`${BASE}/${path}`, { signal })
@@ -46,7 +47,7 @@ export async function fetchAll(mode: GameMode, onProgress?: (msg: string) => voi
     hideout, hideoutRu: pick(hideoutRu), hideoutEn: pick(hideoutEn),
     crafts, barters,
   }
-  const data = normalize(raw)
+  const data = mode === 'pvp-season' ? mergeSeasonTasks(normalize(raw)) : normalize(raw)
   onProgress?.('Сохраняю кэш…')
   try { await set(cacheKey(mode), data) } catch { /* кэш не критичен */ }
   return data

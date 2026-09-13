@@ -40,8 +40,8 @@ export function SeasonPage() {
 
   // квесты, где встречаются сезонные противники
   const seasonTasks = useMemo(() => [...views.values()]
-    .filter((v) => v.task.objectives.some((o) => /black division/i.test(o.description)) || /\[pvp zone\]/i.test(v.task.name))
-    .sort((a, b) => a.task.minPlayerLevel - b.task.minPlayerLevel), [views])
+    .filter((v) => v.task.seasonal || v.task.objectives.some((o) => /black division/i.test(o.description)))
+    .sort((a, b) => Number(!!b.task.seasonal) - Number(!!a.task.seasonal) || a.task.minPlayerLevel - b.task.minPlayerLevel), [views])
 
   return (
     <div className="p-5 max-w-[1000px] mx-auto flex flex-col gap-8">
@@ -123,14 +123,15 @@ export function SeasonPage() {
           <div className="mt-2 text-[12px] text-ink-3">На карте — слой «Сезонные спавны».</div>
         </div>
         <div>
-          <Eyebrow>Квесты с сезонными противниками</Eyebrow>
+          <Eyebrow>Цепочка KORD BREACH и квесты с сезонными противниками</Eyebrow>
+          <div className="mt-1 text-[12px] text-ink-3 leading-4">Сезонных квестов у tarkov.dev пока нет — цепочка собрана вручную по tarkov.help: условия, цели, награды. Точек на карте у них нет.</div>
           <ul className="mt-2 flex flex-col gap-1">
             {seasonTasks.map((v) => (
               <li key={v.task.id}>
                 <Link to={`/tasks?q=${encodeURIComponent(v.task.name)}`} className={`panel px-3 py-2 flex items-center gap-2 hover:border-line-2 ${v.status === 'done' ? 'opacity-50' : ''}`}>
                   <TraderMark id={v.task.trader} size={20} />
                   <span className="flex-1 truncate">{v.task.name}</span>
-                  <span className={`eyebrow ${v.status === 'available' ? 'text-fir' : ''}`}>{v.status === 'available' ? 'доступен' : v.status === 'done' ? 'выполнен' : `${v.task.minPlayerLevel} ур.`}</span>
+                  <span className={`eyebrow ${v.status === 'available' ? 'text-fir' : ''}`}>{v.status === 'available' ? 'доступен' : v.status === 'done' ? 'выполнен' : v.task.seasonal ? 'после: ' + (v.missing[0]?.name.replace(' [KORD BREACH]', '') ?? '…') : `${v.task.minPlayerLevel} ур.`}</span>
                 </Link>
               </li>
             ))}

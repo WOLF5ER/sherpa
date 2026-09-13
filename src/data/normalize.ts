@@ -134,6 +134,7 @@ export function normalize(raw: RawBundle): GameData {
       high24hPrice: it.high24hPrice ?? null,
       changeLast48hPercent: it.changeLast48hPercent ?? null,
       lastOfferCount: it.lastOfferCount ?? null,
+      priceScanAt: it.updated ? Date.parse(it.updated) || undefined : undefined,
       minLevelForFlea: it.minLevelForFlea ?? null,
       stackMaxSize: it.stackMaxSize ?? 1,
       sellToTrader: (it.sellToTrader ?? []).map((p: any) => ({

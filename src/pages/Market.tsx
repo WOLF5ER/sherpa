@@ -107,6 +107,9 @@ export function MarketPage() {
   const stale = data.priceAggregateStale
   const watchIds = useMemo(() => Object.keys(watch), [watch])
   useFreshPrices(preset === 'watch' ? watchIds : [], 100)
+  // видимые строки таблицы — тоже сами, с паузой, чтобы не дёргать сеть на каждую букву в поиске
+  const visibleIds = useMemo(() => list.slice(0, Math.min(limit, 120)).map((r) => r.item.id), [list, limit])
+  useFreshPrices(visibleIds, 120, 700)
   const [freshening, setFreshening] = useState(false)
   const freshenVisible = async () => {
     setFreshening(true)
@@ -182,7 +185,7 @@ export function MarketPage() {
                 <th className="py-2 px-2 w-12" />
                 {th('name', 'Предмет', false)}
                 <th className="py-2 px-2 text-right"><span className="eyebrow">Слоты</span></th>
-                {th('flea', 'Барахолка')}
+                {th('flea', 'Барахолка · мин.')}
                 {th('delta', '48 ч')}
                 <th className="py-2 px-2 text-right"><span className="eyebrow">Торговец</span></th>
                 {th('best', 'На руки')}

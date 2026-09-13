@@ -97,18 +97,20 @@ function ItemDetail({ id, onClose }: { id: string; onClose: () => void }) {
 
           <div className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-[13px]">
             <div className="text-ink-2 flex items-center gap-2">
-              Барахолка · средняя 24ч
+              Барахолка · минимальная на последнем скане
               {!fleaOk && <span className="text-[10px] uppercase tracking-[.1em] text-ink-4">{item.types.includes('noFlea') ? 'запрещено' : ctx.fleaMinLevel === Infinity ? 'отключена' : `с ${Math.max(ctx.fleaMinLevel, item.minLevelForFlea ?? 0)} ур.`}</span>}
             </div>
             <div className="text-right flex items-center justify-end gap-2">
               <Delta value={item.changeLast48hPercent} />
               <Price value={fp} dim={!fleaOk} />
             </div>
-            {(item.priceFresh || data.priceAggregateStale) && (
+            {(item.priceFresh || item.priceScanAt || data.priceAggregateStale) && (
               <div className="col-span-2 text-[11px] text-ink-4 num">
                 {item.priceFresh
                   ? `цена по истории от ${new Date(item.priceFresh).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
-                  : `сводка tarkov.dev от ${new Date(data.priceScanAt).toLocaleDateString('ru-RU')} — обновляю…`}
+                  : data.priceAggregateStale
+                    ? `сводка tarkov.dev от ${new Date(data.priceScanAt).toLocaleDateString('ru-RU')} — обновляю…`
+                    : `скан барахолки ${new Date(item.priceScanAt!).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
               </div>
             )}
             {flea && (
@@ -117,10 +119,10 @@ function ItemDetail({ id, onClose }: { id: string; onClose: () => void }) {
                 <Price value={flea.net} className="text-right" dim />
               </>
             )}
-            {item.lastLowPrice != null && (
+            {item.avg24hPrice != null && (
               <>
-                <div className="text-ink-3 pl-3">последняя минимальная</div>
-                <Price value={item.lastLowPrice} className="text-right" dim />
+                <div className="text-ink-3 pl-3">средняя за 24 ч</div>
+                <Price value={item.avg24hPrice} className="text-right" dim />
               </>
             )}
             {traders.map((p) => (

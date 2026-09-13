@@ -19,7 +19,14 @@ export function isFleaAllowed(item: Item, level: number, fleaMinLevel = 15): boo
 }
 
 /** Цена барахолки для расчётов: средняя за 24ч, иначе последняя минимальная. */
+/**
+ * Цена барахолки для расчётов и таблиц: минимальное предложение на последнем скане — то, что игрок видит
+ * в игре прямо сейчас. Средняя за 24 ч отстаёт на сезонном рынке на часы и выглядит «неактуальной».
+ * Если последний скан старше суток (предмет редко выставляют) — берём среднюю.
+ */
 export function fleaPrice(item: Item): number | null {
+  const scanFresh = !item.priceScanAt || Date.now() - item.priceScanAt < 24 * 3600 * 1000
+  if (scanFresh && item.lastLowPrice && item.lastLowPrice > 0) return item.lastLowPrice
   if (item.avg24hPrice && item.avg24hPrice > 0) return item.avg24hPrice
   if (item.lastLowPrice && item.lastLowPrice > 0) return item.lastLowPrice
   return null

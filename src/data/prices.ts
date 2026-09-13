@@ -23,6 +23,7 @@ export interface PriceSummary {
   lastOfferCount: number | null
   changeLast48hPercent: number | null
   priceFresh: number
+  priceScanAt: number
 }
 
 const mem = new Map<string, { at: number; summary: PriceSummary }>()
@@ -46,6 +47,7 @@ export function summarize(points: PricePoint[]): PriceSummary | null {
     lastOfferCount: last.offerCount ?? null,
     changeLast48hPercent: avgPrev ? Math.round(((avg24 - avgPrev) / avgPrev) * 1000) / 10 : null,
     priceFresh: last.timestamp,
+    priceScanAt: last.timestamp,
   }
 }
 
@@ -63,6 +65,21 @@ async function fetchSummary(mode: GameMode, id: string): Promise<PriceSummary | 
   mem.set(k, entry)
   set(k, entry).catch(() => {})
   return summary
+}
+
+/** После refresh() сводка снова старая — накладываем обратно всё, что уже подтянули по истории (память, без сети). */
+export function reapplyFreshPrices(): void {
+  const st = useData.getState()
+  if (!st.data || !st.mode || !st.data.priceAggregateStale) return
+  const prefix = `sherpa:price:${st.mode}:`
+  const items: Record<string, Item> = { ...st.data.items }
+  let n = 0
+  for (const [k, v] of mem) {
+    if (!k.startsWith(prefix) || Date.now() - v.at > TTL) continue
+    const id = k.slice(prefix.length)
+    if (items[id] && items[id].priceFresh !== v.summary.priceFresh) { items[id] = { ...items[id], ...v.summary }; n++ }
+  }
+  if (n) useData.setState({ data: { ...st.data, items } })
 }
 
 /** Обновить цены перечисленных предметов в загруженном справочнике (только если сводка устарела). */

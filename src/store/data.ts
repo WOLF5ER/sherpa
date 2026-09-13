@@ -104,7 +104,11 @@ export const useData = create<DataState>()((set, get) => ({
     set({ refreshing: true })
     try {
       const data = await fetchAllAsync(mode)
-      if (get().mode === mode) set({ data, status: 'ready', error: null })
+      if (get().mode === mode) {
+        set({ data, status: 'ready', error: null })
+        const { reapplyFreshPrices } = await import('@/data/prices')
+        reapplyFreshPrices()
+      }
     } catch (e) {
       // цены остаются старыми — не роняем приложение
       set({ error: e instanceof Error ? e.message : String(e) })
@@ -119,4 +123,13 @@ export function useGame(): GameData {
   const data = useData((s) => s.data)
   if (!data) throw new Error('Данные ещё не загружены')
   return data
+}
+
+// оверлей висит открытым часами — раз в 5 минут проверяем, не пора ли обновить сводку цен (TTL 15 мин)
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    const { data, mode, refreshing } = useData.getState()
+    if (!data || !mode || refreshing || document.hidden) return
+    if (Date.now() - data.fetchedAt > PRICE_TTL_MS) void useData.getState().refresh()
+  }, 5 * 60 * 1000)
 }

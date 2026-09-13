@@ -32,6 +32,7 @@
   --color-scav: #c9873a;
   --color-pmc: #6f9bd1;
   --color-boss: #d84f3c;
+  --color-season: #d65fb0;   /* сезонное: квесты KORD BREACH */
 
   --radius-sm: 3px;
   --radius-md: 5px;
@@ -71,6 +72,7 @@
   --color-scav: #a2651d;
   --color-pmc: #2f5f9e;
   --color-boss: #b8362a;
+  --color-season: #a4348a;
 
   --color-cell: #1f2119;
   --shadow-pop: 0 24px 60px rgba(40,30,10,.25);

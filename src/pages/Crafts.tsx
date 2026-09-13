@@ -8,6 +8,7 @@ import { search } from '@/lib/search'
 import { duration } from '@/lib/format'
 import type { Barter, Craft, Item } from '@/data/types'
 import { ItemCell } from '@/components/ItemCell'
+import { useFreshPrices } from '@/lib/useFreshPrices'
 import { Empty, Price, Segmented, Toggle, TraderMark } from '@/components/ui'
 
 type Tab = 'crafts' | 'barters'
@@ -109,6 +110,15 @@ export function CraftsPage() {
     }
     return [...l].sort((a, b) => Number(b.calc.costKnown) - Number(a.calc.costKnown) || b.calc.profit - a.calc.profit)
   }, [barters, onlyAvail, trader, q])
+
+  // сезон: сводка цен устарела — подтягиваем свежие для того, что на экране (продукт + ингредиенты)
+  const freshIds = useMemo(() => {
+    const ids: string[] = []
+    for (const x of craftList.slice(0, 40)) { ids.push(x.calc.product.id); for (const p of x.calc.parts) ids.push(p.item.id) }
+    for (const x of barterList.slice(0, 40)) { ids.push(x.calc.product.id); for (const p of x.calc.parts) ids.push(p.item.id) }
+    return ids
+  }, [craftList, barterList])
+  useFreshPrices(freshIds, 160, 700)
 
   const stationList = useMemo(() => Object.values(data.stations).filter((s) => data.crafts.some((c) => c.station === s.id)).sort((a, b) => a.name.localeCompare(b.name, 'ru')), [data])
   const traderList = useMemo(() => Object.values(data.traders).filter((t) => data.barters.some((b) => b.trader === t.id)), [data])
