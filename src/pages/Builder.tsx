@@ -58,7 +58,7 @@ function WeaponPicker({ onPick }: { onPick: (id: string, build?: string) => void
             {builds.map((b) => data.items[b.weapon] && (
               <span key={b.id} className="inline-flex items-center gap-1 panel px-2 py-1">
                 <button type="button" onClick={() => onPick(b.weapon, b.id)} className="inline-flex items-center gap-2 text-[13px] hover:text-brass-2">
-                  <ItemCell item={data.items[b.weapon]} size={26} onClick={() => onPick(b.weapon, b.id)} />{b.name}
+                  <ItemCell item={data.items[b.weapon]} size={26} static />{b.name}
                 </button>
                 <button type="button" onClick={() => remove(b.id)} className="text-ink-4 hover:text-danger" title="Удалить"><Trash2 size={12} /></button>
               </span>
@@ -84,7 +84,7 @@ function WeaponPicker({ onPick }: { onPick: (id: string, build?: string) => void
           const price = def ? (cheapestBuy(def, ctx)?.price ?? anyPrice(def, ctx)) : (cheapestBuy(w, ctx)?.price ?? anyPrice(w, ctx))
           return (
             <button key={w.id} type="button" onClick={() => onPick(w.id)} className="panel px-3 py-2 flex items-center gap-3 text-left hover:border-line-2">
-              <ItemCell item={def ?? w} size={44} onClick={() => onPick(w.id)} />
+              <ItemCell item={def ?? w} size={44} static />
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] text-ink truncate">{w.shortName}</div>
                 <div className="text-[11px] text-ink-3 num">{caliberName(w.weapon!.caliber)} · эрго {w.weapon!.defaultErgonomics ?? w.weapon!.ergonomics} · отдача {w.weapon!.defaultRecoilVertical ?? w.weapon!.recoilVertical}</div>
@@ -291,7 +291,7 @@ function SlotRow({ node, build, depth, objective, onChange }: { node: BuildNode;
           {options.map(({ it, buy, price }) => (
             <button key={it.id} type="button" onClick={() => { onChange(setSlot(data, build, node, it.id)); setOpen(false); setQ('') }}
               className={`w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-bg-2 text-left ${it.id === node.item ? 'bg-bg-3' : ''}`}>
-              <ItemCell item={it} size={28} onClick={() => { onChange(setSlot(data, build, node, it.id)); setOpen(false) }} />
+              <ItemCell item={it} size={28} static />
               <span className="flex-1 min-w-0 truncate text-[12px] text-ink">{it.name}</span>
               <span className="num text-[11px] flex items-center gap-2">
                 <ModDelta label="эрго" v={it.mod?.ergonomics ?? 0} />

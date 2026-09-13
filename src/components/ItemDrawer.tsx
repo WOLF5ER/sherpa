@@ -52,7 +52,7 @@ function ItemDetail({ id, onClose }: { id: string; onClose: () => void }) {
   return (
     <div className="flex flex-col">
       <div className="sticky top-0 z-10 flex items-start gap-3 p-4 bg-bg-1/95 backdrop-blur border-b border-line">
-        <ItemCell item={item} size={64} onClick={() => {}} />
+        <ItemCell item={item} size={64} static />
         <div className="min-w-0 flex-1">
           <div className="display text-[20px] leading-[1.05] text-ink">{item.name}</div>
           {item.nameEn && item.nameEn !== item.name && <div className="mt-0.5 text-[12px] text-ink-3">{item.nameEn}</div>}

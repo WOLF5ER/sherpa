@@ -12,26 +12,23 @@ interface Props {
   onClick?: () => void
   className?: string
   title?: string
+  /** без своей кнопки — когда ячейка лежит внутри другой кнопки или ссылки */
+  static?: boolean
 }
 
 /**
  * Ячейка схрона: игровой цвет фона, иконка, счётчик как в инвентаре,
  * галочка FIR. Подпись размера в слотах — потому что слот = деньги.
  */
-export function ItemCell({ item, size = 48, count, fir, shape = false, onClick, className = '', title }: Props) {
+export function ItemCell({ item, size = 48, count, fir, shape = false, onClick, className = '', title, static: isStatic = false }: Props) {
   const open = useUI((s) => s.openItem)
-  const w = shape ? size * Math.min(item.width, 4) / (item.width > 4 ? 1 : 1) : size
+  const w = shape ? size * Math.min(item.width, 4) : size
   const h = shape ? size * Math.min(item.height, 4) : size
   const handle = onClick ?? (() => open(item.id))
-  return (
-    <button
-      type="button"
-      onClick={handle}
-      title={title ?? item.name}
-      className={`ibg-${item.bg} relative shrink-0 rounded-[3px] border border-line-2/80 overflow-hidden
-        hover:border-brass-3 focus-visible:border-brass transition-colors ${className}`}
-      style={{ width: w, height: h }}
-    >
+  const cls = `ibg-${item.bg} relative shrink-0 rounded-[3px] border border-line-2/80 overflow-hidden inline-block align-middle
+        hover:border-brass-3 focus-visible:border-brass transition-colors ${className}`
+  const inner = (
+    <>
       <img
         src={item.iconLink}
         alt=""
@@ -51,6 +48,14 @@ export function ItemCell({ item, size = 48, count, fir, shape = false, onClick, 
           title="Найдено в рейде"
         />
       )}
+    </>
+  )
+  if (isStatic) {
+    return <span className={cls} style={{ width: w, height: h }} title={title ?? item.name}>{inner}</span>
+  }
+  return (
+    <button type="button" onClick={handle} title={title ?? item.name} className={cls} style={{ width: w, height: h }}>
+      {inner}
     </button>
   )
 }

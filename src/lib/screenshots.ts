@@ -56,7 +56,9 @@ export async function folderPermission(h: DirHandle, request = false): Promise<P
 
 /** Опрашивает папку раз в секунду; отдаёт новые скриншоты. Возвращает stop(). */
 export function watchFolder(h: DirHandle, onPos: (p: PlayerPos) => void, intervalMs = 1000): () => void {
-  let seen = Date.now() // старые скриншоты не считаем
+  // имена уже виденных файлов — getFile() зовём только для новых (в папке могут быть тысячи скриншотов)
+  const known = new Set<string>()
+  let primed = false
   let stopped = false
   let busy = false
   const tick = async () => {
@@ -65,17 +67,21 @@ export function watchFolder(h: DirHandle, onPos: (p: PlayerPos) => void, interva
     try {
       let newest: { t: number; name: string } | null = null
       for await (const [name, entry] of (h as unknown as AsyncIterable<[string, FileSystemHandle]>)) {
-        if (entry.kind !== 'file' || !name.toLowerCase().endsWith('.png')) continue
+        if (entry.kind !== 'file' || !name.toLowerCase().endsWith('.png') || known.has(name)) continue
+        known.add(name)
+        if (!primed) continue // первый проход — просто запоминаем то, что уже лежит
+        if (!SHOT_RE.test(name)) continue
         const f = await (entry as FileSystemFileHandle).getFile()
-        if (f.lastModified > seen && (!newest || f.lastModified > newest.t)) newest = { t: f.lastModified, name }
+        if (!newest || f.lastModified > newest.t) newest = { t: f.lastModified, name }
       }
+      primed = true
       if (newest) {
-        seen = newest.t
         const p = parseScreenshotName(newest.name, newest.t)
         if (p) onPos(p)
       }
     } catch { /* папка недоступна — попробуем позже */ } finally { busy = false }
   }
+  void tick()
   const id = setInterval(tick, intervalMs)
   return () => { stopped = true; clearInterval(id) }
 }

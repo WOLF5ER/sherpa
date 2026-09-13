@@ -443,13 +443,17 @@ class Api:
             try:
                 if self._shots_enabled and self._shots_path and self._shots_path.exists():
                     newest = None
-                    for f in self._shots_path.glob("*.png"):
-                        m = f.stat().st_mtime
-                        if m > self._shots_seen and (newest is None or m > newest[0]):
-                            newest = (m, f)
+                    # scandir отдаёт mtime из листинга — без отдельного stat на каждый из тысяч файлов
+                    with os.scandir(self._shots_path) as it:
+                        for entry in it:
+                            if not entry.name.lower().endswith(".png") or not entry.is_file():
+                                continue
+                            m = entry.stat().st_mtime
+                            if m > self._shots_seen and (newest is None or m > newest[0]):
+                                newest = (m, entry.name)
                     if newest:
                         self._shots_seen = newest[0]
-                        pos = parse_screenshot_name(newest[1].name)
+                        pos = parse_screenshot_name(newest[1])
                         if pos:
                             publish_pos(pos)
                             if self._window:
@@ -614,7 +618,12 @@ if __name__ == "__main__":
     if FROZEN:
         # окно без консоли — пишем в sherpa.log рядом с exe
         try:
-            log = open(ROOT / "sherpa.log", "a", encoding="utf-8", buffering=1)
+            log_path = ROOT / "sherpa.log"
+            if log_path.exists() and log_path.stat().st_size > 512 * 1024:
+                # держим лог компактным: оставляем последние 128 КБ
+                tail = log_path.read_bytes()[-128 * 1024:]
+                log_path.write_bytes(tail)
+            log = open(log_path, "a", encoding="utf-8", buffering=1)
             sys.stdout = sys.stderr = log
             print(f"\n[sherpa] запуск {time.strftime('%Y-%m-%d %H:%M:%S')}")
             if os.environ.get("SHERPA_DEBUG"):

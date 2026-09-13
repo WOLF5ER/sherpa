@@ -220,7 +220,7 @@ export function RaidPage() {
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {findHere.map(({ need, spots }) => (
                   <Link key={need.item.id} to={`/maps?map=${gmap.normalizedName}&item=${need.item.id}`} className="relative" title={`${need.item.name} — нужно ещё ${need.total - need.have}, точек: ${spots}`}>
-                    <ItemCell item={need.item} size={40} count={need.total - need.have} fir={need.questFir + need.hideoutFir > 0} onClick={() => {}} className={need.nowTotal === 0 ? 'opacity-60' : ''} />
+                    <ItemCell item={need.item} size={40} count={need.total - need.have} fir={need.questFir + need.hideoutFir > 0} static className={need.nowTotal === 0 ? 'opacity-60' : ''} />
                   </Link>
                 ))}
               </div>

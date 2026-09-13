@@ -83,7 +83,7 @@ export function SearchPalette() {
               const it = data.items[r.id]
               return (
                 <button key={r.kind + r.id} type="button" className={cls} onMouseEnter={() => setCursor(i)} onClick={() => go(r)}>
-                  <ItemCell item={it} size={34} onClick={() => go(r)} />
+                  <ItemCell item={it} size={34} static />
                   <span className="flex-1 min-w-0 truncate">{it.name}</span>
                   <span className="num text-[11px] text-ink-3">{it.width}×{it.height}</span>
                   <Price value={fleaPrice(it)} className="text-ink-2 text-[13px]" />

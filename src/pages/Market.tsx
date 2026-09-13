@@ -118,10 +118,10 @@ export function MarketPage() {
     else { setSort(k); setDesc(k !== 'name') }
   }
 
-  const Th = ({ k, children, right = true }: { k: SortKey; children: React.ReactNode; right?: boolean }) => (
+  const th = (k: SortKey, label: string, right = true) => (
     <th className={`py-2 px-2 ${right ? 'text-right' : 'text-left'}`}>
       <button type="button" onClick={() => setSortKey(k)} className={`eyebrow inline-flex items-center gap-1 hover:text-ink ${sort === k ? 'text-brass' : ''}`}>
-        {children}
+        {label}
         {sort === k && (desc ? <ArrowDown size={11} /> : <ArrowUp size={11} />)}
       </button>
     </th>
@@ -180,13 +180,13 @@ export function MarketPage() {
               <tr>
                 <th className="py-2 px-2 w-8" />
                 <th className="py-2 px-2 w-12" />
-                <Th k="name" right={false}>Предмет</Th>
+                {th('name', 'Предмет', false)}
                 <th className="py-2 px-2 text-right"><span className="eyebrow">Слоты</span></th>
-                <Th k="flea">Барахолка</Th>
-                <Th k="delta">48 ч</Th>
+                {th('flea', 'Барахолка')}
+                {th('delta', '48 ч')}
                 <th className="py-2 px-2 text-right"><span className="eyebrow">Торговец</span></th>
-                <Th k="best">На руки</Th>
-                <Th k="slot">За слот</Th>
+                {th('best', 'На руки')}
+                {th('slot', 'За слот')}
                 {preset === 'watch' && <th className="py-2 px-2 text-right"><span className="eyebrow">Порог</span></th>}
               </tr>
             </thead>
