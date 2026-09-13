@@ -86,6 +86,7 @@ def squad_publish(room: str, name: str, payload: dict):
 
 # последняя позиция и подписчики SSE — общие для HTTP-обработчика и окна
 LAST_POS: dict | None = None
+DEBUG_API = None  # экземпляр Api для отладочного эндпоинта
 SSE_CLIENTS: list[queue.Queue] = []
 
 
@@ -143,6 +144,15 @@ class QuietHandler(SimpleHTTPRequestHandler):
             return self._proxy_tt()
         if self.path == "/api/pos/last":
             return self._json(LAST_POS or {}, 200 if LAST_POS else 204)
+        if self.path.startswith("/api/debug/js?") and os.environ.get("SHERPA_DEBUG") and DEBUG_API:
+            # только для отладки: выполнить JS в окне лаунчера (SHERPA_DEBUG=1)
+            from urllib.parse import unquote
+            code = unquote(self.path.split("?", 1)[1])
+            try:
+                res = DEBUG_API._window.evaluate_js(code)
+                return self._json({"ok": True, "result": res})
+            except Exception as e:  # noqa: BLE001
+                return self._json({"ok": False, "error": repr(e)}, 500)
         if self.path == "/api/pos/stream":
             return self._sse()
         m = re.match(r"^/api/squad/([A-Za-z0-9_-]{3,40})(/stream)?$", self.path)
@@ -379,9 +389,28 @@ class Api:
     @timed
     def set_on_top(self, value: bool):
         self._on_top = bool(value)
-        if self._window:
-            self._window.on_top = self._on_top
+        self._apply_on_top()
         return self._on_top
+
+    def _apply_on_top(self):
+        """pywebview ставит Form.TopMost прямо из потока вызова API — WinForms от этого виснет.
+        Делаем то же самое, но в UI-потоке через BeginInvoke (не ждём ответа, дедлок невозможен)."""
+        w = self._window
+        if not w:
+            return
+        v = self._on_top
+        try:
+            from System import Action  # pythonnet, уже загружен pywebview
+            form = w.native
+
+            def _apply():
+                form.TopMost = v
+            form.BeginInvoke(Action(_apply))
+        except Exception:  # noqa: BLE001
+            try:
+                w.on_top = v
+            except Exception:  # noqa: BLE001
+                pass
 
     _lan_url: str | None = None
     _tunnel_url: str | None = None
@@ -545,6 +574,8 @@ def main():
                 print(f"[sherpa] доступ по сети: {lan_url}  (телефон в той же Wi-Fi; Windows может спросить про брандмауэр)")
 
     api = Api()
+    global DEBUG_API
+    DEBUG_API = api
     api._lan_url = lan_url
     if cfg.get("squad_tunnel"):
         def got_url(url: str):
