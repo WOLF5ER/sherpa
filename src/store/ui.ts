@@ -45,6 +45,8 @@ interface UIState {
   setSquadMembers: (m: Record<string, SquadMember>) => void
   squadConnected: boolean
   setSquadConnected: (v: boolean) => void
+  theme: 'dark' | 'light'
+  setTheme: (t: 'dark' | 'light') => void
   /** карта, выбранная на странице карт (для сквада) */
   currentMapId: string | null
   setCurrentMapId: (id: string | null) => void
@@ -93,9 +95,11 @@ export const useUI = create<UIState>()(
       setSquadMembers: (squadMembers) => set({ squadMembers }),
       squadConnected: false,
       setSquadConnected: (squadConnected) => set({ squadConnected }),
+      theme: 'dark',
+      setTheme: (theme) => set({ theme }),
       currentMapId: null,
       setCurrentMapId: (currentMapId) => set({ currentMapId }),
     }),
-    { name: 'sherpa:ui', partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, marks: s.marks, squad: s.squad }) },
+    { name: 'sherpa:ui', partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, marks: s.marks, squad: s.squad, theme: s.theme }) },
   ),
 )

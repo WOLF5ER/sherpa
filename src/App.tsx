@@ -32,6 +32,18 @@ export function App() {
 
   const launcher = useLauncher()
 
+  // тема: атрибут на <html>, чтобы CSS-переменные переключались целиком
+  const theme = useUI((s) => s.theme)
+  useEffect(() => {
+    // ?theme=light|dark в адресе — принудительно (для ссылок и скриншотов)
+    const forced = new URLSearchParams(location.search).get('theme')
+    if (forced === 'light' || forced === 'dark') useUI.getState().setTheme(forced)
+  }, [])
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme)
+  }, [theme])
+
   // «ты здесь»: лаунчер шлёт координаты из имени скриншота
   const screenshotsWatch = useUI((s) => s.screenshotsWatch)
   useEffect(() => { launcher?.set_screenshot_watch(screenshotsWatch).catch(() => {}) }, [launcher, screenshotsWatch])

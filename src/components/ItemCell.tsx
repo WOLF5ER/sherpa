@@ -38,7 +38,7 @@ export function ItemCell({ item, size = 48, count, fir, shape = false, onClick, 
         style={{ imageRendering: 'auto' }}
       />
       {count != null && count > 1 && (
-        <span className="num absolute right-[3px] top-[1px] text-[11px] font-semibold text-white drop-shadow-[0_0_2px_#000]">
+        <span className="cell-count num absolute right-[3px] top-[1px] text-[11px] font-semibold text-cell drop-shadow-[0_0_2px_#000]">
           {count}
         </span>
       )}

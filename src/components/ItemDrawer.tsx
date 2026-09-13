@@ -20,7 +20,7 @@ export function ItemDrawer() {
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40" onClick={close} />
-      <aside className="fixed right-0 top-0 bottom-0 z-50 w-[440px] max-w-full panel rounded-none border-y-0 border-r-0 overflow-y-auto shadow-[-20px_0_60px_rgba(0,0,0,.5)]">
+      <aside className="fixed right-0 top-0 bottom-0 z-50 w-[440px] max-w-full panel rounded-none border-y-0 border-r-0 overflow-y-auto shadow-[var(--shadow-pop)]">
         <ItemDetail id={id} onClose={close} />
       </aside>
     </>

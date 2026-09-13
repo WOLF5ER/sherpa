@@ -35,7 +35,60 @@
 
   --radius-sm: 3px;
   --radius-md: 5px;
+
+  /* цифра-счётчик на ячейке предмета */
+  --color-cell: #ffffff;
+  --shadow-pop: 0 30px 80px rgba(0,0,0,.6);
 }
+
+/* Шкала пробития / класса брони: серый → зелёный */
+:root {
+  --pen-0: #767466; --pen-1: #8a8a5a; --pen-2: #9aa34a; --pen-3: #a9b83a; --pen-4: #8fc25a; --pen-5: #6fc262; --pen-6: #4fd07a;
+}
+
+/* ── Светлая тема: бумага и латунь ──────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #ece8de;
+  --color-bg-1: #f6f3ec;
+  --color-bg-2: #e6e1d5;
+  --color-bg-3: #dbd5c6;
+  --color-line: #d5cfc0;
+  --color-line-2: #bfb8a6;
+
+  --color-ink: #1f2119;
+  --color-ink-2: #45473e;
+  --color-ink-3: #6b6c62;
+  --color-ink-4: #8e8e83;
+
+  --color-brass: #8b6217;
+  --color-brass-2: #7a5711;
+  --color-brass-3: #cba658;
+
+  --color-fir: #277a33;
+  --color-danger: #b8362a;
+  --color-info: #2f5f9e;
+  --color-scav: #a2651d;
+  --color-pmc: #2f5f9e;
+  --color-boss: #b8362a;
+
+  --color-cell: #1f2119;
+  --shadow-pop: 0 24px 60px rgba(40,30,10,.25);
+
+  --pen-0: #8a8a80; --pen-1: #7f8a3c; --pen-2: #6f8a2a; --pen-3: #5f8a1e; --pen-4: #3f8a2a; --pen-5: #2e8a3a; --pen-6: #1f7a40;
+}
+[data-theme="light"] .ibg-default { background: #d9d7cf; }
+[data-theme="light"] .ibg-black   { background: #c6c5c0; }
+[data-theme="light"] .ibg-grey    { background: #d1d0cc; }
+[data-theme="light"] .ibg-blue    { background: #ccd8e6; }
+[data-theme="light"] .ibg-green   { background: #cfe2cc; }
+[data-theme="light"] .ibg-yellow  { background: #e9e1b8; }
+[data-theme="light"] .ibg-orange  { background: #ecd5bb; }
+[data-theme="light"] .ibg-red     { background: #ebcdc8; }
+[data-theme="light"] .ibg-violet  { background: #dccfe6; }
+/* счётчик на ячейке: без чёрной тени, с бумажной подложкой */
+[data-theme="light"] .cell-count { text-shadow: none; background: rgba(246,243,236,.85); padding: 0 3px; border-radius: 2px; }
+/* карта остаётся тёмной — подложки и подписи нарисованы под тёмный фон */
 
 /* ── База ───────────────────────────────────────────────────────────── */
 :root {

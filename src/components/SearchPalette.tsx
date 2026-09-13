@@ -52,7 +52,7 @@ export function SearchPalette() {
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/50 flex items-start justify-center pt-[12vh]" onClick={() => setOpen(false)}>
-      <div className="w-[620px] max-w-[92vw] panel shadow-[0_30px_80px_rgba(0,0,0,.6)] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="w-[620px] max-w-[92vw] panel shadow-[var(--shadow-pop)] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 h-12 border-b border-line">
           <Search size={17} className="text-ink-3" />
           <input

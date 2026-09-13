@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench,
+  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon,
 } from 'lucide-react'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
 import { MODE_LABEL, type GameMode } from '@/data/loader'
@@ -99,6 +99,7 @@ export function Shell() {
           <ModeSwitch />
           <ScavTimer />
           <Freshness />
+          <ThemeButton />
           <OnTopButton />
           <button
             type="button"
@@ -172,6 +173,23 @@ function ScavTimer() {
   )
 }
 
+/** Тёмная / светлая тема. */
+function ThemeButton() {
+  const theme = useUI((s) => s.theme)
+  const setTheme = useUI((s) => s.setTheme)
+  const light = theme === 'light'
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(light ? 'dark' : 'light')}
+      title={light ? 'Тёмная тема' : 'Светлая тема'}
+      className="h-8 w-8 grid place-items-center rounded-[4px] border border-line-2 text-ink-3 hover:text-ink hover:border-ink-4 transition-colors"
+    >
+      {light ? <Moon size={14} /> : <Sun size={14} />}
+    </button>
+  )
+}
+
 /** Кнопка «поверх всех окон» — только внутри лаунчера. */
 function OnTopButton() {
   const api = useLauncher()
@@ -233,10 +251,10 @@ function Freshness() {
       onClick={() => refresh()}
       disabled={refreshing}
       title={error ? `Ошибка обновления: ${error}` : stale ? `Сводные цены tarkov.dev для этого режима от ${new Date(data.priceScanAt).toLocaleDateString('ru-RU')} — Sherpa подтягивает свежие по истории для того, что открыто` : 'Обновить цены'}
-      className="h-8 px-2.5 inline-flex items-center gap-2 rounded-[4px] text-[12px] text-ink-3 hover:text-ink transition-colors disabled:opacity-70"
+      className="h-8 px-2.5 inline-flex items-center gap-2 rounded-[4px] text-[12px] text-ink-3 hover:text-ink transition-colors disabled:opacity-70 shrink-0"
     >
       <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-      <span className="hidden md:inline">
+      <span className="hidden lg:inline whitespace-nowrap">
         {refreshing ? 'обновляю…' : error ? <span className="text-danger">цены не обновились</span> : stale ? <span className="text-scav">сводка от {new Date(data.priceScanAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span> : `цены ${ago(data.fetchedAt)}`}
       </span>
     </button>

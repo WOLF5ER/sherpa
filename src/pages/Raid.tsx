@@ -233,7 +233,7 @@ export function RaidPage() {
             <ul className="mt-2 flex flex-col gap-1 text-[13px]">
               {extracts.map((e) => (
                 <li key={e.id} className="flex items-start gap-2" title={e.note ?? undefined}>
-                  <DoorOpen size={13} className="mt-[3px] shrink-0" style={{ color: e.faction === 'shared' ? '#6fc262' : e.faction === 'pmc' ? '#6f9bd1' : '#9aa39c' }} />
+                  <DoorOpen size={13} className="mt-[3px] shrink-0" style={{ color: e.faction === 'shared' ? 'var(--color-fir)' : e.faction === 'pmc' ? 'var(--color-pmc)' : 'var(--color-ink-3)' }} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-ink-2">{e.label}</span>

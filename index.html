@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <title>Sherpa — Escape from Tarkov</title>
+    <script>
+      // тема до первого кадра — чтобы светлая не мигала тёмным
+      try {
+        var t = new URLSearchParams(location.search).get('theme') || (JSON.parse(localStorage.getItem('sherpa:ui') || '{}').state || {}).theme
+        if (t === 'light' || t === 'dark') { document.documentElement.dataset.theme = t; document.querySelector('meta[name="color-scheme"]').content = t }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

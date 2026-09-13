@@ -15,7 +15,7 @@ type ArmorSort = 'class' | 'durability' | 'price' | 'ergo' | 'speed'
 type ArmorKind = 'all' | 'armor' | 'helmet' | 'rig' | 'attachment'
 
 /** Цвет пробития: серый → зелёный по классу брони, который патрон пробивает. */
-const PEN_COLORS = ['#767466', '#8a8a5a', '#9aa34a', '#a9b83a', '#8fc25a', '#6fc262', '#4fd07a']
+const PEN_COLORS = [0, 1, 2, 3, 4, 5, 6].map((i) => `var(--pen-${i})`)
 
 export function AmmoPage() {
   const data = useGame()
