@@ -3,3 +3,5 @@ dist
 launcher/__pycache__
 .claude/launch.json
 *.log
+release
+build-pyi

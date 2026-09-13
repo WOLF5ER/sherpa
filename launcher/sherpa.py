@@ -31,9 +31,16 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-DIST = ROOT / "dist"
-CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
+FROZEN = getattr(sys, "frozen", False)
+if FROZEN:
+    # Sherpa.exe: рядом с exe — config.json и sherpa.log; сборка сайта — внутри пакета
+    ROOT = Path(sys.executable).resolve().parent
+    DIST = Path(getattr(sys, "_MEIPASS", ROOT)) / "dist"
+    CONFIG_PATH = ROOT / "config.json"
+else:
+    ROOT = Path(__file__).resolve().parent.parent
+    DIST = ROOT / "dist"
+    CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
 
 DEFAULT_CONFIG = {
     "port": 4879,
@@ -110,6 +117,12 @@ def load_config() -> dict:
             cfg.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
         except Exception as e:  # noqa: BLE001
             print(f"[sherpa] config.json не прочитан ({e}), использую значения по умолчанию")
+    else:
+        # первый запуск exe: кладём рядом config.json с настройками по умолчанию, чтобы было что править
+        try:
+            CONFIG_PATH.write_text(json.dumps(DEFAULT_CONFIG, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
     return cfg
 
 
@@ -293,6 +306,28 @@ def start_tunnel(port: int, on_url) -> subprocess.Popen | None:
     return proc
 
 
+def webview2_installed() -> bool:
+    """Проверка Evergreen Runtime по реестру (как рекомендует Microsoft)."""
+    try:
+        import winreg
+    except ImportError:
+        return True
+    keys = [
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"),
+        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"),
+    ]
+    for hive, path in keys:
+        try:
+            with winreg.OpenKey(hive, path) as k:
+                ver, _ = winreg.QueryValueEx(k, "pv")
+                if ver and ver != "0.0.0.0":
+                    return True
+        except OSError:
+            continue
+    return False
+
+
 def lan_ip() -> str | None:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -471,6 +506,15 @@ def main():
     except ImportError:
         print("Нужен pywebview:  pip install pywebview")
         sys.exit(1)
+    if FROZEN and not webview2_installed():
+        ctypes.windll.user32.MessageBoxW(
+            None,
+            "Sherpa открывается в окне Microsoft Edge WebView2, а его нет в системе.\n"
+            "Скачай и установи Evergreen Runtime: https://developer.microsoft.com/microsoft-edge/webview2/\n"
+            "После установки запусти Sherpa снова.",
+            "Sherpa — нужен WebView2", 0x30,
+        )
+        sys.exit(2)
 
     if not (DIST / "index.html").exists():
         print("Нет сборки. Сначала выполни:  npm run build")
@@ -531,8 +575,27 @@ def main():
 
 if __name__ == "__main__":
     os.chdir(ROOT)
+    if FROZEN:
+        # окно без консоли — пишем в sherpa.log рядом с exe
+        try:
+            log = open(ROOT / "sherpa.log", "a", encoding="utf-8", buffering=1)
+            sys.stdout = sys.stderr = log
+            print(f"\n[sherpa] запуск {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        except Exception:  # noqa: BLE001
+            pass
+    else:
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
     try:
-        sys.stdout.reconfigure(encoding="utf-8")
+        main()
     except Exception:  # noqa: BLE001
-        pass
-    main()
+        import traceback
+        traceback.print_exc()
+        if FROZEN:
+            try:
+                ctypes.windll.user32.MessageBoxW(None, "Sherpa не запустилась. Подробности — в sherpa.log рядом с Sherpa.exe.", "Sherpa", 0x10)
+            except Exception:  # noqa: BLE001
+                pass
+        raise
