@@ -3,6 +3,7 @@ import { Users, Copy, RefreshCw } from 'lucide-react'
 import { useUI } from '@/store/ui'
 import { useLauncher } from '@/lib/pywebview'
 import { makeRoomCode, ROOM_RE } from '@/lib/squad'
+import { Link } from 'react-router-dom'
 import { Eyebrow, Toggle } from './ui'
 
 /** Сквад: комната на лаунчере-хосте, имя, кто где. */
@@ -21,7 +22,7 @@ export function SquadPanel({ currentMap, mapNames }: { currentMap: string; mapNa
   return (
     <div>
       <div className="flex items-center justify-between">
-        <Eyebrow>Сквад</Eyebrow>
+        <Eyebrow>Сквад · <Link to="/squad" className="text-brass hover:underline normal-case tracking-normal">лобби</Link></Eyebrow>
         {squad.room && <span className={`text-[10px] tracking-[.1em] uppercase ${connected ? 'text-fir' : 'text-ink-4'}`}>{connected ? 'на связи' : 'нет связи'}</span>}
       </div>
       <div className="mt-1.5 flex flex-col gap-1.5">

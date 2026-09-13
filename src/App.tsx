@@ -18,6 +18,7 @@ import { HideoutPage } from '@/pages/Hideout'
 import { AmmoPage } from '@/pages/Ammo'
 import { BuilderPage } from '@/pages/Builder'
 import { MiniPage } from '@/pages/Mini'
+import { SquadPage } from '@/pages/Squad'
 import type { PlayerPos } from '@/lib/pywebview'
 import { fetchTarkovTracker, mapProgress } from '@/lib/tarkovtracker'
 import { canPickFolder, folderPermission, savedFolder, watchFolder } from '@/lib/screenshots'
@@ -159,6 +160,7 @@ export function App() {
         <Route path="/crafts" element={<CraftsPage />} />
         <Route path="/maps" element={<MapsPage />} />
         <Route path="/season" element={<SeasonPage />} />
+        <Route path="/squad" element={<SquadPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/tasks" replace />} />
       </Route>

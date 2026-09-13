@@ -459,6 +459,8 @@ class Api:
                 pass
 
     _lan_url: str | None = None
+    _lan_server = None
+    _tunnel_proc = None
     _mini = None  # окно мини-карты
     _cfg: dict = {}
     _port: int = 4879
@@ -537,6 +539,61 @@ class Api:
             except Exception:  # noqa: BLE001
                 pass
             threading.Event().wait(1.0)
+
+    # ── сеть для сквада: включается из интерфейса, без перезапуска ──
+    def _save_cfg(self, **kv):
+        try:
+            self._cfg.update(kv)
+            CONFIG_PATH.write_text(json.dumps({k: v for k, v in self._cfg.items()}, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
+
+    @timed
+    def enable_lan(self, on: bool = True):
+        """Доступ по локальной сети. Основной сервер слушает 127.0.0.1, поэтому для сети поднимаем второй на порту +1."""
+        if on and not self._lan_url:
+            ip = lan_ip()
+            port = self._port + 1
+            if self._lan_server is None:
+                try:
+                    self._lan_server = serve(port, "0.0.0.0")
+                except OSError as e:
+                    print(f"[sherpa] LAN: не удалось занять порт {port}: {e}")
+                    return self.get_state()
+            self._lan_url = f"http://{ip}:{port}/" if ip else None
+            print(f"[sherpa] доступ по сети: {self._lan_url}")
+        if not on and self._lan_server is not None:
+            try:
+                self._lan_server.shutdown()
+            except Exception:  # noqa: BLE001
+                pass
+            self._lan_server = None
+            self._lan_url = None
+        self._save_cfg(lan=bool(on))
+        return self.get_state()
+
+    @timed
+    def enable_tunnel(self, on: bool = True):
+        """Публичный адрес через cloudflared — для сквада через интернет."""
+        if on and self._tunnel_proc is None and self._tunnel_state != "up":
+            def got_url(url: str):
+                self._tunnel_url = url
+                self._tunnel_state = "up"
+                print(f"[sherpa] адрес для друзей: {url}")
+            self._tunnel_state = "starting"
+            self._tunnel_proc = start_tunnel(self._port, got_url)
+            if self._tunnel_proc is None:
+                self._tunnel_state = "missing"
+        if not on and self._tunnel_proc is not None:
+            try:
+                self._tunnel_proc.terminate()
+            except Exception:  # noqa: BLE001
+                pass
+            self._tunnel_proc = None
+            self._tunnel_url = None
+            self._tunnel_state = "off"
+        self._save_cfg(squad_tunnel=bool(on))
+        return self.get_state()
 
     # ── мини-карта: отдельное окно без рамки, поверх игры, справа сверху ──
     def open_minimap(self):
@@ -703,13 +760,7 @@ def main():
     api._cfg = cfg
     api._port = port
     if cfg.get("squad_tunnel"):
-        def got_url(url: str):
-            api._tunnel_url = url
-            api._tunnel_state = "up"
-            print(f"[sherpa] адрес для друзей: {url}")
-        api._tunnel_state = "starting"
-        if start_tunnel(port, got_url) is None:
-            api._tunnel_state = "missing"
+        api.enable_tunnel(True)
     api._on_top = bool(cfg["on_top"])
     api._shots_enabled = bool(cfg.get("screenshots_watch"))
     api._shots_path = Path(cfg["screenshots_path"]) if cfg.get("screenshots_path") else default_screenshots_path()

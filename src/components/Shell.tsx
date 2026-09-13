@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon, Radar,
+  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon, Radar, Users,
 } from 'lucide-react'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
 import { MODE_LABEL, type GameMode } from '@/data/loader'
@@ -23,6 +23,7 @@ const NAV = [
   { to: '/ammo', label: 'Патроны', icon: Target },
   { to: '/builder', label: 'Сборка', icon: Wrench },
   { to: '/maps', label: 'Карты', icon: MapIcon },
+  { to: '/squad', label: 'Сквад', icon: Users },
   { to: '/season', label: 'Сезон', icon: Medal },
   { to: '/profile', label: 'Профиль', icon: UserRound },
 ]
@@ -57,7 +58,7 @@ export function Shell() {
                 key={to}
                 to={to}
                 className={({ isActive }) =>
-                  `relative flex flex-col items-center gap-0.5 py-2 text-[10px] font-display uppercase tracking-[.1em] transition-colors
+                  `relative flex flex-col items-center gap-0.5 py-1.5 text-[10px] font-display uppercase tracking-[.1em] transition-colors
                    ${isActive ? 'text-brass-2' : 'text-ink-3 hover:text-ink'}`}
               >
                 {({ isActive }) => (

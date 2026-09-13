@@ -13,6 +13,8 @@ export interface LauncherState {
 export interface LauncherApi {
   set_on_top: (v: boolean) => Promise<boolean>
   set_screenshot_watch: (v: boolean) => Promise<LauncherState>
+  enable_lan?: (on: boolean) => Promise<LauncherState>
+  enable_tunnel?: (on: boolean) => Promise<LauncherState>
   open_minimap?: () => Promise<void>
   close_minimap?: () => Promise<void>
   toggle_minimap?: () => Promise<boolean>
