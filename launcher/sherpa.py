@@ -56,6 +56,9 @@ DEFAULT_CONFIG = {
     # «Ты здесь»: следить за папкой скриншотов игры (в имени файла — координаты). Выключено по умолчанию.
     "screenshots_watch": False,
     "screenshots_path": "",
+    # автоочистка: оставлять в папке скриншотов только последние N файлов (0 — не трогать).
+    # Нужна, если скриншот повешен «на отпускание W» — файлов будут сотни за рейд.
+    "screenshots_keep": 0,
     # доступ по локальной сети (телефон, второй монитор-планшет): слушать 0.0.0.0 вместо 127.0.0.1
     "lan": False,
     # сквад: поднять публичный адрес через cloudflared (winget install Cloudflare.cloudflared)
@@ -444,6 +447,26 @@ class Api:
             self._shots_path = default_screenshots_path()
         return self.get_state()
 
+    def _cleanup_screenshots(self):
+        """Удаляем старые скриншоты Sherpa-формата, оставляя последние screenshots_keep. Только .png с координатами в имени."""
+        keep = int(self._cfg.get("screenshots_keep", 0) or 0)
+        if keep <= 0 or not self._shots_path:
+            return
+        try:
+            files = []
+            with os.scandir(self._shots_path) as it:
+                for e in it:
+                    if e.is_file() and e.name.lower().endswith(".png") and _SHOT_RE.search(e.name):
+                        files.append((e.stat().st_mtime, e.path))
+            files.sort(reverse=True)
+            for _, path in files[keep:]:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        except OSError:
+            pass
+
     def _poll_screenshots(self):
         """Раз в секунду смотрим новейший .png; координаты берём из имени файла."""
         while True:
@@ -460,6 +483,7 @@ class Api:
                                 newest = (m, entry.name)
                     if newest:
                         self._shots_seen = newest[0]
+                        self._cleanup_screenshots()
                         pos = parse_screenshot_name(newest[1])
                         if pos:
                             publish_pos(pos)

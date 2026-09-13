@@ -11,6 +11,7 @@
   "minimap_margin": 16,
   "screenshots_watch": false,
   "screenshots_path": "",
+  "screenshots_keep": 0,
   "lan": false,
   "squad_tunnel": false
 }
