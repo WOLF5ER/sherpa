@@ -17,6 +17,7 @@ import type { TaskView } from '@/lib/tasks'
 import { Chip, Eyebrow, Segmented } from '@/components/ui'
 import { PositionPanel } from '@/components/PositionPanel'
 import { SquadPanel } from '@/components/SquadPanel'
+import { publishSquadMap, publishSquadMark, ROOM_RE } from '@/lib/squad'
 import { floorForPosition } from '@/lib/floors'
 import { ItemCell } from '@/components/ItemCell'
 
@@ -63,7 +64,11 @@ export function MapsPage() {
   const addMark = useUI((s) => s.addMark)
   const removeMark = useUI((s) => s.removeMark)
   const squadMembers = useUI((s) => s.squadMembers)
-  const squadName = useUI((s) => s.squad.name)
+  const squadMarks = useUI((s) => s.squadMarks)
+  const squad = useUI((s) => s.squad)
+  const squadName = squad.name
+  const squadActive = !!squad.room && ROOM_RE.test(squad.room) && (!!squad.url || !!window.pywebview)
+  const currentMapId = useUI((s) => s.currentMapId)
   const setCurrentMapId = useUI((s) => s.setCurrentMapId)
   const squadRef = useRef<L.LayerGroup | null>(null)
   const [params, setParams] = useSearchParams()
@@ -112,6 +117,16 @@ export function MapsPage() {
   const gmap = data.maps[mapId]
   const meta = gmap ? findMeta(gmap.normalizedName) : undefined
   useEffect(() => { setCurrentMapId(mapId ?? null) }, [mapId, setCurrentMapId])
+  // сквад переключил общую карту — идём за ним
+  useEffect(() => {
+    if (squadActive && squad.followMap && currentMapId && currentMapId !== mapId && data.maps[currentMapId]) { setMapId(currentMapId); if (paramMap) clearParams() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMapId])
+  const pickMap = (id: string) => {
+    setMapId(id)
+    if (paramMap) clearParams()
+    if (squadActive && squad.followMap && data.maps[id]) void publishSquadMap(squad.url, squad.room, squad.name, data.maps[id].normalizedName)
+  }
 
   const [toggles, setToggles] = useState<Toggles>(() => {
     try { return { ...DEFAULT_TOGGLES, ...JSON.parse(localStorage.getItem('sherpa:mapToggles') ?? '{}') } } catch { return DEFAULT_TOGGLES }
@@ -404,13 +419,15 @@ export function MapsPage() {
     const map = mapRef.current
     if (!map || !gmap) return
     const onCtx = (e: L.LeafletMouseEvent) => {
-      const name = prompt('Название метки', '')
+      const name = prompt(squadActive ? 'Метка для сквада (увидят все)' : 'Название метки', '')
       if (name == null) return
-      addMark(gmap.id, { id: `m${Date.now().toString(36)}`, x: e.latlng.lng, z: e.latlng.lat, name: name.trim() || 'Метка', ts: Date.now() })
+      const mark = { id: `m${Date.now().toString(36)}`, x: e.latlng.lng, z: e.latlng.lat, name: name.trim() || 'Метка', ts: Date.now() }
+      if (squadActive) void publishSquadMark(squad.url, squad.room, squad.name, { id: mark.id, label: mark.name, x: mark.x, z: mark.z, y: 0, map: gmap.normalizedName })
+      else addMark(gmap.id, mark)
     }
     map.on('contextmenu', onCtx)
     return () => { map.off('contextmenu', onCtx) }
-  }, [gmap, addMark])
+  }, [gmap, addMark, squadActive, squad.url, squad.room, squad.name])
   useEffect(() => {
     const map = mapRef.current
     if (!map || !gmap) return
@@ -422,9 +439,17 @@ export function MapsPage() {
       m.on('click', () => removeMark(gmap.id, mk.id))
       group.addLayer(m)
     }
+    // общие метки сквада — голубые, с автором
+    for (const mk of Object.values(squadMarks)) {
+      if (mk.map !== gmap.normalizedName) continue
+      const m = L.marker([mk.z, mk.x], { icon: icon('flag', '#5fd0d0', `${mk.label} · ${mk.by}`, { size: 18 }), zIndexOffset: 1600 })
+      m.bindTooltip(`<b>${mk.label}</b><br>${mk.by} · ${new Date(mk.ts * 1000).toLocaleTimeString('ru-RU')}<br><span style="opacity:.7">клик — убрать у всех</span>`, { direction: 'top', offset: [0, -12] })
+      m.on('click', () => { void publishSquadMark(squad.url, squad.room, squad.name, { id: mk.id, label: mk.label, x: mk.x, z: mk.z, y: mk.y, map: mk.map }, true) })
+      group.addLayer(m)
+    }
     group.addTo(map)
     marksRef.current = group
-  }, [marks, gmap, meta, removeMark])
+  }, [marks, squadMarks, gmap, meta, removeMark, squad.url, squad.room, squad.name])
 
   const lootTypes = useMemo(() => {
     if (!gmap) return []
@@ -483,7 +508,7 @@ export function MapsPage() {
             <Eyebrow>Карта</Eyebrow>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {mapsWithMeta.map((m) => (
-                <button key={m.id} type="button" onClick={() => { setMapId(m.id); if (paramMap) clearParams() }}
+                <button key={m.id} type="button" onClick={() => pickMap(m.id)}
                   className={`chip ${m.id === mapId ? 'chip-on' : 'hover:text-ink hover:border-ink-4'}`}>{m.name}</button>
               ))}
             </div>

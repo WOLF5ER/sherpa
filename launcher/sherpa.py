@@ -66,30 +66,57 @@ DEFAULT_CONFIG = {
 }
 
 # ── сквад: комнаты живут в памяти хоста, пока он запущен ──
-SQUAD_ROOMS: dict[str, dict] = {}          # room → {name: {pos, map, ts}}
+SQUAD_ROOMS: dict[str, dict] = {}          # room → {"members": {name: {...}}, "map": str, "marks": {id: {...}}}
+SQUAD_MARK_TTL = 60 * 60  # общая метка живёт час
 SQUAD_CLIENTS: dict[str, list[queue.Queue]] = {}
 SQUAD_LOCK = threading.Lock()
 SQUAD_TTL = 20 * 60  # участник без обновлений 20 минут выпадает
 
 
+def _room(room: str) -> dict:
+    return SQUAD_ROOMS.setdefault(room, {"members": {}, "map": "", "marks": {}})
+
+
 def squad_snapshot(room: str) -> dict:
     now = time.time()
     with SQUAD_LOCK:
-        members = SQUAD_ROOMS.get(room, {})
-        for name in [n for n, m in members.items() if now - m["ts"] > SQUAD_TTL]:
-            del members[name]
-        return {"room": room, "members": dict(members)}
+        r = _room(room)
+        for name in [n for n, m in r["members"].items() if now - m["ts"] > SQUAD_TTL]:
+            del r["members"][name]
+        for mid in [k for k, m in r["marks"].items() if now - m["ts"] > SQUAD_MARK_TTL]:
+            del r["marks"][mid]
+        return {"room": room, "members": dict(r["members"]), "map": r["map"], "marks": dict(r["marks"])}
 
 
-def squad_publish(room: str, name: str, payload: dict):
-    with SQUAD_LOCK:
-        SQUAD_ROOMS.setdefault(room, {})[name] = {**payload, "ts": time.time()}
+def squad_broadcast(room: str):
     snap = squad_snapshot(room)
     for q in list(SQUAD_CLIENTS.get(room, [])):
         try:
             q.put_nowait(snap)
         except Exception:  # noqa: BLE001
             pass
+
+
+def squad_publish(room: str, name: str, payload: dict):
+    with SQUAD_LOCK:
+        _room(room)["members"][name] = {**payload, "ts": time.time()}
+    squad_broadcast(room)
+
+
+def squad_set_map(room: str, map_name: str):
+    with SQUAD_LOCK:
+        _room(room)["map"] = map_name
+    squad_broadcast(room)
+
+
+def squad_mark(room: str, mark: dict, remove: bool):
+    with SQUAD_LOCK:
+        marks = _room(room)["marks"]
+        if remove:
+            marks.pop(mark["id"], None)
+        else:
+            marks[mark["id"]] = {**mark, "ts": time.time()}
+    squad_broadcast(room)
 
 # последняя позиция и подписчики SSE — общие для HTTP-обработчика и окна
 LAST_POS: dict | None = None
@@ -179,17 +206,29 @@ class QuietHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        m = re.match(r"^/api/squad/([A-Za-z0-9_-]{3,40})$", self.path)
+        m = re.match(r"^/api/squad/([A-Za-z0-9_-]{3,40})(/map|/mark)?$", self.path)
         if not m:
             return self._json({"error": "not found"}, 404)
+        room, kind = m.group(1), m.group(2)
         try:
             n = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(n) or b"{}")
             name = str(body.get("name") or "")[:24].strip() or "аноним"
-            payload = {"pos": body.get("pos"), "map": str(body.get("map") or "")[:40], "online": bool(body.get("online", True))}
+            if kind == "/map":
+                squad_set_map(room, str(body.get("map") or "")[:40])
+            elif kind == "/mark":
+                mark = {
+                    "id": str(body.get("id") or "")[:40] or f"m{int(time.time() * 1000)}",
+                    "by": name, "label": str(body.get("label") or "")[:40] or "Метка",
+                    "x": float(body.get("x")), "z": float(body.get("z")), "y": float(body.get("y") or 0),
+                    "map": str(body.get("map") or "")[:40],
+                }
+                squad_mark(room, mark, bool(body.get("remove")))
+            else:
+                payload = {"pos": body.get("pos"), "map": str(body.get("map") or "")[:40], "online": bool(body.get("online", True))}
+                squad_publish(room, name, payload)
         except Exception:  # noqa: BLE001
             return self._json({"error": "bad json"}, 400)
-        squad_publish(m.group(1), name, payload)
         return self._json({"ok": True})
 
     def _cors(self):

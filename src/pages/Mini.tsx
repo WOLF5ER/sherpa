@@ -31,6 +31,7 @@ export function MiniPage() {
   const trail = useUI((s) => s.trail)
   const marks = useUI((s) => s.marks)
   const squadMembers = useUI((s) => s.squadMembers)
+  const squadMarks = useUI((s) => s.squadMarks)
   const squadName = useUI((s) => s.squad.name)
   const launcher = useLauncher()
   const [prefs, setPrefs] = useState<MiniPrefs>(readPrefs)
@@ -142,7 +143,8 @@ export function MiniPage() {
       }
     }
     for (const mk of marks[gmap.id] ?? []) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#e06ba0', prefs.labels ? mk.name : undefined, { size: 16 }) }))
-  }, [gmap, meta, data, views, gameMode, marks, prefs.labels])
+    for (const mk of Object.values(squadMarks)) if (mk.map === gmap.normalizedName) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#5fd0d0', prefs.labels ? `${mk.label} · ${mk.by}` : undefined, { size: 16 }) }))
+  }, [gmap, meta, data, views, gameMode, marks, squadMarks, prefs.labels])
 
   // ── живое: я, след, друзья; центрирование и поворот ──
   const hd = playerPos && meta ? mapHeading(meta, playerPos.rotation) : 0

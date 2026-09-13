@@ -6,7 +6,8 @@ import type { PlayerPos } from './pywebview'
  */
 
 export interface SquadMember { pos: PlayerPos | null; map: string; ts: number; online: boolean }
-export interface SquadSnapshot { room: string; members: Record<string, SquadMember> }
+export interface SquadMark { id: string; by: string; label: string; x: number; z: number; y: number; map: string; ts: number }
+export interface SquadSnapshot { room: string; members: Record<string, SquadMember>; map?: string; marks?: Record<string, SquadMark> }
 
 export const ROOM_RE = /^[A-Za-z0-9_-]{3,40}$/
 
@@ -30,6 +31,22 @@ export async function publishSquad(url: string, room: string, name: string, pos:
       body: JSON.stringify({ name, pos, map, online }),
       keepalive: !online,
     })
+    return r.ok
+  } catch { return false }
+}
+
+/** Общая карта сквада: один выбрал — у всех переключилось. */
+export async function publishSquadMap(url: string, room: string, name: string, map: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${squadBase(url)}/api/squad/${room}/map`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, map }) })
+    return r.ok
+  } catch { return false }
+}
+
+/** Общая метка (пинг) — или её удаление. */
+export async function publishSquadMark(url: string, room: string, name: string, mark: Omit<SquadMark, 'by' | 'ts'>, remove = false): Promise<boolean> {
+  try {
+    const r = await fetch(`${squadBase(url)}/api/squad/${room}/mark`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, ...mark, remove }) })
     return r.ok
   } catch { return false }
 }

@@ -32,6 +32,7 @@ export function SquadPanel({ currentMap, mapNames }: { currentMap: string; mapNa
         </div>
         <input value={squad.url} onChange={(e) => setSquad({ url: e.target.value.trim() })} placeholder={launcher ? 'Адрес хоста (пусто — я хост)' : 'Адрес хоста: http://192.168… или https://…trycloudflare.com'} spellCheck={false} className="input focus:input-focus num h-8 text-[12px]" />
         <Toggle value={squad.share} onChange={(v) => setSquad({ share: v })} label="Делиться своей позицией" />
+        <Toggle value={squad.followMap} onChange={(v) => setSquad({ followMap: v })} label="Общая карта: один выбрал — у всех" />
       </div>
       {squad.room && roomOk && (
         <button
@@ -43,7 +44,7 @@ export function SquadPanel({ currentMap, mapNames }: { currentMap: string; mapNa
         </button>
       )}
       <div className="mt-1 text-[11px] text-ink-3 leading-4">
-        Хост — лаунчер одного из вас: в его <span className="num">config.json</span> «lan»: true (одна Wi-Fi) или «squad_tunnel»: true (через интернет, нужен cloudflared). Друзья вводят адрес хоста и тот же код комнаты.
+        Правый клик по карте в скваде — общая метка, видна всем с твоим ником. Хост — лаунчер одного из вас: в его <span className="num">config.json</span> «lan»: true (одна Wi-Fi) или «squad_tunnel»: true (через интернет, нужен cloudflared). Друзья вводят адрес хоста и тот же код комнаты.
       </div>
 
       {squad.room && (

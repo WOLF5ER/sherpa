@@ -80,9 +80,22 @@ export function App() {
   const playerPos = useUI((s) => s.playerPos)
   const currentMapId = useUI((s) => s.currentMapId)
   const squadActive = !!squad.room && ROOM_RE.test(squad.room) && (!!squad.url || !!launcher)
+  // общая карта сквада: если включено «следовать», переключаем свою карту
+  const squadMap = useUI((s) => s.squadMap)
   useEffect(() => {
-    if (!squadActive) { useUI.getState().setSquadMembers({}); useUI.getState().setSquadConnected(false); return }
-    const stop = subscribeSquad(squad.url, squad.room, (snap) => useUI.getState().setSquadMembers(snap.members), (ok) => useUI.getState().setSquadConnected(ok))
+    if (!squadActive || !squad.followMap || !squadMap || !data) return
+    const target = Object.values(data.maps).find((m) => m.normalizedName === squadMap)
+    if (target && useUI.getState().currentMapId !== target.id) useUI.getState().setCurrentMapId(target.id)
+  }, [squadActive, squad.followMap, squadMap, data])
+
+  useEffect(() => {
+    if (!squadActive) { useUI.getState().setSquadMembers({}); useUI.getState().setSquadConnected(false); useUI.getState().setSquadMarks({}); useUI.getState().setSquadMap(''); return }
+    const stop = subscribeSquad(squad.url, squad.room, (snap) => {
+      const ui = useUI.getState()
+      ui.setSquadMembers(snap.members)
+      ui.setSquadMarks(snap.marks ?? {})
+      ui.setSquadMap(snap.map ?? '')
+    }, (ok) => useUI.getState().setSquadConnected(ok))
     return stop
   }, [squadActive, squad.url, squad.room])
   useEffect(() => {

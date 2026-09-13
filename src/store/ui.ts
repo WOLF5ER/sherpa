@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { PlayerPos } from '@/lib/pywebview'
-import type { SquadMember } from '@/lib/squad'
+import type { SquadMember, SquadMark } from '@/lib/squad'
 
 interface UIState {
   /** открытая карточка предмета */
@@ -45,6 +45,11 @@ interface UIState {
   setSquadMembers: (m: Record<string, SquadMember>) => void
   squadConnected: boolean
   setSquadConnected: (v: boolean) => void
+  /** общая карта комнаты (normalizedName) и общие метки */
+  squadMap: string
+  setSquadMap: (m: string) => void
+  squadMarks: Record<string, SquadMark>
+  setSquadMarks: (m: Record<string, SquadMark>) => void
   theme: 'dark' | 'light'
   setTheme: (t: 'dark' | 'light') => void
   /** карта, выбранная на странице карт (для сквада) */
@@ -52,7 +57,7 @@ interface UIState {
   setCurrentMapId: (id: string | null) => void
 }
 
-export interface SquadSettings { url: string; room: string; name: string; share: boolean }
+export interface SquadSettings { url: string; room: string; name: string; share: boolean; followMap: boolean }
 
 export interface MapMark { id: string; x: number; z: number; y?: number; name: string; ts: number }
 
@@ -89,17 +94,28 @@ export const useUI = create<UIState>()(
       marks: {},
       addMark: (mapId, m) => set((s) => ({ marks: { ...s.marks, [mapId]: [...(s.marks[mapId] ?? []), m] } })),
       removeMark: (mapId, id) => set((s) => ({ marks: { ...s.marks, [mapId]: (s.marks[mapId] ?? []).filter((m) => m.id !== id) } })),
-      squad: { url: '', room: '', name: '', share: true },
+      squad: { url: '', room: '', name: '', share: true, followMap: true },
       setSquad: (patch) => set((s) => ({ squad: { ...s.squad, ...patch } })),
       squadMembers: {},
       setSquadMembers: (squadMembers) => set({ squadMembers }),
       squadConnected: false,
       setSquadConnected: (squadConnected) => set({ squadConnected }),
+      squadMap: '',
+      setSquadMap: (squadMap) => set({ squadMap }),
+      squadMarks: {},
+      setSquadMarks: (squadMarks) => set({ squadMarks }),
       theme: 'dark',
       setTheme: (theme) => set({ theme }),
       currentMapId: null,
       setCurrentMapId: (currentMapId) => set({ currentMapId }),
     }),
-    { name: 'sherpa:ui', partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, marks: s.marks, squad: s.squad, theme: s.theme, currentMapId: s.currentMapId }) },
+    {
+      name: 'sherpa:ui',
+      // настройки сквада дополняем новыми полями, а не заменяем целиком
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<UIState>
+        return { ...current, ...p, squad: { ...current.squad, ...(p.squad ?? {}) } }
+      },
+      partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, marks: s.marks, squad: s.squad, theme: s.theme, currentMapId: s.currentMapId }) },
   ),
 )
