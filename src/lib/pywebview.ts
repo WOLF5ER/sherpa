@@ -5,6 +5,7 @@ export interface LauncherState {
   visible: boolean
   screenshots: boolean
   screenshots_path: string
+  screenshots_path_exists?: boolean
   lan_url: string | null
   tunnel_url?: string | null
   tunnel_state?: string
@@ -13,6 +14,7 @@ export interface LauncherState {
 export interface LauncherApi {
   set_on_top: (v: boolean) => Promise<boolean>
   set_screenshot_watch: (v: boolean) => Promise<LauncherState>
+  set_screenshots_path?: (path: string) => Promise<LauncherState>
   enable_lan?: (on: boolean) => Promise<LauncherState>
   enable_tunnel?: (on: boolean) => Promise<LauncherState>
   open_minimap?: () => Promise<void>

@@ -75,7 +75,7 @@ export const useUI = create<UIState>()(
       setOpacity: (opacity) => set({ opacity: Math.max(0.3, Math.min(1, opacity)) }),
       scavReadyAt: null,
       setScavReadyAt: (scavReadyAt) => set({ scavReadyAt }),
-      screenshotsWatch: false,
+      screenshotsWatch: true, // в лаунчере просто читаем имена файлов из папки — включено сразу; в браузере всё равно нужно выбрать папку
       setScreenshotsWatch: (screenshotsWatch) => set({ screenshotsWatch }),
       playerPos: null,
       setPlayerPos: (playerPos) => set((s) => ({
@@ -111,6 +111,12 @@ export const useUI = create<UIState>()(
     }),
     {
       name: 'sherpa:ui',
+      version: 1,
+      // v1: слежение за скриншотами включено по умолчанию (раньше было выключено, и точка «молчала»)
+      migrate: (persisted, version) => {
+        const p = (persisted ?? {}) as Record<string, unknown>
+        return (version < 1 ? { ...p, screenshotsWatch: true } : p) as never
+      },
       // настройки сквада дополняем новыми полями, а не заменяем целиком
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<UIState>

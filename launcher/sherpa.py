@@ -515,6 +515,7 @@ class Api:
         return {
             "on_top": self._on_top, "visible": self._visible,
             "screenshots": self._shots_enabled, "screenshots_path": str(self._shots_path or ""),
+            "screenshots_path_exists": bool(self._shots_path and self._shots_path.exists()),
             "lan_url": self._lan_url,
             "tunnel_url": self._tunnel_url, "tunnel_state": self._tunnel_state,
         }
@@ -529,6 +530,16 @@ class Api:
         self._shots_enabled = bool(value)
         if self._shots_enabled and not self._shots_path:
             self._shots_path = default_screenshots_path()
+        return self.get_state()
+
+    @timed
+    def set_screenshots_path(self, path: str = ""):
+        """Папка скриншотов вручную (пусто — автоопределение). Сохраняется в config.json."""
+        p = (path or "").strip().strip('"')
+        self._shots_path = Path(p).expanduser() if p else default_screenshots_path()
+        self._shots_seen = 0.0  # новую папку читаем с самого свежего файла
+        self._save_cfg(screenshots_path=p)
+        print(f"[sherpa] папка скриншотов: {self._shots_path} ({'есть' if self._shots_path.exists() else 'не найдена'})")
         return self.get_state()
 
     def _cleanup_screenshots(self):
@@ -711,13 +722,33 @@ class Api:
             pass
 
 
+def documents_dirs() -> list[Path]:
+    """Настоящая папка «Документы»: у многих она перенесена в OneDrive («Документы»), а не C:\\Users\\…\\Documents."""
+    out: list[Path] = []
+    try:
+        # SHGetKnownFolderPath(FOLDERID_Documents) — то, куда Таркову реально пишет Windows
+        import uuid
+        buf = ctypes.c_wchar_p()
+        fid = (ctypes.c_ubyte * 16).from_buffer_copy(uuid.UUID("FDD39AD0-238F-46AF-ADB4-6C85480369C7").bytes_le)
+        if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(fid), 0, None, ctypes.byref(buf)) == 0 and buf.value:
+            out.append(Path(buf.value))
+            ctypes.windll.ole32.CoTaskMemFree(buf)
+    except Exception:  # noqa: BLE001
+        pass
+    home = Path(os.environ.get("USERPROFILE", "~")).expanduser()
+    for d in (home / "Documents", home / "OneDrive" / "Documents", home / "OneDrive" / "Документы"):
+        if d not in out:
+            out.append(d)
+    return out
+
+
 def default_screenshots_path() -> Path:
-    docs = Path(os.environ.get("USERPROFILE", "~")).expanduser() / "Documents"
-    for name in ("Escape From Tarkov", "Escape from Tarkov"):
-        p = docs / name / "Screenshots"
-        if p.exists():
-            return p
-    return docs / "Escape From Tarkov" / "Screenshots"
+    for docs in documents_dirs():
+        for name in ("Escape from Tarkov", "Escape From Tarkov"):
+            p = docs / name / "Screenshots"
+            if p.exists():
+                return p
+    return documents_dirs()[0] / "Escape from Tarkov" / "Screenshots"
 
 
 _SHOT_RE = re.compile(r"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_?(?P<pos>.+) \(\d+\)\.png$")
@@ -818,6 +849,7 @@ def main():
     api._on_top = bool(cfg["on_top"])
     api._shots_enabled = bool(cfg.get("screenshots_watch"))
     api._shots_path = Path(cfg["screenshots_path"]) if cfg.get("screenshots_path") else default_screenshots_path()
+    print(f"[sherpa] папка скриншотов: {api._shots_path} ({'есть' if api._shots_path.exists() else 'не найдена — укажи в панели «Ты здесь»'})")
     api._shots_seen = time.time()  # старые скриншоты не считаем
     threading.Thread(target=api._poll_screenshots, daemon=True).start()
     window = webview.create_window(
