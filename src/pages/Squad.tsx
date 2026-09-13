@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Users, Copy, RefreshCw, LogOut, Wifi, Globe, MapPin, Check } from 'lucide-react'
 import { useGame } from '@/store/data'
 import { useUI } from '@/store/ui'
 import { useLauncher, type LauncherState } from '@/lib/pywebview'
-import { makeRoomCode, ROOM_RE } from '@/lib/squad'
+import { makeRoomCode, makeInvite, parseInvite, ROOM_RE } from '@/lib/squad'
 import { Eyebrow, Toggle, Empty } from '@/components/ui'
 
 type Mode = 'idle' | 'join'
@@ -20,8 +20,8 @@ export function SquadPage() {
   const squadMap = useUI((s) => s.squadMap)
   const marks = useUI((s) => s.squadMarks)
   const [mode, setMode] = useState<Mode>('idle')
-  const [joinCode, setJoinCode] = useState('')
-  const [joinUrl, setJoinUrl] = useState('')
+  const [joinText, setJoinText] = useState('')
+  const [params, setParams] = useSearchParams()
   const [copied, setCopied] = useState(false)
   const [state, setState] = useState<LauncherState | null>(null)
   const [busy, setBusy] = useState<'lan' | 'tunnel' | null>(null)
@@ -37,12 +37,28 @@ export function SquadPage() {
   const inRoom = !!squad.room && ROOM_RE.test(squad.room)
   const isHost = inRoom && !squad.url
   const hostUrl = state?.tunnel_url || state?.lan_url || null
-  const invite = inRoom ? `Sherpa · комната ${squad.room}${isHost ? (hostUrl ? ` · хост ${hostUrl}` : ' · хост: включи LAN или туннель') : ` · хост ${squad.url}`}` : ''
+  // ссылка-приглашение: у хоста — его адрес, у гостя — адрес того же хоста (гость тоже может звать)
+  const inviteBase = isHost ? hostUrl : (squad.url || (!launcher ? location.origin : ''))
+  const invite = inRoom && inviteBase ? makeInvite(inviteBase, squad.room) : ''
+  const parsed = parseInvite(joinText)
+  // в лаунчере без адреса хоста «войти» нельзя — получится своя отдельная комната
+  const joinUrlFinal = parsed.url || (!launcher ? location.origin : '')
+  const joinOk = !!parsed.room && !!joinUrlFinal
+
+  // открыли ссылку-приглашение (https://хост/#/squad?join=код) — входим сразу
+  useEffect(() => {
+    const code = params.get('join')
+    if (!code || !ROOM_RE.test(code)) return
+    if (launcher) setJoinText(location.href.split('#')[0] + '#/squad?join=' + code), setMode('join')
+    else setSquad({ room: code, url: location.origin })
+    params.delete('join'); setParams(params, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, launcher])
   const mapNames = Object.fromEntries(Object.values(data.maps).map((m) => [m.normalizedName, m.name]))
   const others = Object.entries(members).filter(([n]) => n !== squad.name)
 
   const create = () => setSquad({ room: makeRoomCode(), url: '' })
-  const join = () => { if (ROOM_RE.test(joinCode.trim())) { setSquad({ room: joinCode.trim(), url: joinUrl.trim() }); setMode('idle') } }
+  const join = () => { if (joinOk) { setSquad({ room: parsed.room, url: joinUrlFinal }); setMode('idle'); setJoinText('') } }
   const leave = () => setSquad({ room: '', url: '' })
   const copy = async () => { try { await navigator.clipboard.writeText(invite); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* ignore */ } }
   const toggleLan = async (on: boolean) => { if (!launcher?.enable_lan) return; setBusy('lan'); try { setState(await launcher.enable_lan(on)) } finally { setBusy(null) } }
@@ -75,11 +91,16 @@ export function SquadPage() {
           )}
           {!inRoom && mode === 'join' && (
             <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); join() }}>
-              <input autoFocus value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="Код комнаты" spellCheck={false} className="input focus:input-focus num h-9 text-[15px] tracking-[.2em]" />
-              <input value={joinUrl} onChange={(e) => setJoinUrl(e.target.value)} placeholder="Адрес хоста: http://192.168… или https://…trycloudflare.com" spellCheck={false} className="input focus:input-focus num h-8 text-[12px]" />
+              <textarea autoFocus value={joinText} onChange={(e) => setJoinText(e.target.value)} placeholder="Вставь приглашение от друга — ссылку вида https://…/#/squad?join=код" spellCheck={false} rows={2} className="input focus:input-focus num text-[12px] py-1.5 resize-none" />
+              <div className="text-[12px] leading-4 num">
+                {!joinText.trim() ? <span className="text-ink-4">Ссылку хост копирует кнопкой «Скопировать приглашение».</span>
+                  : !parsed.room ? <span className="text-danger">Не вижу код комнаты в тексте.</span>
+                  : !joinUrlFinal ? <span className="text-danger">Нет адреса хоста — без него ты создашь свою отдельную комнату. Попроси друга включить «Одна Wi-Fi» или «Через интернет» в лобби и прислать ссылку заново.</span>
+                  : <span className="text-ink-2">комната <span className="text-brass-2">{parsed.room}</span> · хост <span className="text-ink">{joinUrlFinal}</span></span>}
+              </div>
               <div className="flex gap-2">
-                <button type="submit" disabled={!ROOM_RE.test(joinCode.trim())} className="chip chip-on disabled:opacity-50"><Check size={12} /> Войти</button>
-                <button type="button" onClick={() => setMode('idle')} className="chip">Отмена</button>
+                <button type="submit" disabled={!joinOk} className="chip chip-on disabled:opacity-50"><Check size={12} /> Войти</button>
+                <button type="button" onClick={() => { setMode('idle'); setJoinText('') }} className="chip">Отмена</button>
               </div>
             </form>
           )}
@@ -91,8 +112,12 @@ export function SquadPage() {
                 <div className="num text-[40px] tracking-[.25em] text-brass-2 leading-none mt-1 select-all">{squad.room}</div>
                 <div className="mt-2 text-[12px] text-ink-3 num truncate">{isHost ? (hostUrl ?? 'включи LAN или туннель справа →') : squad.url}</div>
               </div>
+              {isHost && !hostUrl && (
+                <div className="text-[12px] leading-4 text-danger">Друзья пока не могут подключиться: у комнаты нет адреса. Включи справа «Одна Wi-Fi» (если в одной сети) или «Через интернет» — и потом скопируй приглашение.</div>
+              )}
+              {invite && <div className="text-[11px] num text-ink-4 break-all select-all">{invite}</div>}
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={copy} className="chip chip-on"><Copy size={12} /> {copied ? 'Скопировано' : 'Скопировать приглашение'}</button>
+                <button type="button" onClick={copy} disabled={!invite} className="chip chip-on disabled:opacity-50"><Copy size={12} /> {copied ? 'Скопировано' : 'Скопировать приглашение'}</button>
                 {isHost && <button type="button" onClick={create} className="chip hover:text-ink" title="Новый код — старая комната забудется"><RefreshCw size={12} /> Новый код</button>}
                 <button type="button" onClick={leave} className="chip hover:text-danger hover:border-danger/60"><LogOut size={12} /> Выйти</button>
               </div>
@@ -175,7 +200,8 @@ export function SquadPage() {
         <Eyebrow>Как это работает</Eyebrow>
         <ol className="mt-1 list-decimal pl-5 space-y-0.5">
           <li>Хост включает LAN (одна Wi-Fi) или туннель (интернет) и создаёт комнату.</li>
-          <li>Друзья получают приглашение: код + адрес хоста. «Войти по коду» — и они в списке.</li>
+          <li>Друзья получают ссылку-приглашение и вставляют её в «Войти по коду» в своей Sherpa (или просто открывают в браузере — карта с позициями работает и так).</li>
+          <li>Важно: все должны быть на одном хосте. Если каждый нажмёт «Создать комнату» — получатся разные комнаты, и каждый будет сидеть в своей один.</li>
           <li>Позиции обновляются с каждым скриншотом; карту переключает любой; правый клик по карте — общая метка.</li>
         </ol>
       </section>

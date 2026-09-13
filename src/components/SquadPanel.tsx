@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Users, Copy, RefreshCw } from 'lucide-react'
 import { useUI } from '@/store/ui'
 import { useLauncher } from '@/lib/pywebview'
-import { makeRoomCode, ROOM_RE } from '@/lib/squad'
+import { makeRoomCode, makeInvite, ROOM_RE } from '@/lib/squad'
 import { Link } from 'react-router-dom'
 import { Eyebrow, Toggle } from './ui'
 
@@ -17,7 +17,8 @@ export function SquadPanel({ currentMap, mapNames }: { currentMap: string; mapNa
 
   const roomOk = ROOM_RE.test(squad.room)
   const others = Object.entries(members).filter(([n]) => n !== squad.name)
-  const invite = `${squad.url || (launcher ? '(адрес твоего лаунчера)' : location.origin)} · комната ${squad.room}`
+  const inviteBase = squad.url || (launcher ? '' : location.origin)
+  const invite = inviteBase && roomOk ? makeInvite(inviteBase, squad.room) : ''
 
   return (
     <div>
@@ -35,7 +36,7 @@ export function SquadPanel({ currentMap, mapNames }: { currentMap: string; mapNa
         <Toggle value={squad.share} onChange={(v) => setSquad({ share: v })} label="Делиться своей позицией" />
         <Toggle value={squad.followMap} onChange={(v) => setSquad({ followMap: v })} label="Общая карта: один выбрал — у всех" />
       </div>
-      {squad.room && roomOk && (
+      {squad.room && roomOk && (invite ? (
         <button
           type="button"
           onClick={async () => { try { await navigator.clipboard.writeText(invite); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* ignore */ } }}
@@ -43,7 +44,9 @@ export function SquadPanel({ currentMap, mapNames }: { currentMap: string; mapNa
         >
           <Copy size={12} /> {copied ? 'Скопировано' : 'Скопировать приглашение'}
         </button>
-      )}
+      ) : (
+        <Link to="/squad" className="mt-1.5 chip hover:text-ink"><Copy size={12} /> Приглашение — в лобби</Link>
+      ))}
       <div className="mt-1 text-[11px] text-ink-3 leading-4">
         Правый клик по карте в скваде — общая метка, видна всем с твоим ником. Хост — лаунчер одного из вас: LAN (одна Wi-Fi) или туннель через интернет включаются в <Link to="/squad" className="text-brass hover:underline">лобби</Link>, ничего ставить не нужно. Друзья вводят адрес хоста и тот же код комнаты.
       </div>

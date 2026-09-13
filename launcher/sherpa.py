@@ -372,6 +372,36 @@ def find_cloudflared(download: bool = True, on_status=None) -> str | None:
         return None
 
 
+_JOB = None
+
+
+def _bind_to_job(proc: subprocess.Popen) -> None:
+    """Job-объект с KILL_ON_JOB_CLOSE: cloudflared умрёт вместе с лаунчером, даже если тот упал или его сняли из диспетчера."""
+    global _JOB
+    try:
+        k32 = ctypes.windll.kernel32
+        if _JOB is None:
+            _JOB = k32.CreateJobObjectW(None, None)
+
+            class _Limit(ctypes.Structure):
+                _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                            ("LimitFlags", wt.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t), ("MaximumWorkingSetSize", ctypes.c_size_t),
+                            ("ActiveProcessLimit", wt.DWORD), ("Affinity", ctypes.c_size_t), ("PriorityClass", wt.DWORD), ("SchedulingClass", wt.DWORD)]
+
+            class _IoCounters(ctypes.Structure):
+                _fields_ = [(n, ctypes.c_uint64) for n in ("ReadOperationCount", "WriteOperationCount", "OtherOperationCount", "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+            class _Ext(ctypes.Structure):
+                _fields_ = [("BasicLimitInformation", _Limit), ("IoInfo", _IoCounters), ("ProcessMemoryLimit", ctypes.c_size_t),
+                            ("JobMemoryLimit", ctypes.c_size_t), ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
+            info = _Ext()
+            info.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            k32.SetInformationJobObject(_JOB, 9, ctypes.byref(info), ctypes.sizeof(info))  # JobObjectExtendedLimitInformation
+        k32.AssignProcessToJobObject(_JOB, wt.HANDLE(proc._handle))  # type: ignore[attr-defined]
+    except Exception as e:  # noqa: BLE001
+        print(f"[sherpa] job object: {e}")
+
+
 def start_tunnel(port: int, on_url, on_status=None) -> subprocess.Popen | None:
     """cloudflared quick tunnel: публичный https-адрес без аккаунта."""
     exe = find_cloudflared(download=True, on_status=on_status)
@@ -387,6 +417,7 @@ def start_tunnel(port: int, on_url, on_status=None) -> subprocess.Popen | None:
     except Exception as e:  # noqa: BLE001
         print(f"[sherpa] не удалось запустить cloudflared: {e}")
         return None
+    _bind_to_job(proc)
 
     def reader():
         # адрес печатается раньше, чем туннель реально подключён — отдаём его после «Registered tunnel connection»
@@ -869,6 +900,13 @@ def main():
     storage = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "Sherpa" / "webview"
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(private_mode=False, storage_path=str(storage))
+    # окно закрыто — гасим туннель и LAN-сервер, чтобы не висели в фоне
+    # (настройки не трогаем — при следующем запуске поднимутся снова)
+    try:
+        if api._tunnel_proc is not None:
+            api._tunnel_proc.terminate()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 if __name__ == "__main__":

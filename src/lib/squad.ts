@@ -18,6 +18,28 @@ export function makeRoomCode(): string {
   return s
 }
 
+/** Приглашение — одна ссылка: адрес хоста + код. Её можно и вставить в «Войти», и просто открыть в браузере. */
+export function makeInvite(hostUrl: string, room: string): string {
+  return `${squadBase(hostUrl)}/#/squad?join=${room}`
+}
+
+/** Разбираем всё, что вставил друг: ссылку-приглашение, «код + адрес» текстом или голый код. */
+export function parseInvite(text: string): { room: string; url: string } {
+  const t = text.trim()
+  const urlM = t.match(/https?:\/\/[^\s#"'<>]+/i) ?? t.match(/\b(?:\d{1,3}\.){3}\d{1,3}:\d{2,5}\b/)
+  const raw = urlM?.[0].replace(/\/+$/, '') ?? ''
+  const url = raw ? squadBase(/^https?:/i.test(raw) ? raw : `http://${raw}`) : '' // голый ip:port — это LAN, без https
+  const joinM = t.match(/[?&]join=([A-Za-z0-9_-]{3,40})/)
+  let room = joinM?.[1] ?? ''
+  if (!room) {
+    // голый код или «комната abc123»: первое слово-код, не похожее на адрес
+    const rest = t.replace(/https?:\/\/[^\s]+/gi, ' ')
+    const m = rest.match(/(?:комната|room|код|code)\s*[:：]?\s*([A-Za-z0-9_-]{3,40})/i) ?? rest.match(/(?:^|\s)([a-z0-9_-]{3,40})(?:\s|$)/)
+    room = m?.[1] ?? ''
+  }
+  return { room: ROOM_RE.test(room) ? room : '', url }
+}
+
 export function squadBase(url: string): string {
   const u = url.trim().replace(/\/+$/, '')
   return u ? (u.startsWith('http') ? u : `https://${u}`) : ''
