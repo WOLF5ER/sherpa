@@ -165,6 +165,7 @@ TT_UA = "Sherpa/1.0 (+https://github.com/sherpa-tarkov)"
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"  # keep-alive и chunked-потоки; каждый ответ обязан иметь Content-Length или chunked
     def log_message(self, *_args):  # тишина в консоли
         pass
 
@@ -235,25 +236,38 @@ class QuietHandler(SimpleHTTPRequestHandler):
         # друзья заходят со своего localhost или туннеля — нужен CORS
         self.send_header("Access-Control-Allow-Origin", "*")
 
-    def _sse_squad(self, room: str):
+    # ── SSE: HTTP/1.1 + chunked, каждое событие — отдельный chunk с flush. Так поток не буферизуют
+    #    ни cloudflared, ни край Cloudflare (с HTTP/1.0 без длины гость через туннель не получал ни байта) ──
+    def _sse_start(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
-        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Cache-Control", "no-cache, no-transform")
+        self.send_header("X-Accel-Buffering", "no")
         self.send_header("Connection", "keep-alive")
+        self.send_header("Transfer-Encoding", "chunked")
         self._cors()
         self.end_headers()
+        # первый chunk — комментарий с «подушкой»: заставляет промежуточные прокси отдать заголовки и начать поток сразу
+        self._sse_write(b": " + b" " * 2048 + b"\n\n")
+
+    def _sse_write(self, data: bytes):
+        self.wfile.write(f"{len(data):X}\r\n".encode() + data + b"\r\n")
+        self.wfile.flush()
+
+    def _sse_event(self, obj) -> bytes:
+        return f"data: {json.dumps(obj)}\n\n".encode()
+
+    def _sse_squad(self, room: str):
+        self._sse_start()
         q: queue.Queue = queue.Queue()
         SQUAD_CLIENTS.setdefault(room, []).append(q)
         try:
-            self.wfile.write(f"data: {json.dumps(squad_snapshot(room))}\n\n".encode())
-            self.wfile.flush()
+            self._sse_write(self._sse_event(squad_snapshot(room)))
             while True:
                 try:
-                    snap = q.get(timeout=15)
-                    self.wfile.write(f"data: {json.dumps(snap)}\n\n".encode())
+                    self._sse_write(self._sse_event(q.get(timeout=15)))
                 except queue.Empty:
-                    self.wfile.write(b": keepalive\n\n")
-                self.wfile.flush()
+                    self._sse_write(b": keepalive\n\n")
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
             pass
         finally:
@@ -273,23 +287,17 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
     def _sse(self):
         """Поток позиций для страниц без лаунчера (телефон в той же сети)."""
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream")
-        self.send_header("Connection", "keep-alive")
-        self.end_headers()
+        self._sse_start()
         q: queue.Queue = queue.Queue()
         SSE_CLIENTS.append(q)
         try:
             if LAST_POS:
-                self.wfile.write(f"data: {json.dumps(LAST_POS)}\n\n".encode())
-                self.wfile.flush()
+                self._sse_write(self._sse_event(LAST_POS))
             while True:
                 try:
-                    pos = q.get(timeout=15)
-                    self.wfile.write(f"data: {json.dumps(pos)}\n\n".encode())
+                    self._sse_write(self._sse_event(q.get(timeout=15)))
                 except queue.Empty:
-                    self.wfile.write(b": keepalive\n\n")
-                self.wfile.flush()
+                    self._sse_write(b": keepalive\n\n")
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
             pass
         finally:

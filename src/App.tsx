@@ -111,7 +111,7 @@ export function App() {
 
   // телефон / второй ПК: позиция приходит от лаунчера по сети (SSE)
   useEffect(() => {
-    if (launcher) return
+    if (launcher || location.protocol === 'https:') return // https = открыли чужой хост через туннель, его позиция — не наша
     let es: EventSource | null = null
     let cancelled = false
     // pywebview объявляет window.pywebview чуть позже первого рендера — даём ему секунду, чтобы не открывать поток к самому себе

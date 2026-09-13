@@ -73,17 +73,42 @@ export async function publishSquadMark(url: string, room: string, name: string, 
   } catch { return false }
 }
 
-/** Подписка на комнату с переподключением; возвращает stop(). */
+/**
+ * Подписка на комнату; возвращает stop().
+ * Сначала SSE-поток. Через туннель Cloudflare поток доходит «в один кусок» только при закрытии (гость видел
+ * «на связи», но список участников оставался пустым) — если за 5 с после открытия не пришло ни одного снимка,
+ * переходим на опрос GET /api/squad/<room> раз в 2 с. Он работает через что угодно.
+ */
 export function subscribeSquad(url: string, room: string, onSnap: (s: SquadSnapshot) => void, onState: (ok: boolean) => void): () => void {
   let es: EventSource | null = null
   let stopped = false
   let delay = 2000
+  let pollTimer: number | null = null
+  let last = ''
+  const deliver = (s: SquadSnapshot) => { const j = JSON.stringify(s); if (j !== last) { last = j; onSnap(s) } }
+
+  const poll = async () => {
+    if (stopped) return
+    try {
+      const r = await fetch(`${squadBase(url)}/api/squad/${room}`, { cache: 'no-store' })
+      if (r.ok) { deliver(await r.json()); onState(true) } else onState(false)
+    } catch { onState(false) }
+    if (!stopped) pollTimer = window.setTimeout(poll, 2000)
+  }
+
   const open = () => {
     if (stopped) return
+    let gotData = false
     es = new EventSource(`${squadBase(url)}/api/squad/${room}/stream`)
+    const watchdog = window.setTimeout(() => {
+      if (gotData || stopped) return
+      es?.close(); es = null
+      void poll()
+    }, 5000)
     es.onopen = () => { delay = 2000; onState(true) }
-    es.onmessage = (e) => { try { onSnap(JSON.parse(e.data)) } catch { /* ignore */ } }
+    es.onmessage = (e) => { gotData = true; clearTimeout(watchdog); try { deliver(JSON.parse(e.data)) } catch { /* ignore */ } }
     es.onerror = () => {
+      clearTimeout(watchdog)
       onState(false)
       es?.close()
       es = null
@@ -92,5 +117,5 @@ export function subscribeSquad(url: string, room: string, onSnap: (s: SquadSnaps
     }
   }
   open()
-  return () => { stopped = true; es?.close() }
+  return () => { stopped = true; es?.close(); if (pollTimer) clearTimeout(pollTimer) }
 }
