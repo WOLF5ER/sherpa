@@ -1,0 +1,261 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* ── Токены ─────────────────────────────────────────────────────────── */
+@theme {
+  --font-display: "Oswald", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Consolas", monospace;
+
+  /* мокрый асфальт с оливковым подтоном */
+  --color-bg: #111310;
+  --color-bg-1: #181b16;
+  --color-bg-2: #1f231d;
+  --color-bg-3: #272c25;
+  --color-line: #2b3028;
+  --color-line-2: #3a4136;
+
+  /* кость — как текст в игровом интерфейсе */
+  --color-ink: #dcd7c6;
+  --color-ink-2: #a9a595;
+  --color-ink-3: #767466;
+  --color-ink-4: #4e4d44;
+
+  /* латунь — гильза, единственный тёплый акцент */
+  --color-brass: #d4a247;
+  --color-brass-2: #f0c46a;
+  --color-brass-3: #8f6d2a;
+
+  --color-fir: #6fc262;      /* найдено в рейде */
+  --color-danger: #d84f3c;
+  --color-info: #6f9bd1;
+  --color-scav: #c9873a;
+  --color-pmc: #6f9bd1;
+  --color-boss: #d84f3c;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+}
+
+/* ── База ───────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+::selection { background: color-mix(in srgb, var(--color-brass) 35%, transparent); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-line-2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--color-line-2); border-radius: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+/* ── Утилиты ────────────────────────────────────────────────────────── */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.05;
+}
+
+@utility eyebrow {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-ink-3);
+}
+
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* сетка схрона — фон для пустых состояний и панелей */
+@utility stash-grid {
+  background-color: var(--color-bg);
+  background-image:
+    linear-gradient(var(--color-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+
+@utility panel {
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+}
+
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line-2);
+  background: var(--color-bg-2);
+  color: var(--color-ink-2);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  transition: background .12s, color .12s, border-color .12s;
+}
+
+@utility chip-on {
+  background: color-mix(in srgb, var(--color-brass) 16%, var(--color-bg-2));
+  border-color: var(--color-brass-3);
+  color: var(--color-brass-2);
+}
+
+@utility input {
+  height: 34px;
+  padding: 0 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  font: inherit;
+  outline: none;
+  transition: border-color .12s;
+}
+@utility input-focus {
+  border-color: var(--color-brass-3);
+}
+
+/* Ползунки: родной вид в WebView2 выглядит чужеродно — рисуем свой */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-line-2);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: var(--color-brass);
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 0 0 1px var(--color-brass-3);
+  transition: transform .1s;
+}
+input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.15); }
+input[type="range"]:focus-visible { outline: none; }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brass) 40%, transparent); }
+
+/* Игровые цвета фона предметов — приглушённые, как в схроне */
+.ibg-default { background: #1d2020; }
+.ibg-black   { background: #151716; }
+.ibg-grey    { background: #2a2c2d; }
+.ibg-blue    { background: #24303f; }
+.ibg-green   { background: #1c2f1e; }
+.ibg-yellow  { background: #3a351b; }
+.ibg-orange  { background: #3d2a19; }
+.ibg-red     { background: #3f2222; }
+.ibg-violet  { background: #33283a; }
+
+/* ── Leaflet ────────────────────────────────────────────────────────── */
+.leaflet-container {
+  background: #0d0f0c;
+  font-family: var(--font-sans);
+}
+.leaflet-container .leaflet-tile { image-rendering: auto; }
+.leaflet-control-attribution { display: none; }
+.leaflet-tooltip {
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-line-2);
+  color: var(--color-ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 20px rgba(0,0,0,.5);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+.leaflet-tooltip-top:before { border-top-color: var(--color-line-2); }
+.leaflet-tooltip-bottom:before { border-bottom-color: var(--color-line-2); }
+.leaflet-tooltip-left:before { border-left-color: var(--color-line-2); }
+.leaflet-tooltip-right:before { border-right-color: var(--color-line-2); }
+
+.mk {
+  display: grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,.65);
+  box-shadow: 0 2px 6px rgba(0,0,0,.6);
+  color: #0d0f0c;
+  transform: translate(-11px, -11px);
+}
+.mk svg { width: 13px; height: 13px; stroke-width: 2.4; }
+.mk-sq { border-radius: 4px; }
+.mk-dim { opacity: .55; }
+
+.mk-label {
+  position: absolute;
+  left: 14px; top: -2px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .04em;
+  color: #fff;
+  text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
+  pointer-events: none;
+}
+
+.mk-label .mk-req {
+  font-style: normal;
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(240,196,106,.92);
+  color: #1a1408;
+  text-shadow: none;
+  font-size: 10px;
+  letter-spacing: .06em;
+}
+.leaflet-tooltip.tip-wide { max-width: 320px; white-space: normal; line-height: 1.35; }
+
+.off-level { opacity: .28; filter: saturate(.4); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

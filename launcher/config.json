@@ -1,0 +1,13 @@
+{
+  "port": 4879,
+  "width": 1180,
+  "height": 760,
+  "on_top": true,
+  "opacity": 1.0,
+  "hotkey_toggle": "F10",
+  "hotkey_on_top": "F9",
+  "screenshots_watch": false,
+  "screenshots_path": "",
+  "lan": false,
+  "squad_tunnel": false
+}

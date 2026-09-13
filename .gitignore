@@ -1,0 +1,5 @@
+node_modules
+dist
+launcher/__pycache__
+.claude/launch.json
+*.log
