@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer,
+  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench,
 } from 'lucide-react'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
 import { MODE_LABEL, type GameMode } from '@/data/loader'
@@ -21,6 +21,7 @@ const NAV = [
   { to: '/market', label: 'Барахолка', icon: Coins },
   { to: '/crafts', label: 'Крафты', icon: FlaskConical },
   { to: '/ammo', label: 'Патроны', icon: Target },
+  { to: '/builder', label: 'Сборка', icon: Wrench },
   { to: '/maps', label: 'Карты', icon: MapIcon },
   { to: '/season', label: 'Сезон', icon: Medal },
   { to: '/profile', label: 'Профиль', icon: UserRound },

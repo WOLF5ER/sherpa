@@ -50,6 +50,30 @@ export interface Item {
   armor?: ArmorProps
   weapon?: WeaponProps
   keyUses?: number
+  /** модуль оружия: вклад в эргономику/отдачу */
+  mod?: ModProps
+  /** слоты под модули (оружие, цевья, кронштейны, шлемы…) */
+  slots?: Slot[]
+  /** пресет оружия */
+  preset?: { baseItem: string; ergonomics: number; recoilVertical: number; recoilHorizontal: number; isDefault: boolean }
+  conflictingItems?: string[]
+}
+
+export interface ModProps {
+  ergonomics: number
+  recoilModifier: number
+  accuracyModifier: number
+  capacity?: number
+  zoomLevels?: number
+}
+
+export interface Slot {
+  id: string
+  nameId: string
+  name: string
+  required: boolean
+  allowedItems: string[]
+  excludedItems: string[]
 }
 
 export interface AmmoProps {
@@ -90,7 +114,13 @@ export interface WeaponProps {
   recoilVertical: number
   recoilHorizontal: number
   fireRate: number
+  fireModes: string[]
   defaultPreset: string | null
+  presets: string[]
+  allowedAmmo: string[]
+  defaultErgonomics: number | null
+  defaultRecoilVertical: number | null
+  defaultRecoilHorizontal: number | null
 }
 
 export interface Trader {

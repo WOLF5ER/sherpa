@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type {
-  Achievement, Barter, Craft, GameData, GameMap, HideoutStation, Item, ItemBg, Objective, QuestItem, Task, Trader,
+  Achievement, Barter, Craft, GameData, GameMap, HideoutStation, Item, ItemBg, Objective, QuestItem, Slot, Task, Trader,
 } from './types'
 
 type Dict = Record<string, string>
@@ -36,9 +36,30 @@ export interface RawBundle {
 }
 
 /** Свойства патронов, брони, оружия — только то, что показываем. */
+function slots(p: any, t: (k: string) => string): Slot[] | undefined {
+  if (!p?.slots?.length) return undefined
+  return p.slots.map((s: any): Slot => ({
+    id: s.id, nameId: s.nameId ?? '', name: t(s.name ?? s.nameId ?? ''), required: !!s.required,
+    allowedItems: s.filters?.allowedItems ?? [], excludedItems: s.filters?.excludedItems ?? [],
+  }))
+}
+
+const MOD_TYPES = new Set(['ItemPropertiesWeaponMod', 'ItemPropertiesBarrel', 'ItemPropertiesScope', 'ItemPropertiesMagazine', 'ItemPropertiesNightVision'])
+
 function props(p: any, t: (k: string) => string): Partial<Item> {
   if (!p) return {}
+  if (MOD_TYPES.has(p.propertiesType)) {
+    return {
+      mod: {
+        ergonomics: p.ergonomics ?? 0, recoilModifier: p.recoilModifier ?? 0, accuracyModifier: p.accuracyModifier ?? 0,
+        capacity: p.capacity, zoomLevels: Array.isArray(p.zoomLevels) ? p.zoomLevels.length : p.zoomLevels,
+      },
+      slots: slots(p, t),
+    }
+  }
   switch (p.propertiesType) {
+    case 'ItemPropertiesPreset':
+      return { preset: { baseItem: p.baseItem, ergonomics: p.ergonomics ?? 0, recoilVertical: p.recoilVertical ?? 0, recoilHorizontal: p.recoilHorizontal ?? 0, isDefault: !!p.default } }
     case 'ItemPropertiesAmmo':
       return { ammo: {
         caliber: p.caliber ?? '', damage: p.damage ?? 0, penetrationPower: p.penetrationPower ?? 0,
@@ -51,6 +72,7 @@ function props(p: any, t: (k: string) => string): Partial<Item> {
     case 'ItemPropertiesHelmet':
     case 'ItemPropertiesChestRig':
     case 'ItemPropertiesArmorAttachment': {
+      // шлемы и забрала тоже имеют слоты (забрало, наушники), но в конструкторе не участвуют
       const kind = p.propertiesType === 'ItemPropertiesArmor' ? 'armor' : p.propertiesType === 'ItemPropertiesHelmet' ? 'helmet'
         : p.propertiesType === 'ItemPropertiesChestRig' ? 'rig' : 'attachment'
       const cls = p.class ?? 0
@@ -67,8 +89,10 @@ function props(p: any, t: (k: string) => string): Partial<Item> {
     case 'ItemPropertiesWeapon':
       return { weapon: {
         caliber: p.caliber ?? '', ergonomics: p.ergonomics ?? 0, recoilVertical: p.recoilVertical ?? 0,
-        recoilHorizontal: p.recoilHorizontal ?? 0, fireRate: p.fireRate ?? 0, defaultPreset: p.defaultPreset ?? null,
-      } }
+        recoilHorizontal: p.recoilHorizontal ?? 0, fireRate: p.fireRate ?? 0, fireModes: p.fireModes ?? [],
+        defaultPreset: p.defaultPreset ?? null, presets: p.presets ?? [], allowedAmmo: p.allowedAmmo ?? [],
+        defaultErgonomics: p.defaultErgonomics ?? null, defaultRecoilVertical: p.defaultRecoilVertical ?? null, defaultRecoilHorizontal: p.defaultRecoilHorizontal ?? null,
+      }, slots: slots(p, t) }
     case 'ItemPropertiesKey':
       return { keyUses: p.uses ?? 0 }
     default:
@@ -120,6 +144,7 @@ export function normalize(raw: RawBundle): GameData {
         minTraderLevel: p.minTraderLevel, taskUnlock: p.taskUnlock ?? null,
       })),
       containsItems: (it.containsItems ?? []).map((c: any) => ({ item: c.item, count: c.count })),
+      conflictingItems: it.conflictingItems?.length ? it.conflictingItems : undefined,
       ...props(it.properties, tItem),
     }
   }

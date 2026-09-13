@@ -9,7 +9,7 @@ export const MODE_LABEL: Record<GameMode, string> = { regular: 'PvP', pve: 'PvE'
 const BASE = 'https://json.tarkov.dev'
 export const PRICE_TTL_MS = 15 * 60 * 1000
 
-const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v7`
+const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v8`
 
 async function getJson<T = unknown>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`${BASE}/${path}`, { signal })

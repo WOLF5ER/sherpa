@@ -16,6 +16,7 @@ import { SeasonPage } from '@/pages/Season'
 import { RaidPage } from '@/pages/Raid'
 import { HideoutPage } from '@/pages/Hideout'
 import { AmmoPage } from '@/pages/Ammo'
+import { BuilderPage } from '@/pages/Builder'
 import type { PlayerPos } from '@/lib/pywebview'
 import { fetchTarkovTracker, mapProgress } from '@/lib/tarkovtracker'
 import { canPickFolder, folderPermission, savedFolder, watchFolder } from '@/lib/screenshots'
@@ -123,6 +124,7 @@ export function App() {
         <Route path="/raid" element={<RaidPage />} />
         <Route path="/hideout" element={<HideoutPage />} />
         <Route path="/ammo" element={<AmmoPage />} />
+        <Route path="/builder" element={<BuilderPage />} />
         <Route path="/needs" element={<NeedsPage />} />
         <Route path="/market" element={<MarketPage />} />
         <Route path="/crafts" element={<CraftsPage />} />
