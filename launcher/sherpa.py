@@ -47,7 +47,6 @@ DEFAULT_CONFIG = {
     "width": 1180,
     "height": 760,
     "on_top": True,
-    "opacity": 1.0,
     "hotkey_toggle": "F10",
     "hotkey_on_top": "F9",
     # «Ты здесь»: следить за папкой скриншотов игры (в имени файла — координаты). Выключено по умолчанию.
@@ -337,6 +336,19 @@ def lan_ip() -> str | None:
         return None
 
 
+def timed(fn):
+    """Отладка: пишем в лог каждый вызов API из страницы и его длительность."""
+    def wrap(self, *args, **kw):
+        t0 = time.perf_counter()
+        try:
+            return fn(self, *args, **kw)
+        finally:
+            if os.environ.get("SHERPA_DEBUG"):
+                print(f"[api] {fn.__name__}{args} {1000 * (time.perf_counter() - t0):.1f} ms  thread={threading.current_thread().name}")
+    wrap.__name__ = fn.__name__
+    return wrap
+
+
 class Api:
     """Мост для страницы: window.pywebview.api.*"""
 
@@ -358,18 +370,13 @@ class Api:
         return self._hwnd
 
     # ── вызывается со страницы ──
+    @timed
     def set_opacity(self, value: float):
-        try:
-            v = max(0.3, min(1.0, float(value)))
-        except (TypeError, ValueError):
-            return
-        hwnd = self._hwnd_get()
-        if not hwnd:
-            return
-        style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-        user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED)
-        user32.SetLayeredWindowAttributes(hwnd, 0, int(v * 255), LWA_ALPHA)
+        """Прозрачность окна отключена: WebView2 не работает в слоистых (WS_EX_LAYERED) окнах — зависает.
+        Оставлено как no-op, чтобы старые страницы не падали на вызове."""
+        return None
 
+    @timed
     def set_on_top(self, value: bool):
         self._on_top = bool(value)
         if self._window:
@@ -380,6 +387,7 @@ class Api:
     _tunnel_url: str | None = None
     _tunnel_state: str = "off"  # off | starting | up | missing
 
+    @timed
     def get_state(self):
         return {
             "on_top": self._on_top, "visible": self._visible,
@@ -393,6 +401,7 @@ class Api:
     _shots_path: Path | None = None
     _shots_seen: float = 0.0
 
+    @timed
     def set_screenshot_watch(self, value: bool):
         self._shots_enabled = bool(value)
         if self._shots_enabled and not self._shots_path:
@@ -562,10 +571,6 @@ def main():
     )
     api._window = window
 
-    def on_loaded():
-        api.set_opacity(float(cfg.get("opacity", 1.0)))
-
-    window.events.loaded += on_loaded
     threading.Thread(target=hotkey_loop, args=(api, cfg), daemon=True).start()
     # профиль WebView2 (localStorage/IndexedDB с прогрессом) — в AppData, а не в папке проекта
     storage = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "Sherpa" / "webview"
@@ -581,6 +586,9 @@ if __name__ == "__main__":
             log = open(ROOT / "sherpa.log", "a", encoding="utf-8", buffering=1)
             sys.stdout = sys.stderr = log
             print(f"\n[sherpa] запуск {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            if os.environ.get("SHERPA_DEBUG"):
+                import faulthandler
+                faulthandler.dump_traceback_later(10, repeat=True, file=log)
         except Exception:  # noqa: BLE001
             pass
     else:

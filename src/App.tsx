@@ -27,13 +27,10 @@ export function App() {
   const data = useData((s) => s.data)
   const load = useData((s) => s.load)
   const mode = useProfile((s) => s.gameMode)
-  const opacity = useUI((s) => s.opacity)
 
   useEffect(() => { void load(mode) }, [load, mode])
 
-  // прозрачность окна — умеет только лаунчер; в браузере настройка ничего не делает
   const launcher = useLauncher()
-  useEffect(() => { launcher?.set_opacity(opacity).catch(() => {}) }, [launcher, opacity])
 
   // «ты здесь»: лаунчер шлёт координаты из имени скриншота
   const screenshotsWatch = useUI((s) => s.screenshotsWatch)
@@ -88,13 +85,14 @@ export function App() {
     if (launcher) return
     let es: EventSource | null = null
     let cancelled = false
-    fetch('/api/pos/last').then((r) => {
+    // pywebview объявляет window.pywebview чуть позже первого рендера — даём ему секунду, чтобы не открывать поток к самому себе
+    const timer = setTimeout(() => { if (cancelled || window.pywebview) return; fetch('/api/pos/last').then((r) => {
       // dev-сервер отдаёт index.html на любой путь — подписываемся только на настоящий ответ лаунчера
       if (cancelled || !(r.status === 200 || r.status === 204) || !(r.headers.get('content-type') ?? '').includes('json')) return
       es = new EventSource('/api/pos/stream')
       es.onmessage = (e) => { try { useUI.getState().setPlayerPos(JSON.parse(e.data)) } catch { /* ignore */ } }
-    }).catch(() => {})
-    return () => { cancelled = true; es?.close() }
+    }).catch(() => {}) }, 1500)
+    return () => { cancelled = true; clearTimeout(timer); es?.close() }
   }, [launcher])
 
   // автосинхронизация с TarkovTracker раз в 10 минут, если задан токен

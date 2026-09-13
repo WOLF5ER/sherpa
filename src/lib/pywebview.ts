@@ -11,7 +11,6 @@ export interface LauncherState {
 }
 
 export interface LauncherApi {
-  set_opacity: (v: number) => Promise<void>
   set_on_top: (v: boolean) => Promise<boolean>
   set_screenshot_watch: (v: boolean) => Promise<LauncherState>
   get_state: () => Promise<LauncherState>

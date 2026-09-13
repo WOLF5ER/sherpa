@@ -2,7 +2,6 @@ import { useMemo, useRef } from 'react'
 import { Download, Upload, Trash2, DatabaseZap } from 'lucide-react'
 import { useGame, useData } from '@/store/data'
 import { useProfile } from '@/store/profile'
-import { useUI } from '@/store/ui'
 import { clearCache } from '@/data/loader'
 import { deriveTraderLevel } from '@/lib/useCtx'
 import { Eyebrow, Segmented, Stepper } from '@/components/ui'
@@ -15,8 +14,6 @@ import { Link } from 'react-router-dom'
 export function ProfilePage() {
   const data = useGame()
   const p = useProfile()
-  const opacity = useUI((s) => s.opacity)
-  const setOpacity = useUI((s) => s.setOpacity)
   const load = useData((s) => s.load)
   const fileRef = useRef<HTMLInputElement>(null)
   const launcher = useLauncher()
@@ -152,11 +149,6 @@ export function ProfilePage() {
       <section className="grid gap-6 md:grid-cols-2">
         <div className="panel p-4">
           <Eyebrow>Оверлей</Eyebrow>
-          <div className="mt-3 text-[13px] text-ink-2">Прозрачность окна (работает в лаунчере)</div>
-          <div className="flex items-center gap-3 mt-1">
-            <input type="range" min={30} max={100} value={Math.round(opacity * 100)} onChange={(e) => setOpacity(Number(e.target.value) / 100)} className="flex-1" />
-            <span className="num text-[12px] text-ink-3 w-10 text-right">{Math.round(opacity * 100)}%</span>
-          </div>
           <div className="mt-3 text-[12px] text-ink-3 leading-5">
             Лаунчер (<span className="num">start.bat</span>) открывает Sherpa отдельным окном поверх игры.<br />
             <span className="num text-ink-2">F10</span> — показать/скрыть, <span className="num text-ink-2">F9</span> — поверх всех окон. В игре нужен режим «Без рамки» (Borderless).
