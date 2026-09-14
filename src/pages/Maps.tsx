@@ -29,7 +29,7 @@ type ToggleKey =
   | 'exitsPmc' | 'exitsScav' | 'exitsShared' | 'transits'
   | 'quests'
   | 'spawnsPmc' | 'spawnsScav' | 'snipers' | 'spawnsSeason' | 'bosses'
-  | 'locks' | 'keySpawns'
+  | 'locks' | 'keySpawns' | 'keycards' | 'ledx'
   | 'containers' | 'loose'
   | 'hazards' | 'switches' | 'weapons' | 'btr'
 type Toggles = Record<ToggleKey, boolean>
@@ -38,7 +38,7 @@ const DEFAULT_TOGGLES: Toggles = {
   exitsPmc: true, exitsScav: false, exitsShared: true, transits: true,
   quests: true,
   spawnsPmc: true, spawnsScav: false, snipers: false, spawnsSeason: true, bosses: true,
-  locks: true, keySpawns: false,
+  locks: true, keySpawns: false, keycards: false, ledx: false,
   containers: false, loose: false,
   hazards: true, switches: false, weapons: false, btr: true,
 }
@@ -67,6 +67,8 @@ const LAYER_SECTIONS: { title: string; rows: { key: ToggleKey; label: string; co
   { title: 'Ключи', rows: [
     { key: 'locks', label: 'Двери и замки', color: COLORS.key, icon: 'key' },
     { key: 'keySpawns', label: 'Спавн ключей', color: COLORS.key, icon: 'dot' },
+    { key: 'keycards', label: 'Ключ-карты', color: '#e04b4b', icon: 'card' },
+    { key: 'ledx', label: 'LEDX', color: '#5fd0d0', icon: 'ledx' },
   ] },
   { title: 'Лут', rows: [
     { key: 'containers', label: 'Контейнеры', color: COLORS.loot, icon: 'box' },
@@ -97,6 +99,21 @@ const LOOSE_CATEGORIES: { id: string; label: string; cats?: string[] }[] = [
   { id: 'other', label: 'Прочее' },
 ]
 const KEY_CATEGORY = '543be5e94bdc2df1348b4568'
+/** ключ-карты: свой цвет у каждой; порядок — по ценности (в точке с несколькими картами маркер красится по первой) */
+const KEYCARDS: { id: string; label: string; color: string }[] = [
+  { id: '5c1d0efb86f7744baf2e7b7b', label: 'Красная', color: '#e04b4b' },
+  { id: '5c1d0f4986f7744bb01837fa', label: 'Чёрная', color: '#3a3f47' },
+  { id: '5c1e495a86f7743109743dfb', label: 'Фиолетовая', color: '#a05be0' },
+  { id: '5c1d0c5f86f7744bb2683cf0', label: 'Синяя', color: '#4b8be0' },
+  { id: '5c1d0dc586f7744baf2e7b79', label: 'Зелёная', color: '#4bc46b' },
+  { id: '5c1d0d6d86f7744bb2683e1f', label: 'Жёлтая', color: '#e8c84b' },
+  { id: '5c94bbff86f7747ee735c08f', label: 'Доступ в Лабораторию', color: '#5fd0d0' },
+  { id: '6711039f9e648049e50b3307', label: 'Жилой блок (Лаборатория)', color: '#7c8a80' },
+  { id: '5e42c81886f7742a01529f57', label: 'Объект #11SR', color: '#e08a3c' },
+  { id: '5e42c83786f7742a021fdf3c', label: 'Объект #21WS', color: '#d66fb0' },
+]
+const KEYCARD_IDS = new Set(KEYCARDS.map((k) => k.id))
+const LEDX = '5c0530ee86f774697952d952'
 /** типы пунктов, у которых есть «место» на карте */
 const PLACE_OBJECTIVES = new Set<Objective['type']>(['visit', 'findQuestItem', 'plantItem', 'plantQuestItem', 'mark', 'useItem'])
 
@@ -192,6 +209,7 @@ export function MapsPage() {
   const [questScope, setQuestScope] = useState<'available' | 'all'>('available')
   const [lootType, setLootType] = useState<string>('')
   const [looseCat, setLooseCat] = useState<string>('all')
+  const [keycardSel, setKeycardSel] = useState<string>('')
   const stations = useProfile((s) => s.stations)
   const have = useProfile((s) => s.have)
   const kappaOnly = useProfile((s) => s.kappaOnly)
@@ -215,6 +233,9 @@ export function MapsPage() {
     }
     return out
   }, [gmap, data, neededIds])
+  const cardPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.some((id) => KEYCARD_IDS.has(id))) : [], [gmap])
+  const cardCounts = useMemo(() => Object.fromEntries(KEYCARDS.map((k) => [k.id, cardPoints.filter((l) => l.items.includes(k.id)).length])) as Record<string, number>, [cardPoints])
+  const ledxPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.includes(LEDX)) : [], [gmap])
   // счётчики для меню слоёв
   const layerCounts = useMemo((): Record<ToggleKey, number> => {
     const z = Object.fromEntries(Object.keys(DEFAULT_TOGGLES).map((k) => [k, 0])) as Record<ToggleKey, number>
@@ -234,6 +255,8 @@ export function MapsPage() {
     z.bosses = gmap.bosses.reduce((n, b) => n + b.positions.length, 0)
     z.locks = gmap.locks.length
     z.keySpawns = loosePoints.keys?.length ?? 0
+    z.keycards = cardPoints.length
+    z.ledx = ledxPoints.length
     z.containers = gmap.lootContainers.length
     z.loose = gmap.lootLoose.length
     z.hazards = gmap.hazards.length
@@ -245,7 +268,7 @@ export function MapsPage() {
       for (const o of v.task.objectives) for (const zz of o.zones ?? []) if (zz.map === gmap.id && !objectivesDone[o.id]) z.quests++
     }
     return z
-  }, [gmap, data, gameMode, loosePoints, views, questScope, objectivesDone])
+  }, [gmap, data, gameMode, loosePoints, cardPoints, ledxPoints, views, questScope, objectivesDone])
   const [panelOpen, setPanelOpen] = useState(!overlay)
   const panelPadRef = useRef(0)
   panelPadRef.current = panelOpen ? (overlay ? 220 : 280) : 0
@@ -459,6 +482,25 @@ export function MapsPage() {
         group.addLayer(m)
       }
     }
+    if (toggles.keycards) {
+      for (const l of cardPoints) {
+        const here = KEYCARDS.filter((k) => l.items.includes(k.id))
+        if (keycardSel && !here.some((k) => k.id === keycardSel)) continue
+        const main = keycardSel ? here.find((k) => k.id === keycardSel)! : here[0]
+        const m = L.marker(pos(l.position), { icon: icon('card', main.color, undefined, { size: 16, square: true, dim: !onLevel(l.position) }) })
+        tip(m, `<b>Ключ-карты</b><br>${here.map((k) => `<span style="color:${k.color === '#3a3f47' ? '#c9ced6' : k.color}">■</span> ${data.items[k.id]?.shortName ?? k.label}`).join('<br>')}`, { className: 'tip-wide' })
+        m.on('click', () => openItem(main.id))
+        group.addLayer(m)
+      }
+    }
+    if (toggles.ledx) {
+      for (const l of ledxPoints) {
+        const m = L.marker(pos(l.position), { icon: icon('ledx', '#5fd0d0', undefined, { size: 16, square: true, dim: !onLevel(l.position) }) })
+        tip(m, `<b>${data.items[LEDX]?.name ?? 'LEDX'}</b><br>может лежать здесь`)
+        m.on('click', () => openItem(LEDX))
+        group.addLayer(m)
+      }
+    }
     if (toggles.keySpawns && !(toggles.loose && looseCat === 'keys')) {
       const isKey = (id: string) => !!data.items[id]?.categories.includes(KEY_CATEGORY)
       for (const l of loosePoints.keys ?? []) {
@@ -533,7 +575,7 @@ export function MapsPage() {
       const pts = gmap.locks.filter((l) => l.key === keyParam).map((l) => pos(l.position))
       if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.8), { maxZoom: meta.maxZoom - 1 })
     }
-  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
+  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
 
   // ── авто-этаж: по высоте последней точки ──
   useEffect(() => {
@@ -770,6 +812,21 @@ export function MapsPage() {
                                   </button>
                                 )
                               })}
+                            </div>
+                          )}
+                          {key === 'keycards' && on && (
+                            <div className="ml-6 mt-1 mb-1 flex flex-col gap-px">
+                              <button type="button" onClick={() => setKeycardSel('')} className={`layer-row h-6 text-[12px] ${keycardSel === '' ? 'layer-on' : ''}`} style={keycardSel === '' ? { borderColor: color } : undefined}>
+                                <span className="truncate flex-1 text-left">Все карты</span>
+                                <span className="num text-[11px]">{cardPoints.length}</span>
+                              </button>
+                              {KEYCARDS.filter((k) => cardCounts[k.id] > 0).map((k) => (
+                                <button key={k.id} type="button" onClick={() => setKeycardSel(k.id)} className={`layer-row h-6 text-[12px] ${keycardSel === k.id ? 'layer-on' : ''}`} style={keycardSel === k.id ? { borderColor: k.color } : undefined}>
+                                  <span className="layer-ic" style={{ color: k.color }}><span dangerouslySetInnerHTML={{ __html: MARKER_SVG.card }} /></span>
+                                  <span className="truncate flex-1 text-left">{k.label}</span>
+                                  <span className="num text-[11px]">{cardCounts[k.id]}</span>
+                                </button>
+                              ))}
                             </div>
                           )}
                           {key === 'containers' && on && (
