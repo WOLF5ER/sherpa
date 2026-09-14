@@ -158,7 +158,7 @@ function TaskRow({ view }: { view: TaskView }) {
         <TraderMark id={t.trader} size={30} />
         <button type="button" onClick={() => setOpen(!open)} className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-2 min-w-0">
-            <span className={`display text-[17px] truncate ${locked ? 'text-ink-2' : 'text-ink'}`}>{t.name}</span>
+            <span className={`display text-[17px] truncate ${t.seasonal ? (locked ? 'text-season/70' : 'text-season') : locked ? 'text-ink-2' : 'text-ink'}`}>{t.name}</span>
             {t.kappaRequired && <span className="shrink-0 display text-[10px] text-brass border border-brass-3 rounded-[3px] px-1 leading-[14px]" title="Нужен для Каппы">К</span>}
             {t.lightkeeperRequired && <span className="shrink-0 display text-[10px] text-info border border-info/50 rounded-[3px] px-1 leading-[14px]" title="Нужен для Смотрителя">С</span>}
             {t.seasonal && <span className="shrink-0 display text-[10px] text-season border border-season/50 rounded-[3px] px-1 leading-[14px]" title="Сезонный квест — только для сезонного персонажа; данные собраны вручную, без точек на карте">СЕЗОН</span>}

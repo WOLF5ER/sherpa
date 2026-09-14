@@ -146,7 +146,7 @@ export function RaidPage() {
                   <li key={v.task.id} className={`panel px-3 py-2 ${v.status === 'locked' ? 'opacity-60' : ''}`}>
                     <div className="flex items-center gap-2">
                       <TraderMark id={v.task.trader} size={22} />
-                      <Link to={`/tasks?q=${encodeURIComponent(v.task.name)}`} className="display text-[16px] text-ink hover:text-brass-2 truncate">{v.task.name}</Link>
+                      <Link to={`/tasks?q=${encodeURIComponent(v.task.name)}`} className={`display text-[16px] hover:text-brass-2 truncate ${v.task.seasonal ? 'text-season' : 'text-ink'}`}>{v.task.name}</Link>
                       {v.task.kappaRequired && <span className="display text-[10px] text-brass border border-brass-3 rounded-[3px] px-1 leading-[14px]">К</span>}
                       {v.status === 'locked' && <span className="eyebrow">{v.task.minPlayerLevel} ур.</span>}
                       {hasZone && <Link to={`/maps?map=${gmap.normalizedName}&task=${v.task.id}`} className="ml-auto text-ink-3 hover:text-brass-2" title="Показать зоны на карте"><MapPin size={14} /></Link>}

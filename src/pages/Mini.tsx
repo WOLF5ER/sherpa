@@ -150,8 +150,9 @@ export function MiniPage() {
       for (const o of v.task.objectives) for (const z of o.zones ?? []) {
         if (z.map !== gmap.id || objectivesDone[o.id]) continue
         const d = dim(z.position)
-        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: COLORS.quest, weight: 1, fillOpacity: d ? 0.04 : 0.12, opacity: d ? 0.3 : 1, interactive: false }))
-        group.addLayer(L.marker(pos(z.position), { icon: icon('flag', COLORS.quest, prefs.labels ? v.task.name : undefined, { size: 16, dim: d }) }))
+        const qc = v.task.seasonal ? COLORS.season : COLORS.quest
+        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: 1, fillOpacity: d ? 0.04 : 0.12, opacity: d ? 0.3 : 1, interactive: false }))
+        group.addLayer(L.marker(pos(z.position), { icon: icon('flag', qc, prefs.labels ? v.task.name : undefined, { size: 16, dim: d }) }))
       }
     }
     for (const mk of marks[gmap.id] ?? []) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#e06ba0', prefs.labels ? mk.name : undefined, { size: 16 }) }))

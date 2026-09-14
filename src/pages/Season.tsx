@@ -130,7 +130,7 @@ export function SeasonPage() {
               <li key={v.task.id}>
                 <Link to={`/tasks?q=${encodeURIComponent(v.task.name)}`} className={`panel px-3 py-2 flex items-center gap-2 hover:border-line-2 ${v.status === 'done' ? 'opacity-50' : ''}`}>
                   <TraderMark id={v.task.trader} size={20} />
-                  <span className="flex-1 truncate">{v.task.name}</span>
+                  <span className={`flex-1 truncate ${v.task.seasonal ? 'text-season' : ''}`}>{v.task.name}</span>
                   <span className={`eyebrow ${v.status === 'available' ? 'text-fir' : ''}`}>{v.status === 'available' ? 'доступен' : v.status === 'done' ? 'выполнен' : v.task.seasonal ? 'после: ' + (v.missing[0]?.name.replace(' [KORD BREACH]', '') ?? '…') : `${v.task.minPlayerLevel} ур.`}</span>
                 </Link>
               </li>

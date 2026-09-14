@@ -502,8 +502,9 @@ export function MapsPage() {
       for (const { v, o, z } of questZones) {
         const isDone = !!objectivesDone[o.id]
         const dim = !onLevel(z.position) || isDone
-        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: COLORS.quest, weight: 1, fillOpacity: dim ? 0.04 : 0.1, interactive: false }))
-        const m = L.marker(pos(z.position), { icon: icon('flag', COLORS.quest, withLabels ? v.task.name : undefined, { size: 20, dim }) })
+        const qc = v.task.seasonal ? COLORS.season : COLORS.quest
+        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: 1, fillOpacity: dim ? 0.04 : 0.1, interactive: false }))
+        const m = L.marker(pos(z.position), { icon: icon('flag', qc, withLabels ? v.task.name : undefined, { size: 20, dim }) })
         tip(m, `<b>${v.task.name}</b><br>${o.description}<br><span style="opacity:.6">${isDone ? 'пункт выполнен · ' : ''}клик — отметить</span>`)
         m.bindPopup(() => popupFor(v, o, isDone), { closeButton: false, offset: [0, -10], className: 'qpop-wrap', maxWidth: 320 })
         group.addLayer(m)
@@ -814,7 +815,7 @@ export function MapsPage() {
                       <li key={v.task.id} className="text-[12px]">
                         <div className="flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: v.task.seasonal ? COLORS.season : COLORS.quest }} />
-                          <span className="text-ink truncate">{v.task.name}</span>
+                          <span className={`truncate ${v.task.seasonal ? 'text-season' : 'text-ink'}`}>{v.task.name.replace(' [KORD BREACH]', '')}</span>
                         </div>
                         <ul className="ml-3.5 mt-0.5 flex flex-col gap-0.5">
                           {objectives.map((o) => (
