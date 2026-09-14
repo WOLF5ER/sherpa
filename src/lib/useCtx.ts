@@ -50,8 +50,9 @@ export function useTaskViews(): Map<string, TaskView> {
   const ctx = usePriceCtx()
   const faction = useProfile((s) => s.faction)
   const completed = useProfile((s) => s.completed)
+  const gameMode = useProfile((s) => s.gameMode)
   return useMemo(
-    () => computeTaskViews(data, { level: ctx.level, faction, completed, traderLevel: ctx.traderLevel }),
-    [data, ctx, faction, completed],
+    () => computeTaskViews(data, { level: ctx.level, faction, completed, traderLevel: ctx.traderLevel, hideArena: gameMode === 'pvp-season' }),
+    [data, ctx, faction, completed, gameMode],
   )
 }

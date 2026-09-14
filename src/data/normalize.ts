@@ -210,6 +210,7 @@ export function normalize(raw: RawBundle): GameData {
       traderRequirements: (t.traderRequirements ?? []).map((r: any) => ({
         trader: r.trader, requirementType: r.requirementType, value: r.value,
       })),
+      storyVar: (() => { const g = (t.otherRequirements ?? []).find((o: any) => o?.type === 'globalVariable'); return g ? { id: g.variableId, value: Number(g.value) || 1 } : undefined })(),
       objectives,
       kappaRequired: !!t.kappaRequired,
       lightkeeperRequired: !!t.lightkeeperRequired,

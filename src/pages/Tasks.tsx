@@ -174,6 +174,9 @@ function TaskRow({ view }: { view: TaskView }) {
             {locked && view.traderLocked.map((l) => (
               <span key={l.trader} className="inline-flex items-center gap-1"><Lock size={11} />{data.traders[l.trader]?.name} ур. {l.level}</span>
             ))}
+            {locked && view.storyLocked && (
+              <span className="inline-flex items-center gap-1" title="Квесты торговца открываются по мере выполнения его других квестов на этом уровне лояльности (EFT 1.0)"><Lock size={11} />{view.storyLocked.have === 0 ? 'нужен уровень лояльности торговца' : `сюжет торговца: этап ${view.storyLocked.have} из ${view.storyLocked.need}`}</span>
+            )}
           </div>
         </button>
         <div className="hidden sm:flex items-center gap-1">

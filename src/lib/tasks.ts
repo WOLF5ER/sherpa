@@ -1,5 +1,6 @@
 import type { GameData, Task } from '@/data/types'
 import type { Faction } from '@/store/profile'
+import { STORY_POOLS } from '@/data/storyPools'
 
 export type TaskStatus = 'done' | 'available' | 'locked'
 
@@ -11,6 +12,8 @@ export interface TaskView {
   levelLocked: boolean
   /** не хватает уровня лояльности: traderId → нужный уровень */
   traderLocked: { trader: string; level: number }[]
+  /** заперт сюжетным пулом торговца: нужен этап N, сейчас M */
+  storyLocked?: { need: number; have: number }
 }
 
 export interface TaskCtx {
@@ -18,6 +21,8 @@ export interface TaskCtx {
   faction: Faction
   completed: Record<string, true>
   traderLevel: (traderId: string) => number
+  /** сезон: квесты Ref (Арена) в игре недоступны — прячем */
+  hideArena?: boolean
 }
 
 export function visibleForFaction(task: Task, faction: Faction): boolean {
@@ -28,6 +33,21 @@ export function visibleForFaction(task: Task, faction: Faction): boolean {
 export function computeTaskViews(data: GameData, ctx: TaskCtx): Map<string, TaskView> {
   const memo = new Map<string, TaskStatus>()
   const visiting = new Set<string>()
+  // этап сюжетного пула = 1 + выполненных квестов этого пула
+  const poolStage = new Map<string, number>()
+  for (const t of Object.values(data.tasks)) if (t.storyVar && ctx.completed[t.id]) poolStage.set(t.storyVar.id, (poolStage.get(t.storyVar.id) ?? 0) + 1)
+  const stageOf = (varId: string) => 1 + (poolStage.get(varId) ?? 0)
+  const traderIdByName = new Map(Object.values(data.traders).map((tr) => [tr.normalizedName, tr.id]))
+  const storyLock = (t: Task): { need: number; have: number } | null => {
+    if (!t.storyVar) return null
+    const pool = STORY_POOLS[t.storyVar.id]
+    if (!pool) return null // неизвестная переменная — не мешаем
+    const traderId = traderIdByName.get(pool.trader)
+    if (traderId && ctx.traderLevel(traderId) < pool.ll) return { need: t.storyVar.value, have: 0 }
+    const have = stageOf(t.storyVar.id)
+    return have >= t.storyVar.value ? null : { need: t.storyVar.value, have }
+  }
+  const arenaTrader = ctx.hideArena ? traderIdByName.get('ref') : undefined
 
   const status = (id: string): TaskStatus => {
     const cached = memo.get(id)
@@ -39,6 +59,7 @@ export function computeTaskViews(data: GameData, ctx: TaskCtx): Map<string, Task
     visiting.add(id)
     let ok = ctx.level >= t.minPlayerLevel
     if (ok) ok = traderLocks(t, ctx).length === 0
+    if (ok) ok = storyLock(t) === null
     if (ok) {
       for (const r of t.taskRequirements) {
         if (!data.tasks[r.task]) continue
@@ -61,6 +82,7 @@ export function computeTaskViews(data: GameData, ctx: TaskCtx): Map<string, Task
   const out = new Map<string, TaskView>()
   for (const t of Object.values(data.tasks)) {
     if (!visibleForFaction(t, ctx.faction)) continue
+    if (arenaTrader && t.trader === arenaTrader) continue
     const s = status(t.id)
     const missing: Task[] = []
     if (s === 'locked') {
@@ -71,7 +93,8 @@ export function computeTaskViews(data: GameData, ctx: TaskCtx): Map<string, Task
         if (status(r.task) !== 'done') missing.push(p)
       }
     }
-    out.set(t.id, { task: t, status: s, missing, levelLocked: ctx.level < t.minPlayerLevel, traderLocked: s === 'locked' ? traderLocks(t, ctx) : [] })
+    const sl = s === 'locked' ? storyLock(t) : null
+    out.set(t.id, { task: t, status: s, missing, levelLocked: ctx.level < t.minPlayerLevel, traderLocked: s === 'locked' ? traderLocks(t, ctx) : [], storyLocked: sl ?? undefined })
   }
   return out
 }

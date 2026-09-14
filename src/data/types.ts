@@ -181,6 +181,8 @@ export interface Task {
   minPlayerLevel: number
   taskRequirements: TaskRequirement[]
   traderRequirements: { trader: string; requirementType: string; value: number }[]
+  /** сюжетный пул торговца (otherRequirements globalVariable): переменная и нужный этап — см. data/storyPools.ts */
+  storyVar?: { id: string; value: number }
   objectives: Objective[]
   kappaRequired: boolean
   lightkeeperRequired: boolean
