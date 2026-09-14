@@ -96,6 +96,8 @@ const LOOSE_CATEGORIES: { id: string; label: string; cats?: string[] }[] = [
   { id: 'other', label: 'Прочее' },
 ]
 const KEY_CATEGORY = '543be5e94bdc2df1348b4568'
+/** типы пунктов, у которых есть «место» на карте */
+const PLACE_OBJECTIVES = new Set<Objective['type']>(['visit', 'findQuestItem', 'plantItem', 'plantQuestItem', 'mark', 'useItem'])
 
 export function MapsPage() {
   const data = useGame()
@@ -621,6 +623,20 @@ export function MapsPage() {
     marksRef.current = group
   }, [marks, squadMarks, gmap, meta, removeMark, squad.url, squad.room, squad.name])
 
+  // квесты на этой карте, у пунктов которых нет координат (KORD BREACH — целиком, у tarkov.dev — часть): показываем словами
+  const questsNoPoint = useMemo(() => {
+    if (!gmap) return []
+    const out: { v: TaskView; objectives: Objective[] }[] = []
+    for (const v of views.values()) {
+      if (v.status === 'done' || (questScope === 'available' && v.status !== 'available')) continue
+      // у tarkov.dev берём только «местные» пункты (найти/заложить/посетить…), у сезонных — все с этой картой: там и «убить» привязано к месту
+      const objectives = v.task.objectives.filter((o) => !objectivesDone[o.id] && o.maps.includes(gmap.id) && !o.zones?.some((z) => z.map === gmap.id)
+        && (v.task.seasonal || PLACE_OBJECTIVES.has(o.type)))
+      if (objectives.length) out.push({ v, objectives })
+    }
+    return out.sort((a, b) => Number(!!b.v.task.seasonal) - Number(!!a.v.task.seasonal))
+  }, [gmap, views, questScope, objectivesDone])
+
   const lootTypes = useMemo(() => {
     if (!gmap) return []
     const counts = new Map<string, number>()
@@ -792,6 +808,29 @@ export function MapsPage() {
             <div>
               <Eyebrow>Квесты на карте</Eyebrow>
               <div className="mt-1.5"><Segmented value={questScope} onChange={setQuestScope} options={[{ value: 'available', label: 'Доступные' }, { value: 'all', label: 'Все' }]} /></div>
+              {questsNoPoint.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-[11px] text-ink-4 mb-1">Без точки на карте — где искать, словами:</div>
+                  <ul className="flex flex-col gap-1.5">
+                    {questsNoPoint.map(({ v, objectives }) => (
+                      <li key={v.task.id} className="text-[12px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: v.task.seasonal ? COLORS.season : COLORS.quest }} />
+                          <span className="text-ink truncate">{v.task.name}</span>
+                        </div>
+                        <ul className="ml-3.5 mt-0.5 flex flex-col gap-0.5">
+                          {objectives.map((o) => (
+                            <li key={o.id} className="flex items-start gap-1.5 text-ink-3">
+                              <button type="button" title="Пункт выполнен" onClick={() => toggleObjective(o.id, true)} className="shrink-0 mt-[3px] w-3 h-3 rounded-sm border border-line-2 hover:border-brass" />
+                              <span>{o.description}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 

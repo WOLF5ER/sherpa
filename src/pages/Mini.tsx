@@ -53,8 +53,10 @@ export function MiniPage() {
   useEffect(() => {
     // главное окно сменило карту или подложку — подхватываем через событие storage
     const on = (e: StorageEvent) => {
-      if (e.key === 'sherpa:ui') { const u = readMainUI(e.newValue); setMainMapId(u.currentMapId ?? null); setMapStyle(u.mapStyle ?? 'scheme') }
+      if (e.key === 'sherpa:ui') { const u = readMainUI(e.newValue); setMainMapId(u.currentMapId ?? null); setMapStyle(u.mapStyle ?? 'scheme'); void useUI.persist.rehydrate() }
       if (e.key === 'sherpa:raidMap') setMainMapId(e.newValue)
+      // отметили квест / сменили профиль в главном окне — свой store мини-карты перечитываем из localStorage
+      if (e.key === 'sherpa:profile') void useProfile.persist.rehydrate()
     }
     window.addEventListener('storage', on)
     return () => window.removeEventListener('storage', on)
