@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, KeyRound, Skull, DoorOpen, TriangleAlert } from 'lucide-react'
+import { MapPin, KeyRound, Skull, DoorOpen, TriangleAlert, Check } from 'lucide-react'
 import { useGame } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
@@ -29,6 +29,7 @@ export function RaidPage() {
   const have = useProfile((s) => s.have)
   const kappaOnly = useProfile((s) => s.kappaOnly)
   const objectivesDone = useProfile((s) => s.objectivesDone)
+  const toggleObjective = useProfile((s) => s.toggleObjective)
   const [includeLocked, setIncludeLocked] = useState(false)
 
   const maps = useMemo(() => Object.values(data.maps)
@@ -53,17 +54,21 @@ export function RaidPage() {
   const onThisMap = (o: Objective) => o.maps.includes(gmap!.id) || !!o.zones?.some((z) => z.map === gmap!.id)
   const keys = useMemo(() => {
     if (!gmap) return []
-    const set = new Map<string, Set<string>>()
+    const set = new Map<string, { names: Set<string>; objIds: string[] }>()
     for (const v of tasks) {
       // все пункты квеста на этой карте уже отмечены — ключ больше не нужен
       const here = v.task.objectives.filter(onThisMap)
       if (here.length && here.every((o) => objectivesDone[o.id])) continue
       for (const nk of v.task.neededKeys) {
         if (nk.map && nk.map !== gmap.id) continue
-        for (const k of nk.keys) (set.get(k) ?? set.set(k, new Set()).get(k)!).add(v.task.name)
+        for (const k of nk.keys) {
+          const e = set.get(k) ?? set.set(k, { names: new Set(), objIds: [] }).get(k)!
+          e.names.add(v.task.name)
+          for (const o of here) if (!objectivesDone[o.id]) e.objIds.push(o.id)
+        }
       }
     }
-    return [...set.entries()].map(([id, names]) => ({ item: data.items[id], names: [...names] })).filter((k) => k.item)
+    return [...set.entries()].map(([id, e]) => ({ item: data.items[id], names: [...e.names], objIds: e.objIds })).filter((k) => k.item)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, gmap, data, objectivesDone])
 
@@ -82,14 +87,15 @@ export function RaidPage() {
 
   // предметы, которые надо принести С СОБОЙ (установить/передать на карте)
   const bring = useMemo(() => {
-    const out = new Map<string, { item: string; count: number; tasks: Map<string, number> }>()
+    const out = new Map<string, { item: string; count: number; tasks: Map<string, number>; objIds: string[] }>()
     for (const v of tasks) for (const o of v.task.objectives) {
       if (o.type !== 'plantItem' || !o.items?.length) continue
       if (objectivesDone[o.id]) continue // уже установлено — нести не надо
       if (!onThisMap(o) && v.task.map !== gmap!.id) continue
       const id = o.items[0]
-      const e = out.get(id) ?? { item: id, count: 0, tasks: new Map<string, number>() }
+      const e = out.get(id) ?? { item: id, count: 0, tasks: new Map<string, number>(), objIds: [] }
       e.count += o.count ?? 1
+      e.objIds.push(o.id)
       e.tasks.set(v.task.name, (e.tasks.get(v.task.name) ?? 0) + (o.count ?? 1))
       out.set(id, e)
     }
@@ -205,6 +211,9 @@ export function RaidPage() {
                       <div className="text-[11px] text-ink-3 truncate">{k.names.join(', ')}</div>
                     </div>
                     <Link to={`/maps?map=${gmap.normalizedName}&key=${k.item.id}`} className="text-ink-3 hover:text-brass-2" title="Какую дверь открывает"><MapPin size={13} /></Link>
+                    {k.objIds.length > 0 && (
+                      <button type="button" onClick={() => k.objIds.forEach((id) => toggleObjective(id, true))} className="text-ink-3 hover:text-fir" title="Уже был — отметить пункты квеста на этой карте выполненными"><Check size={14} /></button>
+                    )}
                   </li>
                 ))}
                 {[...extractItems.entries()].map(([id, names]) => data.items[id] && (
@@ -223,6 +232,7 @@ export function RaidPage() {
                       <div className="text-[13px] text-ink truncate">{data.items[b.item].shortName} <span className="num text-ink-3">×{b.count}</span></div>
                       <div className="text-[11px] text-ink-3 truncate">установить: {b.tasks.join(', ')}</div>
                     </div>
+                    <button type="button" onClick={() => b.objIds.forEach((id) => toggleObjective(id, true))} className="text-ink-3 hover:text-fir" title="Установил — отметить пункты выполненными"><Check size={14} /></button>
                   </li>
                 ))}
               </ul>
