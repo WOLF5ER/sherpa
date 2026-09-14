@@ -93,12 +93,14 @@ const LOOSE_CATEGORIES: { id: string; label: string; cats?: string[] }[] = [
   { id: 'needed', label: 'Нужное мне' },
   { id: 'barter', label: 'Ценности и бартер', cats: ['5448eb774bdc2d0a728b4567', '5448ecbe4bdc2d60728b4568'] },
   { id: 'cases', label: 'Кейсы', cats: ['566162e44bdc2d3f298b4573'] },
-  { id: 'keys', label: 'Ключи', cats: ['543be5e94bdc2df1348b4568'] },
+  { id: 'keys', label: 'Ключи', cats: ['5c99f98d86f7745c314214b3'] },
   { id: 'meds', label: 'Медицина', cats: ['543be5664bdc2dd4348b4569'] },
   { id: 'food', label: 'Еда и вода', cats: ['543be6674bdc2df1348b4569'] },
   { id: 'other', label: 'Прочее' },
 ]
-const KEY_CATEGORY = '543be5e94bdc2df1348b4568'
+/** механические ключи (ветка mechanical-key); ключ-карты — отдельная ветка keycard, в «ключах» их нет */
+const KEY_CATEGORY = '5c99f98d86f7745c314214b3'
+const KEYCARD_CATEGORY = '5c164d2286f774194c5e69fa'
 /** ключ-карты: свой цвет у каждой; порядок — по ценности (в точке с несколькими картами маркер красится по первой) */
 const KEYCARDS: { id: string; label: string; color: string }[] = [
   { id: '5c1d0efb86f7744baf2e7b7b', label: 'Красная', color: '#e04b4b' },
@@ -112,7 +114,8 @@ const KEYCARDS: { id: string; label: string; color: string }[] = [
   { id: '5e42c81886f7742a01529f57', label: 'Объект #11SR', color: '#e08a3c' },
   { id: '5e42c83786f7742a021fdf3c', label: 'Объект #21WS', color: '#d66fb0' },
 ]
-const KEYCARD_IDS = new Set(KEYCARDS.map((k) => k.id))
+const KEYCARD_COLORS = Object.fromEntries(KEYCARDS.map((k) => [k.id, k.color]))
+const isKeycard = (it: { categories: string[] } | undefined) => !!it?.categories.includes(KEYCARD_CATEGORY)
 const LEDX = '5c0530ee86f774697952d952'
 /** типы пунктов, у которых есть «место» на карте */
 const PLACE_OBJECTIVES = new Set<Objective['type']>(['visit', 'findQuestItem', 'plantItem', 'plantQuestItem', 'mark', 'useItem'])
@@ -233,8 +236,16 @@ export function MapsPage() {
     }
     return out
   }, [gmap, data, neededIds])
-  const cardPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.some((id) => KEYCARD_IDS.has(id))) : [], [gmap])
-  const cardCounts = useMemo(() => Object.fromEntries(KEYCARDS.map((k) => [k.id, cardPoints.filter((l) => l.items.includes(k.id)).length])) as Record<string, number>, [cardPoints])
+  const cardPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.some((id) => isKeycard(data.items[id]))) : [], [gmap, data])
+  // список карт на этой карте: известные — в порядке ценности, остальные ключ-карты из категории — следом
+  const cardsHere = useMemo(() => {
+    const ids = new Set<string>()
+    for (const l of cardPoints) for (const id of l.items) if (isKeycard(data.items[id])) ids.add(id)
+    const known = KEYCARDS.filter((k) => ids.has(k.id))
+    const other = [...ids].filter((id) => !KEYCARD_COLORS[id]).map((id) => ({ id, label: data.items[id]?.shortName ?? id, color: '#9aa39c' }))
+    return [...known, ...other]
+  }, [cardPoints, data])
+  const cardCounts = useMemo(() => Object.fromEntries(cardsHere.map((k) => [k.id, cardPoints.filter((l) => l.items.includes(k.id)).length])) as Record<string, number>, [cardsHere, cardPoints])
   const ledxPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.includes(LEDX)) : [], [gmap])
   // счётчики для меню слоёв
   const layerCounts = useMemo((): Record<ToggleKey, number> => {
@@ -484,7 +495,7 @@ export function MapsPage() {
     }
     if (toggles.keycards) {
       for (const l of cardPoints) {
-        const here = KEYCARDS.filter((k) => l.items.includes(k.id))
+        const here = cardsHere.filter((k) => l.items.includes(k.id))
         if (keycardSel && !here.some((k) => k.id === keycardSel)) continue
         const main = keycardSel ? here.find((k) => k.id === keycardSel)! : here[0]
         const m = L.marker(pos(l.position), { icon: icon('card', main.color, undefined, { size: 16, square: true, dim: !onLevel(l.position) }) })
@@ -575,7 +586,7 @@ export function MapsPage() {
       const pts = gmap.locks.filter((l) => l.key === keyParam).map((l) => pos(l.position))
       if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.8), { maxZoom: meta.maxZoom - 1 })
     }
-  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
+  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
 
   // ── авто-этаж: по высоте последней точки ──
   useEffect(() => {
@@ -820,7 +831,7 @@ export function MapsPage() {
                                 <span className="truncate flex-1 text-left">Все карты</span>
                                 <span className="num text-[11px]">{cardPoints.length}</span>
                               </button>
-                              {KEYCARDS.filter((k) => cardCounts[k.id] > 0).map((k) => (
+                              {cardsHere.map((k) => (
                                 <button key={k.id} type="button" onClick={() => setKeycardSel(k.id)} className={`layer-row h-6 text-[12px] ${keycardSel === k.id ? 'layer-on' : ''}`} style={keycardSel === k.id ? { borderColor: k.color } : undefined}>
                                   <span className="layer-ic" style={{ color: k.color }}><span dangerouslySetInnerHTML={{ __html: MARKER_SVG.card }} /></span>
                                   <span className="truncate flex-1 text-left">{k.label}</span>
