@@ -37,7 +37,7 @@ export function MiniPage() {
   const objectivesDone = useProfile((s) => s.objectivesDone)
   const toggleObjective = useProfile((s) => s.toggleObjective)
   /** клик по флажку: подтверждение «пункт выполнен» внизу окна */
-  const [pick, setPick] = useState<{ task: string; objId: string; desc: string; approx: boolean } | null>(null)
+  const [pick, setPick] = useState<{ task: string; trader: string; objId: string; desc: string; approx: boolean } | null>(null)
   const launcher = useLauncher()
   const [prefs, setPrefs] = useState<MiniPrefs>(readPrefs)
   const [hover, setHover] = useState(false)
@@ -157,7 +157,7 @@ export function MiniPage() {
         const qc = v.task.seasonal ? COLORS.season : COLORS.quest
         if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: 1, fillOpacity: d ? 0.04 : 0.12, opacity: d ? 0.3 : 1, interactive: false }))
         const fm = L.marker(pos(z.position), { icon: icon('flag', qc, prefs.labels ? v.task.name : undefined, { size: 16, dim: d }), zIndexOffset: 500 })
-        fm.on('click', (e) => { L.DomEvent.stopPropagation(e); setPick({ task: v.task.name, objId: o.id, desc: o.description, approx: !!o.approx }) })
+        fm.on('click', (e) => { L.DomEvent.stopPropagation(e); setPick({ task: v.task.name, trader: v.task.trader, objId: o.id, desc: o.description, approx: !!o.approx }) })
         group.addLayer(fm)
       }
     }
@@ -215,6 +215,7 @@ export function MiniPage() {
       {pick && (
         <div className="absolute inset-x-2 bottom-10 rounded-[4px] bg-black/85 border border-season/60 p-2 text-white text-[11px] leading-tight shadow-[0_4px_16px_rgba(0,0,0,.6)]" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start gap-1.5">
+            {data.traders[pick.trader]?.imageLink && <img src={data.traders[pick.trader].imageLink} alt="" title={data.traders[pick.trader].name} className="w-7 h-7 rounded-[3px] object-cover border border-white/20 shrink-0" />}
             <div className="min-w-0 flex-1">
               <div className="truncate font-semibold">{pick.task}</div>
               <div className="text-white/75 line-clamp-2">{pick.approx ? '≈ ' : ''}{pick.desc}</div>

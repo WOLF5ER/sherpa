@@ -486,7 +486,10 @@ export function MapsPage() {
         const zoneObjs = v.task.objectives.filter((x) => x.zones?.length)
         const doneCount = zoneObjs.filter((x) => objectivesDone[x.id]).length
         const add = (tag: string, cls: string, text: string) => { const n = document.createElement(tag); n.className = cls; n.textContent = text; el.appendChild(n); return n }
-        add('div', 'qpop-title', v.task.name)
+        const head = add('div', 'qpop-head', '')
+        const trader = data.traders[v.task.trader]
+        if (trader?.imageLink) { const im = document.createElement('img'); im.src = trader.imageLink; im.alt = ''; im.title = trader.name; im.className = 'qpop-trader'; head.appendChild(im) }
+        const title = document.createElement('div'); title.className = 'qpop-title'; title.textContent = v.task.name; head.appendChild(title)
         add('div', 'qpop-desc', o.description)
         if (o.approx) add('div', 'qpop-meta', '≈ координаты приближённые (сняты с карты вики) — смотри скрины')
         if (zoneObjs.length > 1) add('div', 'qpop-meta', `пунктов на картах: ${doneCount} / ${zoneObjs.length}${isDone ? ' · этот выполнен' : ''}`)

@@ -360,6 +360,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 }
 .qpop-wrap .leaflet-popup-content { margin: 10px 12px; font-family: var(--font-sans); font-size: 12px; line-height: 1.35; }
 .qpop-wrap .leaflet-popup-tip { background: var(--color-bg-2); border: 1px solid var(--color-line-2); border-top: 0; border-left: 0; }
+.qpop-head { display: flex; align-items: center; gap: 8px; }
+.qpop-trader { width: 26px; height: 26px; border-radius: 3px; object-fit: cover; border: 1px solid var(--color-line-2); flex: none; }
 .qpop-title { font-family: var(--font-display); font-size: 15px; letter-spacing: .02em; color: var(--color-ink); }
 .qpop-desc { margin-top: 3px; color: var(--color-ink-2); max-width: 280px; }
 .qpop-meta { margin-top: 4px; font-size: 11px; color: var(--color-ink-3); font-family: var(--font-mono); }
