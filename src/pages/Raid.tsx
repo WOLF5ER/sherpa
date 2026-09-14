@@ -8,7 +8,7 @@ import { computeNeeds, CURRENCY } from '@/lib/needs'
 import { objectiveLabel } from '@/lib/tasks'
 import { findMeta } from '@/data/mapMeta'
 import { extractsOf, FACTION_RU } from '@/lib/extracts'
-import type { GameMap, Task } from '@/data/types'
+import type { Objective, GameMap, Task } from '@/data/types'
 import { ItemCell } from '@/components/ItemCell'
 import { useFreshPrices } from '@/lib/useFreshPrices'
 import { Chip, Eyebrow, FirBadge, TraderMark, Toggle } from '@/components/ui'
@@ -28,6 +28,7 @@ export function RaidPage() {
   const stations = useProfile((s) => s.stations)
   const have = useProfile((s) => s.have)
   const kappaOnly = useProfile((s) => s.kappaOnly)
+  const objectivesDone = useProfile((s) => s.objectivesDone)
   const [includeLocked, setIncludeLocked] = useState(false)
 
   const maps = useMemo(() => Object.values(data.maps)
@@ -48,17 +49,23 @@ export function RaidPage() {
       .sort((a, b) => Number(b.status === 'available') - Number(a.status === 'available') || a.task.minPlayerLevel - b.task.minPlayerLevel)
   }, [views, gmap, includeLocked, kappaOnly])
 
+  // пункт квеста «про эту карту»
+  const onThisMap = (o: Objective) => o.maps.includes(gmap!.id) || !!o.zones?.some((z) => z.map === gmap!.id)
   const keys = useMemo(() => {
     if (!gmap) return []
     const set = new Map<string, Set<string>>()
     for (const v of tasks) {
+      // все пункты квеста на этой карте уже отмечены — ключ больше не нужен
+      const here = v.task.objectives.filter(onThisMap)
+      if (here.length && here.every((o) => objectivesDone[o.id])) continue
       for (const nk of v.task.neededKeys) {
         if (nk.map && nk.map !== gmap.id) continue
         for (const k of nk.keys) (set.get(k) ?? set.set(k, new Set()).get(k)!).add(v.task.name)
       }
     }
     return [...set.entries()].map(([id, names]) => ({ item: data.items[id], names: [...names] })).filter((k) => k.item)
-  }, [tasks, gmap, data])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, gmap, data, objectivesDone])
 
   // предметы из общего списка «что нести», которые могут лежать на этой карте
   const findHere = useMemo(() => {
@@ -75,18 +82,22 @@ export function RaidPage() {
 
   // предметы, которые надо принести С СОБОЙ (установить/передать на карте)
   const bring = useMemo(() => {
-    const out = new Map<string, { item: string; count: number; tasks: string[] }>()
+    const out = new Map<string, { item: string; count: number; tasks: Map<string, number> }>()
     for (const v of tasks) for (const o of v.task.objectives) {
       if (o.type !== 'plantItem' || !o.items?.length) continue
-      if (!o.maps.includes(gmap!.id) && !o.zones?.some((z) => z.map === gmap!.id) && v.task.map !== gmap!.id) continue
+      if (objectivesDone[o.id]) continue // уже установлено — нести не надо
+      if (!onThisMap(o) && v.task.map !== gmap!.id) continue
       const id = o.items[0]
-      const e = out.get(id) ?? { item: id, count: 0, tasks: [] }
+      const e = out.get(id) ?? { item: id, count: 0, tasks: new Map<string, number>() }
       e.count += o.count ?? 1
-      e.tasks.push(v.task.name)
+      e.tasks.set(v.task.name, (e.tasks.get(v.task.name) ?? 0) + (o.count ?? 1))
       out.set(id, e)
     }
-    return [...out.values()].filter((b) => data.items[b.item])
-  }, [tasks, gmap, data])
+    return [...out.values()].filter((b) => data.items[b.item]).map((b) => ({
+      ...b, tasks: [...b.tasks.entries()].map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)),
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, gmap, data, objectivesDone])
 
   const freshIds = useMemo(() => [
     ...keys.map((k) => k.item.id),
@@ -100,8 +111,16 @@ export function RaidPage() {
   const extracts = allExtracts.filter((e) => e.faction !== 'scav')
   const scavExtracts = allExtracts.filter((e) => e.faction === 'scav')
   // предметы для выходов ЧВК (ракеты, записки, карты минных полей)
+  // один и тот же предмет в двух вариантах (обычный/сезонный «Зелёный») — показываем раз, по короткому имени
   const extractItems = new Map<string, string[]>()
-  for (const e of extracts) for (const id of e.items) (extractItems.get(id) ?? extractItems.set(id, []).get(id)!).push(e.label)
+  const seenShort = new Map<string, string>()
+  for (const e of extracts) for (const id of e.items) {
+    const short = data.items[id]?.shortName ?? id
+    const key = seenShort.get(short) ?? id
+    seenShort.set(short, key)
+    const arr = extractItems.get(key) ?? extractItems.set(key, []).get(key)!
+    if (!arr.includes(e.label)) arr.push(e.label)
+  }
   const hazardTypes = new Map<string, number>()
   for (const h of gmap.hazards) hazardTypes.set(h.name || h.hazardType, (hazardTypes.get(h.name || h.hazardType) ?? 0) + 1)
 
