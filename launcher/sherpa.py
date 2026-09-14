@@ -736,20 +736,34 @@ class Api:
         win.events.closed += closed
 
     def save_file(self, name: str, text: str):
-        """«Экспорт профиля»: WebView2 не качает blob-ссылки — открываем диалог «Сохранить как» и пишем файл сами.
+        """«Экспорт профиля»: WebView2 не качает blob-ссылки — показываем «Сохранить как» и пишем файл сами.
+        Диалог WinForms — только в UI-потоке (через Invoke, ждём результата), из потока API он виснет.
         Возвращает путь или None (отмена)."""
         w = self._window
         if w is None:
             return None
         try:
-            res = w.create_file_dialog(webview.SAVE_DIALOG, directory=str(Path.home() / "Downloads"), save_filename=str(name))
+            import System.Windows.Forms as WinForms  # pythonnet, уже загружен pywebview
+            form = w.native
+            res: list[str] = []
+
+            def _show():
+                dlg = WinForms.SaveFileDialog()
+                dlg.Filter = "Профиль Sherpa (*.json)|*.json|Все файлы (*.*)|*.*"
+                dlg.FileName = str(name)
+                dlg.InitialDirectory = str(Path.home() / "Downloads")
+                dlg.RestoreDirectory = True
+                if dlg.ShowDialog(form) == WinForms.DialogResult.OK:
+                    res.append(str(dlg.FileName))
+            form.Invoke(WinForms.MethodInvoker(_show))  # ждём: модальный диалог крутит цикл сообщений в UI-потоке
+            path = res[0] if res else ""
         except Exception as e:  # noqa: BLE001
             print(f"[sherpa] save dialog: {e}")
             return None
-        path = res[0] if isinstance(res, (list, tuple)) and res else res
         if not path:
             return None
-        Path(path).write_text(text, encoding="utf-8")
+        Path(str(path)).write_text(text, encoding="utf-8")
+        print(f"[sherpa] экспорт профиля: {path}")
         return str(path)
 
     def close_minimap(self):
