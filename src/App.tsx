@@ -20,6 +20,7 @@ import { AmmoPage } from '@/pages/Ammo'
 import { BuilderPage } from '@/pages/Builder'
 import { MiniPage } from '@/pages/Mini'
 import { MapWindowPage } from '@/pages/MapWindow'
+import { LivePage } from '@/pages/Live'
 import { SquadPage } from '@/pages/Squad'
 import { RaidsPage } from '@/pages/Raids'
 import { KeysPage } from '@/pages/Keys'
@@ -39,7 +40,7 @@ export function App() {
 
   const launcher = useLauncher()
   // мини-карта и окно карты живут в отдельных окнах: синхронизации, сквад, запись рейдов и слежение за папкой — только в главном
-  const isMini = location.hash.startsWith('#/mini') || location.hash.startsWith('#/mapwin')
+  const isMini = location.hash.startsWith('#/mini') || location.hash.startsWith('#/mapwin') || location.hash.startsWith('#/live')
 
   // тема: атрибут на <html>, чтобы CSS-переменные переключались целиком
   const theme = useUI((s) => s.theme)
@@ -73,6 +74,11 @@ export function App() {
     window.addEventListener('storage', onStorage)
     return () => { window.removeEventListener('sherpa:pos', on); window.removeEventListener('storage', onStorage) }
   }, [isMini])
+
+  // «карта на телефоне»: лаунчер отдаёт телефону текущую карту главного окна
+  const liveMapId = useUI((s) => s.currentMapId)
+  const liveMapName = liveMapId && data ? data.maps[liveMapId]?.normalizedName ?? '' : ''
+  useEffect(() => { if (launcher?.set_live_map && !isMini) launcher.set_live_map(liveMapName).catch(() => {}) }, [launcher, isMini, liveMapName])
 
   // обновления: лаунчер проверяет релизы на GitHub и шлёт событие; в браузере обновлять нечего
   useEffect(() => {
@@ -184,6 +190,7 @@ export function App() {
     <Routes>
       <Route path="/mini" element={<MiniPage />} />
       <Route path="/mapwin" element={<MapWindowPage />} />
+      <Route path="/live" element={<LivePage />} />
       <Route element={<Shell />}>
         <Route index element={<Navigate to="/tasks" replace />} />
         <Route path="/tasks" element={<TasksPage />} />

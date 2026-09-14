@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon, Radar, Users, KeyRound, Footprints, Dumbbell, Download,
+  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon, Radar, Users, KeyRound, Footprints, Dumbbell, Download, Smartphone,
 } from 'lucide-react'
+import { PhoneDialog } from './PhoneDialog'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
 import { MODE_LABEL, type GameMode } from '@/data/loader'
 import { useData } from '@/store/data'
@@ -106,6 +107,7 @@ export function Shell() {
           <ScavTimer />
           <Freshness />
           <ThemeButton />
+          <PhoneButton />
           <MapWindowButton />
           <MiniMapButton />
           <OnTopButton />
@@ -230,6 +232,26 @@ function MiniMapButton() {
       <Radar size={14} />
       Мини
     </button>
+  )
+}
+
+/** «Карта на телефоне»: QR-код и ссылка, по которой телефон едет за тобой — только внутри лаунчера. */
+function PhoneButton() {
+  const api = useLauncher()
+  const [open, setOpen] = useState(false)
+  if (!api?.enable_lan) return null
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Карта на телефоне: QR-код, телефон едет за тобой"
+        className="h-8 w-8 grid place-items-center rounded-[4px] border border-line-2 text-ink-3 hover:text-ink hover:border-ink-4 transition-colors"
+      >
+        <Smartphone size={14} />
+      </button>
+      {open && <PhoneDialog onClose={() => setOpen(false)} />}
+    </>
   )
 }
 

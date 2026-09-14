@@ -126,7 +126,7 @@ const fmtClock = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000));
 /** типы пунктов, у которых есть «место» на карте */
 const PLACE_OBJECTIVES = new Set<Objective['type']>(['visit', 'findQuestItem', 'plantItem', 'plantQuestItem', 'mark', 'useItem'])
 
-export function MapsPage({ standalone = false }: { standalone?: boolean } = {}) {
+export function MapsPage({ standalone = false, live }: { standalone?: boolean; live?: { hostMap: string | null } } = {}) {
   const data = useGame()
   const views = useTaskViews()
   const overlay = useUI((s) => s.overlay)
@@ -226,6 +226,13 @@ export function MapsPage({ standalone = false }: { standalone?: boolean } = {}) 
     if (replay?.mapId && data.maps[replay.mapId] && findMeta(data.maps[replay.mapId].normalizedName)) setMapId(replay.mapId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replay])
+  // телефон: едем за картой хоста
+  useEffect(() => {
+    if (!live?.hostMap) return
+    const m = mapsWithMeta.find((x) => x.normalizedName === live.hostMap)
+    if (m && m.id !== mapId) setMapId(m.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live?.hostMap])
   useEffect(() => {
     const byParam = paramMap && mapsWithMeta.find((m) => m.normalizedName === paramMap)
     if (byParam && byParam.id !== mapId) setMapId(byParam.id)
@@ -326,7 +333,7 @@ export function MapsPage({ standalone = false }: { standalone?: boolean } = {}) 
     }
     return z
   }, [gmap, data, gameMode, loosePoints, cardPoints, ledxPoints, views, questScope, objectivesDone])
-  const [panelOpen, setPanelOpen] = useState(!overlay)
+  const [panelOpen, setPanelOpen] = useState(!overlay && !live)
   const panelPadRef = useRef(0)
   panelPadRef.current = panelOpen ? (overlay ? 220 : 280) : 0
 
@@ -981,15 +988,19 @@ export function MapsPage({ standalone = false }: { standalone?: boolean } = {}) 
             </div>
           </div>
 
-          {standalone && <WindowPanel />}
+          {standalone && !live && <WindowPanel />}
 
-          <PositionPanel
-            cardinalRotation={gmap?.coordinateToCardinalRotation ?? 0}
-            floorName={meta?.layers[floor] ? floorName(meta.layers[floor].name) : null}
-          />
-          <div className="text-[11px] text-ink-4">Правый клик по карте — своя метка, клик по метке — убрать.</div>
+          {!live && (
+            <>
+              <PositionPanel
+                cardinalRotation={gmap?.coordinateToCardinalRotation ?? 0}
+                floorName={meta?.layers[floor] ? floorName(meta.layers[floor].name) : null}
+              />
+              <div className="text-[11px] text-ink-4">Правый клик по карте — своя метка, клик по метке — убрать.</div>
 
-          <SquadPanel currentMap={gmap?.normalizedName ?? ''} mapNames={Object.fromEntries(Object.values(data.maps).map((m) => [m.normalizedName, m.name]))} />
+              <SquadPanel currentMap={gmap?.normalizedName ?? ''} mapNames={Object.fromEntries(Object.values(data.maps).map((m) => [m.normalizedName, m.name]))} />
+            </>
+          )}
 
           {toggles.quests && (
             <div>
@@ -1040,7 +1051,7 @@ export function MapsPage({ standalone = false }: { standalone?: boolean } = {}) 
               Карта: <a href={meta.authorLink} target="_blank" rel="noreferrer" className="hover:text-ink-2">{meta.author}</a> · данные tarkov.dev
             </div>
           )}
-          {!overlay && (
+          {!overlay && !standalone && !live && (
             <Chip onClick={() => useUI.getState().setOverlay(true)} className="justify-center">Режим оверлея</Chip>
           )}
         </aside>

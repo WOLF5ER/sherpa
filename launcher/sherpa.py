@@ -127,6 +127,7 @@ def squad_mark(room: str, mark: dict, remove: bool):
 
 # последняя позиция и подписчики SSE — общие для HTTP-обработчика и окна
 LAST_POS: dict | None = None
+LAST_MAP: str = ""  # карта, открытая в главном окне (normalizedName) — телефон едет за ней
 DEBUG_API = None  # экземпляр Api для отладочного эндпоинта
 SSE_CLIENTS: list[queue.Queue] = []
 
@@ -242,6 +243,9 @@ class QuietHandler(SimpleHTTPRequestHandler):
             return self._proxy_tt()
         if self.path == "/api/pos/last":
             return self._json(LAST_POS or {}, 200 if LAST_POS else 204)
+        if self.path == "/api/live":
+            # «карта на телефоне»: телефон опрашивает раз в 2 с — позиция и карта хоста (SSE через туннель не стримится)
+            return self._json({"pos": LAST_POS, "map": LAST_MAP, "ts": time.time()})
         if self.path.startswith("/api/debug/js") and os.environ.get("SHERPA_DEBUG") and DEBUG_API:
             # только для отладки: выполнить JS в окне лаунчера (SHERPA_DEBUG=1); /api/debug/js/mini?… и /api/debug/js/map?… — в мини-карте и окне карты
             from urllib.parse import unquote
@@ -610,6 +614,13 @@ class Api:
         self._on_top = bool(value)
         self._apply_on_top()
         return self._on_top
+
+    @timed
+    def set_live_map(self, name: str = ""):
+        """Главное окно сообщает, какая карта открыта — для телефона (/api/live)."""
+        global LAST_MAP
+        LAST_MAP = str(name or "")[:40]
+        return LAST_MAP
 
     def _apply_on_top(self):
         """pywebview ставит Form.TopMost прямо из потока вызова API — WinForms от этого виснет.

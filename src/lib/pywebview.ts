@@ -31,6 +31,8 @@ export interface LauncherApi {
   close_mapwin?: () => Promise<boolean>
   toggle_mapwin?: () => Promise<boolean>
   set_minimap_opacity?: (v: number) => Promise<number>
+  /** карта, открытая в главном окне — телефон (/live) едет за ней */
+  set_live_map?: (name: string) => Promise<string>
   set_map_opacity?: (v: number) => Promise<number>
   /** диалог «Сохранить как» + запись файла; null — отмена */
   save_file?: (name: string, text: string) => Promise<string | null>
