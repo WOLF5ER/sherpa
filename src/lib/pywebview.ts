@@ -20,6 +20,8 @@ export interface LauncherApi {
   open_minimap?: () => Promise<void>
   close_minimap?: () => Promise<void>
   toggle_minimap?: () => Promise<boolean>
+  /** диалог «Сохранить как» + запись файла; null — отмена */
+  save_file?: (name: string, text: string) => Promise<string | null>
   get_state: () => Promise<LauncherState>
 }
 

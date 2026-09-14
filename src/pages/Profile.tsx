@@ -31,14 +31,24 @@ export function ProfilePage() {
   const traders = useMemo(() => Object.values(data.traders).filter((t) => t.levels.length > 1), [data])
   const doneCount = Object.keys(p.completed).length
 
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify({
+  const [exportMsg, setExportMsg] = useState<string | null>(null)
+  const exportJson = async () => {
+    const text = JSON.stringify({
       name: p.name, level: p.level, faction: p.faction, gameMode: p.gameMode, seasonal: p.seasonal, fleaDisabled: p.fleaDisabled,
       completed: p.completed, stations: p.stations, have: p.have, traderLevels: p.traderLevels, achievements: p.achievements,
-    }, null, 2)], { type: 'application/json' })
+      objectivesDone: p.objectivesDone,
+    }, null, 2)
+    const name = `sherpa-profile-${new Date().toISOString().slice(0, 10)}.json`
+    // в лаунчере (WebView2) скачивание blob-ссылок не работает — просим лаунчер показать «Сохранить как»
+    if (launcher?.save_file) {
+      const path = await launcher.save_file(name, text).catch(() => null)
+      setExportMsg(path ? `Сохранено: ${path}` : null)
+      return
+    }
+    const blob = new Blob([text], { type: 'application/json' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `sherpa-profile-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = name
     a.click()
     URL.revokeObjectURL(a.href)
   }
@@ -50,6 +60,7 @@ export function ProfilePage() {
         name: j.name ?? p.name, level: j.level ?? p.level, faction: j.faction ?? p.faction, gameMode: j.gameMode ?? p.gameMode,
         seasonal: !!j.seasonal, fleaDisabled: !!j.fleaDisabled, achievements: j.achievements ?? {},
         completed: j.completed ?? {}, stations: j.stations ?? {}, have: j.have ?? {}, traderLevels: j.traderLevels ?? {},
+        objectivesDone: j.objectivesDone ?? {},
       })
     } catch {
       alert('Файл не похож на профиль Sherpa')
@@ -177,12 +188,13 @@ export function ProfilePage() {
           <div className="mt-3 text-[13px] text-ink-2 num">{p.name}: {doneCount} выполненных квестов · {Object.keys(p.have).length} предметов в счётчиках</div>
           <div className="mt-1 text-[12px] text-ink-3">Экспорт — файл Sherpa, чтобы перенести прогресс в лаунчер, на другой ПК или другому персонажу.</div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={exportJson} className="chip hover:text-ink hover:border-ink-4"><Download size={12} /> Экспорт профиля</button>
-            <button type="button" onClick={() => fileRef.current?.click()} className="chip hover:text-ink hover:border-ink-4"><Upload size={12} /> Импорт</button>
+            <button type="button" onClick={() => void exportJson()} className="chip hover:text-ink hover:border-ink-4"><Upload size={12} /> Экспорт профиля</button>
+            <button type="button" onClick={() => fileRef.current?.click()} className="chip hover:text-ink hover:border-ink-4"><Download size={12} /> Импорт</button>
             <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void importJson(f); e.target.value = '' }} />
             <button type="button" onClick={async () => { await clearCache(p.gameMode); void load(p.gameMode) }} className="chip hover:text-ink hover:border-ink-4"><DatabaseZap size={12} /> Перекачать справочник</button>
             <button type="button" onClick={() => { if (confirm(`Стереть прогресс персонажа «${p.name}»: квесты, схрон, счётчики?`)) p.reset() }} className="chip hover:text-danger hover:border-danger/60"><Trash2 size={12} /> Сбросить прогресс</button>
           </div>
+          {exportMsg && <div className="mt-2 text-[12px] text-fir">{exportMsg}</div>}
         </div>
       </section>
     </div>

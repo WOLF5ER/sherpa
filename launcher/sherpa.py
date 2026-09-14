@@ -735,6 +735,23 @@ class Api:
             self._mini = None
         win.events.closed += closed
 
+    def save_file(self, name: str, text: str):
+        """«Экспорт профиля»: WebView2 не качает blob-ссылки — открываем диалог «Сохранить как» и пишем файл сами.
+        Возвращает путь или None (отмена)."""
+        w = self._window
+        if w is None:
+            return None
+        try:
+            res = w.create_file_dialog(webview.SAVE_DIALOG, directory=str(Path.home() / "Downloads"), save_filename=str(name))
+        except Exception as e:  # noqa: BLE001
+            print(f"[sherpa] save dialog: {e}")
+            return None
+        path = res[0] if isinstance(res, (list, tuple)) and res else res
+        if not path:
+            return None
+        Path(path).write_text(text, encoding="utf-8")
+        return str(path)
+
     def close_minimap(self):
         w = self._mini
         self._mini = None
