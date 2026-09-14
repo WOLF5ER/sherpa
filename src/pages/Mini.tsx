@@ -35,6 +35,9 @@ export function MiniPage() {
   const squadMarks = useUI((s) => s.squadMarks)
   const squadName = useUI((s) => s.squad.name)
   const objectivesDone = useProfile((s) => s.objectivesDone)
+  const toggleObjective = useProfile((s) => s.toggleObjective)
+  /** клик по флажку: подтверждение «пункт выполнен» внизу окна */
+  const [pick, setPick] = useState<{ task: string; objId: string; desc: string; approx: boolean } | null>(null)
   const launcher = useLauncher()
   const [prefs, setPrefs] = useState<MiniPrefs>(readPrefs)
   const [hover, setHover] = useState(false)
@@ -63,6 +66,7 @@ export function MiniPage() {
     return () => window.removeEventListener('storage', on)
   }, [])
   const mapId = prefs.mapId ?? mainMapId ?? mapsWithMeta[0]?.id
+  useEffect(() => { setPick(null) }, [mapId])
   const gmap = mapId ? data.maps[mapId] : undefined
   const meta = gmap ? findMeta(gmap.normalizedName) : undefined
 
@@ -152,7 +156,9 @@ export function MiniPage() {
         const d = dim(z.position)
         const qc = v.task.seasonal ? COLORS.season : COLORS.quest
         if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: 1, fillOpacity: d ? 0.04 : 0.12, opacity: d ? 0.3 : 1, interactive: false }))
-        group.addLayer(L.marker(pos(z.position), { icon: icon('flag', qc, prefs.labels ? v.task.name : undefined, { size: 16, dim: d }) }))
+        const fm = L.marker(pos(z.position), { icon: icon('flag', qc, prefs.labels ? v.task.name : undefined, { size: 16, dim: d }), zIndexOffset: 500 })
+        fm.on('click', (e) => { L.DomEvent.stopPropagation(e); setPick({ task: v.task.name, objId: o.id, desc: o.description, approx: !!o.approx }) })
+        group.addLayer(fm)
       }
     }
     for (const mk of marks[gmap.id] ?? []) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#e06ba0', prefs.labels ? mk.name : undefined, { size: 16 }) }))
@@ -203,6 +209,22 @@ export function MiniPage() {
       {prefs.rotate && (
         <div className="absolute left-1/2 top-1/2 pointer-events-none" style={{ transform: `translate(-50%,-50%) rotate(${rotateDeg}deg)` }}>
           <div className="relative w-[70vmin] h-[70vmin]"><span className="absolute left-1/2 -top-1 -translate-x-1/2 text-[10px] font-semibold text-danger drop-shadow-[0_0_3px_#000]">N</span></div>
+        </div>
+      )}
+      {/* клик по флажку квеста — отметить пункт прямо здесь */}
+      {pick && (
+        <div className="absolute inset-x-2 bottom-10 rounded-[4px] bg-black/85 border border-season/60 p-2 text-white text-[11px] leading-tight shadow-[0_4px_16px_rgba(0,0,0,.6)]" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-start gap-1.5">
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-semibold">{pick.task}</div>
+              <div className="text-white/75 line-clamp-2">{pick.approx ? '≈ ' : ''}{pick.desc}</div>
+            </div>
+            <button type="button" onClick={() => setPick(null)} className="p-0.5 text-white/60 hover:text-white" aria-label="Закрыть"><X size={12} /></button>
+          </div>
+          <div className="mt-1.5 flex gap-1.5">
+            <button type="button" onClick={() => { toggleObjective(pick.objId, true); setPick(null) }} className="chip chip-on h-6 text-[10px]">✓ Пункт выполнен</button>
+            <button type="button" onClick={() => setPick(null)} className="chip h-6 text-[10px]">Отмена</button>
+          </div>
         </div>
       )}
       {/* панель по наведению */}

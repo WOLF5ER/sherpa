@@ -53,8 +53,11 @@ export function App() {
   useEffect(() => { launcher?.set_screenshot_watch(screenshotsWatch).catch(() => {}) }, [launcher, screenshotsWatch])
   useEffect(() => {
     const on = (e: Event) => useUI.getState().setPlayerPos((e as CustomEvent<PlayerPos>).detail)
+    // мини-карта — отдельное окно со своим store: её отметки «пункт выполнен» приходят через localStorage
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sherpa:profile') void useProfile.persist.rehydrate() }
     window.addEventListener('sherpa:pos', on)
-    return () => window.removeEventListener('sherpa:pos', on)
+    window.addEventListener('storage', onStorage)
+    return () => { window.removeEventListener('sherpa:pos', on); window.removeEventListener('storage', onStorage) }
   }, [])
 
   // без лаунчера: папка скриншотов через File System Access API
