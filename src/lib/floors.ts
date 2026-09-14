@@ -31,7 +31,9 @@ export function floorForPosition(meta: MapMeta, p: XYZ): number {
  * или вне heightRange карты (Улицы: всё выше 10 — этажи).
  */
 export function visibleOnFloor(meta: MapMeta, floor: number, p: XYZ): boolean {
-  if (floor >= 0) return onLayer(meta.layers[floor], p)
+  // индекс этажа мог остаться от прошлой карты (у новой этажей меньше) — считаем его основным уровнем, а не падаем
+  const layer = floor >= 0 ? meta.layers[floor] : undefined
+  if (layer) return onLayer(layer, p)
   for (const l of meta.layers) for (const ext of l.extents ?? []) if (ext.bounds?.length && onExtent(ext, p)) return false
   const hr = meta.heightRange
   return !hr || (p.y >= hr[0] && p.y < hr[1])

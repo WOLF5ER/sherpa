@@ -41,6 +41,10 @@ export function MiniPage() {
   const launcher = useLauncher()
   const [prefs, setPrefs] = useState<MiniPrefs>(readPrefs)
   const [hover, setHover] = useState(false)
+  // прозрачность окна — у лаунчера (Form.Opacity), хранится в config.json
+  const [opacity, setOpacity] = useState(1)
+  useEffect(() => { launcher?.get_state().then((s) => setOpacity(s.minimap_opacity ?? 1)).catch(() => {}) }, [launcher])
+  const applyOpacity = (v: number) => { setOpacity(v); launcher?.set_minimap_opacity?.(v).catch(() => {}) }
   useEffect(() => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* ignore */ } }, [prefs])
   // окно мини-карты всегда тёмное — углы вокруг круга не должны светиться
   useEffect(() => {
@@ -76,7 +80,10 @@ export function MiniPage() {
   const liveRef = useRef<L.LayerGroup | null>(null)
   const floorTileRef = useRef<L.TileLayer | null>(null)
   const svgElRef = useRef<SVGSVGElement | null>(null)
-  const [floor, setFloor] = useState(-1)
+  // этаж привязан к карте: индекс с прошлой карты к новой не применяется (у неё может не быть такого этажа)
+  const [floorState, setFloorState] = useState<{ mapId: string; floor: number }>({ mapId: '', floor: -1 })
+  const floor = floorState.mapId === (mapId ?? '') ? floorState.floor : -1
+  const setFloor = (f: number) => setFloorState({ mapId: mapId ?? '', floor: f })
   const floorRef = useRef(floor)
   floorRef.current = floor
 
@@ -235,6 +242,10 @@ export function MiniPage() {
         <Btn title={prefs.rotate ? 'Север сверху' : 'По курсу'} on={prefs.rotate} onClick={() => set({ rotate: !prefs.rotate })}>{prefs.rotate ? <Navigation size={12} /> : <Compass size={12} />}</Btn>
         <Btn title={prefs.round ? 'Квадрат' : 'Круг'} onClick={() => set({ round: !prefs.round })}>{prefs.round ? <Square size={12} /> : <Circle size={12} />}</Btn>
         <Btn title="Подписи" on={prefs.labels} onClick={() => set({ labels: !prefs.labels })}><Tag size={12} /></Btn>
+        {launcher?.set_minimap_opacity && (
+          <input type="range" min={20} max={100} step={5} value={Math.round(opacity * 100)} onChange={(e) => applyOpacity(Number(e.target.value) / 100)}
+            title={`Прозрачность окна: ${Math.round(opacity * 100)}%`} className="w-14 h-6" />
+        )}
         <select
           value={prefs.mapId ?? ''}
           onChange={(e) => set({ mapId: e.target.value || null })}

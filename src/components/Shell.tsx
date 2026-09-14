@@ -106,6 +106,7 @@ export function Shell() {
           <ScavTimer />
           <Freshness />
           <ThemeButton />
+          <MapWindowButton />
           <MiniMapButton />
           <OnTopButton />
           <button
@@ -228,6 +229,23 @@ function MiniMapButton() {
     >
       <Radar size={14} />
       Мини
+    </button>
+  )
+}
+
+/** Отдельное окно карты поверх игры (F7) — только внутри лаунчера. */
+function MapWindowButton() {
+  const api = useLauncher()
+  if (!api?.toggle_mapwin) return null
+  return (
+    <button
+      type="button"
+      onClick={() => api.toggle_mapwin?.().catch(() => {})}
+      title="Карта отдельным окном поверх игры (F7 — показать/скрыть)"
+      className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[4px] border border-line-2 text-ink-3 hover:text-ink hover:border-ink-4 transition-colors text-[12px] font-display uppercase tracking-[.1em]"
+    >
+      <MapIcon size={14} />
+      Карта
     </button>
   )
 }

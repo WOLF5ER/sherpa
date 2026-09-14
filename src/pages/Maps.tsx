@@ -18,6 +18,7 @@ import type { GameMap, Objective, XYZ, Zone } from '@/data/types'
 import type { TaskView } from '@/lib/tasks'
 import { Chip, Eyebrow, Segmented } from '@/components/ui'
 import { PositionPanel } from '@/components/PositionPanel'
+import { useLauncher } from '@/lib/pywebview'
 import { SquadPanel } from '@/components/SquadPanel'
 import { publishSquadMap, publishSquadMark, ROOM_RE } from '@/lib/squad'
 import { floorForPosition, visibleOnFloor } from '@/lib/floors'
@@ -125,7 +126,7 @@ const fmtClock = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000));
 /** типы пунктов, у которых есть «место» на карте */
 const PLACE_OBJECTIVES = new Set<Objective['type']>(['visit', 'findQuestItem', 'plantItem', 'plantQuestItem', 'mark', 'useItem'])
 
-export function MapsPage() {
+export function MapsPage({ standalone = false }: { standalone?: boolean } = {}) {
   const data = useGame()
   const views = useTaskViews()
   const overlay = useUI((s) => s.overlay)
@@ -250,7 +251,10 @@ export function MapsPage() {
     try { return { ...DEFAULT_TOGGLES, ...JSON.parse(localStorage.getItem('sherpa:mapToggles2') ?? '{}') } } catch { return DEFAULT_TOGGLES }
   })
   useEffect(() => { try { localStorage.setItem('sherpa:mapToggles2', JSON.stringify(toggles)) } catch { /* ignore */ } }, [toggles])
-  const [floor, setFloor] = useState<number>(-1)
+  // этаж хранится вместе с id карты: при смене карты эффекты этого же коммита уже видят -1, а не индекс с прошлой карты
+  const [floorState, setFloorState] = useState<{ mapId: string; floor: number }>({ mapId: '', floor: -1 })
+  const floor = floorState.mapId === mapId ? floorState.floor : -1
+  const setFloor = (f: number) => setFloorState({ mapId, floor: f })
   const [questScope, setQuestScope] = useState<'available' | 'all'>('available')
   const [lootType, setLootType] = useState<string>('')
   const [looseCat, setLooseCat] = useState<string>('all')
@@ -325,7 +329,6 @@ export function MapsPage() {
   const [panelOpen, setPanelOpen] = useState(!overlay)
   const panelPadRef = useRef(0)
   panelPadRef.current = panelOpen ? (overlay ? 220 : 280) : 0
-  useEffect(() => { setFloor(-1) }, [mapId])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -978,6 +981,8 @@ export function MapsPage() {
             </div>
           </div>
 
+          {standalone && <WindowPanel />}
+
           <PositionPanel
             cardinalRotation={gmap?.coordinateToCardinalRotation ?? 0}
             floorName={meta?.layers[floor] ? floorName(meta.layers[floor].name) : null}
@@ -1040,6 +1045,26 @@ export function MapsPage() {
           )}
         </aside>
       )}
+    </div>
+  )
+}
+
+/** Окно карты (F7): прозрачность окна — через лаунчер (Form.Opacity), значение хранится в config.json. */
+function WindowPanel() {
+  const launcher = useLauncher()
+  const [opacity, setOpacity] = useState(1)
+  useEffect(() => { launcher?.get_state().then((s) => setOpacity(s.map_opacity ?? 1)).catch(() => {}) }, [launcher])
+  if (!launcher?.set_map_opacity) return null
+  const apply = (v: number) => { setOpacity(v); launcher.set_map_opacity?.(v).catch(() => {}) }
+  return (
+    <div>
+      <Eyebrow>Окно</Eyebrow>
+      <div className="mt-1.5 flex items-center gap-2 text-[12px] text-ink-3">
+        <span>Прозрачность</span>
+        <input type="range" min={20} max={100} step={5} value={Math.round(opacity * 100)} onChange={(e) => apply(Number(e.target.value) / 100)} className="flex-1" />
+        <span className="num w-9 text-right text-ink-2">{Math.round(opacity * 100)}%</span>
+      </div>
+      <div className="mt-1 text-[11px] text-ink-4">F7 — показать/скрыть окно. Закрыть — крестиком.</div>
     </div>
   )
 }

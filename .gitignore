@@ -6,3 +6,4 @@ launcher/__pycache__
 release
 build-pyi
 launcher/bin/
+.running

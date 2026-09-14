@@ -13,5 +13,10 @@
   "screenshots_path": "",
   "screenshots_keep": 0,
   "lan": false,
-  "squad_tunnel": false
+  "squad_tunnel": false,
+  "hotkey_map": "F7",
+  "minimap_opacity": 1.0,
+  "map_opacity": 1.0,
+  "map_width": 960,
+  "map_height": 680
 }

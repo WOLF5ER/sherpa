@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react'
 import { clearCache } from '@/data/loader'
 import { useProfile } from '@/store/profile'
+import { reportError } from '@/lib/crashlog'
 
 interface State { error: Error | null }
 
@@ -12,6 +13,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string }) {
     console.error('[sherpa] render error', error, info.componentStack)
+    reportError('render', error?.message ?? String(error), `${error?.stack ?? ''}\n${(info.componentStack ?? '').split('\n').slice(0, 6).join('\n')}`)
   }
 
   render() {

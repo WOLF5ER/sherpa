@@ -50,9 +50,16 @@ DEFAULT_CONFIG = {
     "hotkey_toggle": "F10",
     "hotkey_on_top": "F9",
     "hotkey_minimap": "F8",
+    # отдельное окно карты поверх игры (без меню и остальных разделов)
+    "hotkey_map": "F7",
     # мини-карта: размер окна (px) и отступ от правого верхнего угла экрана
     "minimap_size": 320,
     "minimap_margin": 16,
+    # прозрачность окон мини-карты и карты: 1.0 — непрозрачно, 0.3 — почти стекло (меняется и из интерфейса)
+    "minimap_opacity": 1.0,
+    "map_opacity": 1.0,
+    "map_width": 960,
+    "map_height": 680,
     # «Ты здесь»: следить за папкой скриншотов игры (в имени файла — координаты). Выключено по умолчанию.
     "screenshots_watch": False,
     "screenshots_path": "",
@@ -263,6 +270,19 @@ class QuietHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
+        if self.path == "/api/log":
+            # страница присылает свои ошибки (window.onerror, промисы, ErrorBoundary) — в sherpa.log, чтобы было что смотреть у друзей
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(min(n, 16000)) or b"{}")
+                kind = str(body.get("kind") or "error")[:24]
+                msg = str(body.get("message") or "")[:600].replace("\n", " ")
+                stack = str(body.get("stack") or "")[:1200]
+                where = str(body.get("where") or "")[:200]
+                print(f"[page] {kind}: {msg}" + (f"  @ {where}" if where else "") + (f"\n    {stack}" if stack else ""))
+            except Exception:  # noqa: BLE001
+                pass
+            return self._json({"ok": True})
         m = re.match(r"^/api/squad/([A-Za-z0-9_-]{3,40})(/map|/mark)?$", self.path)
         if not m:
             return self._json({"error": "not found"}, 404)
@@ -611,6 +631,8 @@ class Api:
     _lan_server = None
     _tunnel_proc = None
     _mini = None  # окно мини-карты
+    _mapwin = None  # отдельное окно карты (F7)
+    _mapwin_visible = True
     _cfg: dict = {}
     _port: int = 4879
     _tunnel_url: str | None = None
@@ -629,6 +651,9 @@ class Api:
             "screenshots_path_exists": bool(self._shots_path and self._shots_path.exists()),
             "lan_url": self._lan_url,
             "tunnel_url": self._tunnel_url, "tunnel_state": self._tunnel_state,
+            "minimap_opacity": float(self._cfg.get("minimap_opacity", 1.0) or 1.0),
+            "map_opacity": float(self._cfg.get("map_opacity", 1.0) or 1.0),
+            "mapwin_open": self._mapwin is not None,
         }
 
     # ── «ты здесь» по скриншотам ──
@@ -694,7 +719,7 @@ class Api:
                         if pos:
                             publish_pos(pos)
                             # во все окна: главное и мини-карту
-                            for w in [self._window, self._mini]:
+                            for w in [self._window, self._mini, self._mapwin]:
                                 if w is None:
                                     continue
                                 try:
@@ -814,6 +839,7 @@ class Api:
     def _quit(self):
         """Закрыть все окна — webview.start() вернётся, main() погасит туннель. Если окно не закрылось — выходим жёстко."""
         self.close_minimap()
+        self.close_mapwin()
         w = self._window
         try:
             if w is not None:
@@ -908,6 +934,92 @@ class Api:
         self._save_cfg(squad_tunnel=bool(on))
         return self.get_state()
 
+    # ── прозрачность окон мини-карты и карты ──
+    def _apply_opacity(self, win, value: float):
+        """Form.Opacity = WS_EX_LAYERED с альфой. WebView2 в таком окне рисуется и не виснет — если ставить из UI-потока
+        (раньше «зависание в слоистых окнах» было из-за вызова из потока API)."""
+        v = max(0.2, min(1.0, float(value)))
+        if win is None:
+            return
+        try:
+            from System import Action
+            form = win.native
+
+            def _set():
+                form.Opacity = v
+            form.BeginInvoke(Action(_set))
+        except Exception as e:  # noqa: BLE001
+            print(f"[sherpa] прозрачность окна: {e}")
+
+    @timed
+    def set_minimap_opacity(self, value: float):
+        v = max(0.2, min(1.0, float(value)))
+        self._save_cfg(minimap_opacity=v)
+        self._apply_opacity(self._mini, v)
+        return v
+
+    @timed
+    def set_map_opacity(self, value: float):
+        v = max(0.2, min(1.0, float(value)))
+        self._save_cfg(map_opacity=v)
+        self._apply_opacity(self._mapwin, v)
+        return v
+
+    # ── отдельное окно карты поверх игры (F7): обычное окно с рамкой, только раздел «Карты» ──
+    @timed
+    def open_mapwin(self):
+        import webview
+        if self._mapwin is not None:
+            if not self._mapwin_visible:
+                self._mapwin.show()
+                self._mapwin_visible = True
+            return True
+        w = int(self._cfg.get("map_width", 960) or 960)
+        h = int(self._cfg.get("map_height", 680) or 680)
+        win = webview.create_window(
+            "Sherpa — карта", f"http://127.0.0.1:{self._port}/#/mapwin",
+            width=w, height=h, on_top=True, resizable=True, min_size=(480, 360),
+            background_color="#111310", js_api=self, text_select=False,
+        )
+        self._mapwin = win
+        self._mapwin_visible = True
+        opacity = float(self._cfg.get("map_opacity", 1.0) or 1.0)
+
+        def shown():
+            if opacity < 1.0:
+                self._apply_opacity(win, opacity)
+        win.events.shown += shown
+
+        def closed():
+            self._mapwin = None
+            self._mapwin_visible = True
+        win.events.closed += closed
+        return True
+
+    @timed
+    def close_mapwin(self):
+        w = self._mapwin
+        self._mapwin = None
+        if w is not None:
+            try:
+                w.destroy()
+            except Exception:  # noqa: BLE001
+                pass
+        return False
+
+    @timed
+    def toggle_mapwin(self):
+        """Хоткей: первый раз — открыть, потом показать/скрыть (окно живёт, чтобы не грузить карту заново)."""
+        if self._mapwin is None:
+            return self.open_mapwin()
+        if self._mapwin_visible:
+            self._mapwin.hide()
+            self._mapwin_visible = False
+            return False
+        self._mapwin.show()
+        self._mapwin_visible = True
+        return True
+
     # ── мини-карта: отдельное окно без рамки, поверх игры, справа сверху ──
     def open_minimap(self):
         import webview
@@ -928,6 +1040,12 @@ class Api:
             background_color="#0d0f0c", js_api=self,
         )
         self._mini = win
+        opacity = float(self._cfg.get("minimap_opacity", 1.0) or 1.0)
+
+        def shown():
+            if opacity < 1.0:
+                self._apply_opacity(win, opacity)
+        win.events.shown += shown
 
         def closed():
             self._mini = None
@@ -1053,10 +1171,84 @@ def parse_screenshot_name(name: str) -> dict | None:
     return {"x": x, "y": y, "z": z, "rotation": yaw, "file": name, "ts": int(time.time() * 1000)}
 
 
+def install_dotnet_handlers():
+    """Исключение .NET в UI-потоке WinForms по умолчанию закрывает приложение (или показывает диалог «Continue/Quit»).
+    Ловим и пишем в лог — окно живёт дальше. Исключения в других потоках хотя бы попадут в лог перед смертью.
+    Вызывать после старта окна: WinForms подгружает pywebview (clr.AddReference) при запуске."""
+    try:
+        import clr  # noqa: F401  (pythonnet, уже загружен pywebview)
+        clr.AddReference('System.Windows.Forms')
+        import System
+        import System.Windows.Forms as WinForms
+
+        def on_thread_exc(sender, args):
+            try:
+                print(f"[sherpa] .NET-исключение в UI-потоке (перехвачено): {args.Exception}")
+            except Exception:  # noqa: BLE001
+                pass
+
+        def on_unhandled(sender, args):
+            try:
+                print(f"[sherpa] необработанное .NET-исключение (процесс завершается): {args.ExceptionObject}")
+                sys.stdout.flush()
+            except Exception:  # noqa: BLE001
+                pass
+
+        WinForms.Application.ThreadException += System.Threading.ThreadExceptionEventHandler(on_thread_exc)
+        System.AppDomain.CurrentDomain.UnhandledException += System.UnhandledExceptionEventHandler(on_unhandled)
+        print("[sherpa] обработчики исключений .NET установлены")
+    except Exception as e:  # noqa: BLE001
+        print(f"[sherpa] обработчики .NET не установлены: {e}")
+
+
+def watch_webview_process(window):
+    """Крах процесса рендера WebView2 (нехватка памяти, GPU) оставлял пустое окно. Ловим ProcessFailed:
+    рендер упал — перезагружаем страницу, упал сам браузерный процесс — пишем в лог (окно придётся открыть заново)."""
+    try:
+        from webview.platforms.winforms import BrowserView
+        form = BrowserView.instances.get(window.uid)
+        wv = getattr(getattr(form, "browser", None), "webview", None)
+        if form is None or wv is None:
+            return
+        from System import Action
+
+        def hook():
+            try:
+                core = wv.CoreWebView2
+                if core is None:
+                    return
+
+                def on_failed(sender, args):
+                    try:
+                        kind = str(args.ProcessFailedKind)
+                        reason = str(getattr(args, "Reason", ""))
+                        print(f"[sherpa] WebView2 ProcessFailed: {kind} reason={reason} exit={getattr(args, 'ExitCode', '')} {getattr(args, 'ProcessDescription', '')}")
+                        if kind in ("RenderProcessExited", "RenderProcessUnresponsive", "FrameRenderProcessExited"):
+                            def reload():
+                                try:
+                                    wv.CoreWebView2.Reload()
+                                    print("[sherpa] страница перезагружена после краха рендера")
+                                except Exception as e:  # noqa: BLE001
+                                    print(f"[sherpa] перезагрузка после краха: {e}")
+                            threading.Timer(1.0, lambda: form.BeginInvoke(Action(reload))).start()
+                    except Exception as e:  # noqa: BLE001
+                        print(f"[sherpa] ProcessFailed handler: {e}")
+
+                import Microsoft.Web.WebView2.Core as Core
+                core.ProcessFailed += System.EventHandler[Core.CoreWebView2ProcessFailedEventArgs](on_failed)
+                print("[sherpa] слежение за процессами WebView2 включено")
+            except Exception as e:  # noqa: BLE001
+                print(f"[sherpa] ProcessFailed не подключён: {e}")
+        import System  # noqa: F811
+        form.BeginInvoke(Action(hook))
+    except Exception as e:  # noqa: BLE001
+        print(f"[sherpa] watch_webview_process: {e}")
+
+
 def hotkey_loop(api: Api, cfg: dict):
     """Отдельный поток с очередью сообщений Windows для RegisterHotKey."""
     ids = {}
-    for hid, key in ((1, cfg["hotkey_toggle"]), (2, cfg["hotkey_on_top"]), (3, cfg.get("hotkey_minimap", "F8"))):
+    for hid, key in ((1, cfg["hotkey_toggle"]), (2, cfg["hotkey_on_top"]), (3, cfg.get("hotkey_minimap", "F8")), (4, cfg.get("hotkey_map", "F7"))):
         vk = VK.get(str(key).upper())
         if not vk:
             print(f"[sherpa] неизвестная клавиша '{key}', допустимы F1–F24, INSERT, HOME, END, PAUSE, SCROLL")
@@ -1067,7 +1259,7 @@ def hotkey_loop(api: Api, cfg: dict):
             print(f"[sherpa] не удалось занять {key} — возможно, её держит другая программа")
     if not ids:
         return
-    names = {1: "показать/скрыть", 2: "поверх окон", 3: "мини-карта"}
+    names = {1: "показать/скрыть", 2: "поверх окон", 3: "мини-карта", 4: "окно карты"}
     print("[sherpa] хоткеи: " + ", ".join(f"{k} — {names.get(i, '')}" for i, k in ids.items()))
     msg = wt.MSG()
     while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
@@ -1078,6 +1270,11 @@ def hotkey_loop(api: Api, cfg: dict):
                 api.toggle_on_top()
             elif msg.wParam == 3:
                 api.toggle_minimap()
+            elif msg.wParam == 4:
+                try:
+                    api.toggle_mapwin()
+                except Exception as e:  # noqa: BLE001
+                    print(f"[sherpa] окно карты: {e}")
         user32.TranslateMessage(ctypes.byref(msg))
         user32.DispatchMessageW(ctypes.byref(msg))
 
@@ -1124,6 +1321,15 @@ def main():
                 lan_url = f"http://{ip}:{port}/"
                 print(f"[sherpa] доступ по сети: {lan_url}  (телефон в той же Wi-Fi; Windows может спросить про брандмауэр)")
 
+    # отметка «работаю»: если файл остался с прошлого запуска — тот раз завершился аварийно, пишем это в лог
+    running_marker = ROOT / ".running"
+    try:
+        if running_marker.exists():
+            print(f"[sherpa] прошлый запуск завершился аварийно (без штатного выхода) — {running_marker.stat().st_mtime and time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(running_marker.stat().st_mtime))}")
+        running_marker.write_text(str(os.getpid()), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+
     api = Api()
     global DEBUG_API
     DEBUG_API = api
@@ -1156,7 +1362,16 @@ def main():
     # сторож: если страница не сообщила о загрузке за 12 с — перезагружаем адрес (в UI-потоке, как и всё окно)
     loaded = threading.Event()
     try:
-        window.events.loaded += lambda: loaded.set()
+        hooked = []
+
+        def on_loaded():
+            loaded.set()
+            # один раз, когда CoreWebView2 уже создан (в shown его ещё нет)
+            if not hooked:
+                hooked.append(True)
+                install_dotnet_handlers()
+                watch_webview_process(window)
+        window.events.loaded += on_loaded
     except Exception:  # noqa: BLE001
         pass
 
@@ -1183,6 +1398,11 @@ def main():
     try:
         if api._tunnel_proc is not None:
             api._tunnel_proc.terminate()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        running_marker.unlink(missing_ok=True)
+        print(f"[sherpa] выход {time.strftime('%Y-%m-%d %H:%M:%S')}")
     except Exception:  # noqa: BLE001
         pass
 

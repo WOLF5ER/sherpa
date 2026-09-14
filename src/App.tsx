@@ -19,6 +19,7 @@ import { HideoutPage } from '@/pages/Hideout'
 import { AmmoPage } from '@/pages/Ammo'
 import { BuilderPage } from '@/pages/Builder'
 import { MiniPage } from '@/pages/Mini'
+import { MapWindowPage } from '@/pages/MapWindow'
 import { SquadPage } from '@/pages/Squad'
 import { RaidsPage } from '@/pages/Raids'
 import { KeysPage } from '@/pages/Keys'
@@ -37,8 +38,8 @@ export function App() {
   useEffect(() => { void load(mode) }, [load, mode])
 
   const launcher = useLauncher()
-  // мини-карта живёт в отдельном окне: синхронизации, сквад и слежение за папкой — только в главном
-  const isMini = location.hash.startsWith('#/mini')
+  // мини-карта и окно карты живут в отдельных окнах: синхронизации, сквад, запись рейдов и слежение за папкой — только в главном
+  const isMini = location.hash.startsWith('#/mini') || location.hash.startsWith('#/mapwin')
 
   // тема: атрибут на <html>, чтобы CSS-переменные переключались целиком
   const theme = useUI((s) => s.theme)
@@ -57,12 +58,21 @@ export function App() {
   useEffect(() => { launcher?.set_screenshot_watch(screenshotsWatch).catch(() => {}) }, [launcher, screenshotsWatch])
   useEffect(() => {
     const on = (e: Event) => useUI.getState().setPlayerPos((e as CustomEvent<PlayerPos>).detail)
-    // мини-карта — отдельное окно со своим store: её отметки «пункт выполнен» приходят через localStorage
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sherpa:profile') void useProfile.persist.rehydrate() }
+    // мини-карта и окно карты — отдельные окна со своим store: их отметки «пункт выполнен» приходят через localStorage,
+    // а выбранная там карта нужна главному окну (история рейдов, сквад)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'sherpa:profile') void useProfile.persist.rehydrate()
+      if (e.key === 'sherpa:ui' && !isMini && e.newValue) {
+        try {
+          const st = (JSON.parse(e.newValue).state ?? {}) as { currentMapId?: string | null }
+          if (st.currentMapId && st.currentMapId !== useUI.getState().currentMapId) useUI.getState().setCurrentMapId(st.currentMapId)
+        } catch { /* ignore */ }
+      }
+    }
     window.addEventListener('sherpa:pos', on)
     window.addEventListener('storage', onStorage)
     return () => { window.removeEventListener('sherpa:pos', on); window.removeEventListener('storage', onStorage) }
-  }, [])
+  }, [isMini])
 
   // обновления: лаунчер проверяет релизы на GitHub и шлёт событие; в браузере обновлять нечего
   useEffect(() => {
@@ -173,6 +183,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/mini" element={<MiniPage />} />
+      <Route path="/mapwin" element={<MapWindowPage />} />
       <Route element={<Shell />}>
         <Route index element={<Navigate to="/tasks" replace />} />
         <Route path="/tasks" element={<TasksPage />} />

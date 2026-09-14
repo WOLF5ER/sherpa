@@ -11,6 +11,10 @@ export interface LauncherState {
   lan_url: string | null
   tunnel_url?: string | null
   tunnel_state?: string
+  /** прозрачность окон мини-карты и карты (0.2–1) */
+  minimap_opacity?: number
+  map_opacity?: number
+  mapwin_open?: boolean
 }
 
 export interface LauncherApi {
@@ -22,6 +26,12 @@ export interface LauncherApi {
   open_minimap?: () => Promise<void>
   close_minimap?: () => Promise<void>
   toggle_minimap?: () => Promise<boolean>
+  /** отдельное окно карты поверх игры (F7) */
+  open_mapwin?: () => Promise<boolean>
+  close_mapwin?: () => Promise<boolean>
+  toggle_mapwin?: () => Promise<boolean>
+  set_minimap_opacity?: (v: number) => Promise<number>
+  set_map_opacity?: (v: number) => Promise<number>
   /** диалог «Сохранить как» + запись файла; null — отмена */
   save_file?: (name: string, text: string) => Promise<string | null>
   get_state: () => Promise<LauncherState>
