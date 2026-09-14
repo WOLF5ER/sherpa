@@ -242,12 +242,16 @@ class QuietHandler(SimpleHTTPRequestHandler):
             return self._proxy_tt()
         if self.path == "/api/pos/last":
             return self._json(LAST_POS or {}, 200 if LAST_POS else 204)
-        if self.path.startswith("/api/debug/js?") and os.environ.get("SHERPA_DEBUG") and DEBUG_API:
-            # только для отладки: выполнить JS в окне лаунчера (SHERPA_DEBUG=1)
+        if self.path.startswith("/api/debug/js") and os.environ.get("SHERPA_DEBUG") and DEBUG_API:
+            # только для отладки: выполнить JS в окне лаунчера (SHERPA_DEBUG=1); /api/debug/js/mini?… и /api/debug/js/map?… — в мини-карте и окне карты
             from urllib.parse import unquote
-            code = unquote(self.path.split("?", 1)[1])
+            head, _, code = self.path.partition("?")
+            code = unquote(code)
+            target = DEBUG_API._mini if head.endswith("/mini") else DEBUG_API._mapwin if head.endswith("/map") else DEBUG_API._window
             try:
-                res = DEBUG_API._window.evaluate_js(code)
+                if target is None:
+                    return self._json({"ok": False, "error": "window not open"}, 404)
+                res = target.evaluate_js(code)
                 return self._json({"ok": True, "result": res})
             except Exception as e:  # noqa: BLE001
                 return self._json({"ok": False, "error": repr(e)}, 500)

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
-import { Plus, Minus, Circle, Square, Navigation, Compass, X, Tag } from 'lucide-react'
+import { Plus, Minus, Navigation, Compass, X, Tag, Pin, PinOff } from 'lucide-react'
 import { useGame } from '@/store/data'
 import type { XYZ } from '@/data/types'
 import { useUI, type MapStyle } from '@/store/ui'
@@ -13,15 +13,17 @@ import { extractsOf } from '@/lib/extracts'
 import { floorForPosition, visibleOnFloor, heading } from '@/lib/floors'
 
 /**
- * Мини-карта: отдельное маленькое окно поверх игры. Карта по курсу (стрелка всегда вверх),
- * круг или квадрат, обновляется с каждым скриншотом. Настройки — в localStorage, общие с главным окном.
+ * Мини-карта: отдельное маленькое квадратное окно поверх игры. Карта по курсу (стрелка всегда вверх),
+ * обновляется с каждым скриншотом. Настройки — в localStorage, общие с главным окном.
  */
 
-interface MiniPrefs { zoom: number; round: boolean; rotate: boolean; labels: boolean; mapId: string | null }
+/** pinned — окно закреплено: перетаскивание за любое место (easy_drag pywebview) отключено */
+interface MiniPrefs { zoom: number; rotate: boolean; labels: boolean; mapId: string | null; pinned: boolean }
 const PREFS_KEY = 'sherpa:mini'
+const DEFAULT_PREFS: MiniPrefs = { zoom: 5, rotate: true, labels: false, mapId: null, pinned: false }
 const readPrefs = (): MiniPrefs => {
-  try { return { zoom: 5, round: true, rotate: true, labels: false, mapId: null, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') } }
-  catch { return { zoom: 5, round: true, rotate: true, labels: false, mapId: null } }
+  try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') } }
+  catch { return DEFAULT_PREFS }
 }
 
 export function MiniPage() {
@@ -46,7 +48,7 @@ export function MiniPage() {
   useEffect(() => { launcher?.get_state().then((s) => setOpacity(s.minimap_opacity ?? 1)).catch(() => {}) }, [launcher])
   const applyOpacity = (v: number) => { setOpacity(v); launcher?.set_minimap_opacity?.(v).catch(() => {}) }
   useEffect(() => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* ignore */ } }, [prefs])
-  // окно мини-карты всегда тёмное — углы вокруг круга не должны светиться
+  // окно мини-карты всегда тёмное — края при повороте не должны светиться
   useEffect(() => {
     document.documentElement.dataset.theme = 'dark'
     document.body.style.background = '#0d0f0c'
@@ -199,8 +201,10 @@ export function MiniPage() {
 
   return (
     <div
-      className={`fixed inset-0 overflow-hidden select-none bg-[#0d0f0c] ${prefs.round ? 'rounded-full' : ''}`}
+      className="fixed inset-0 overflow-hidden select-none bg-[#0d0f0c]"
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      // закреплено: mousedown не доходит до window, где pywebview начинает перетаскивание окна (кнопки и карта его уже получили)
+      onMouseDown={(e) => { if (prefs.pinned) e.stopPropagation() }}
     >
       {/* сам холст больше окна в √2 раза — при повороте углы не оголяются */}
       <div
@@ -208,6 +212,14 @@ export function MiniPage() {
         className="absolute"
         style={{ left: '-21%', top: '-21%', width: '142%', height: '142%', transform: `rotate(${rotateDeg}deg)`, transformOrigin: '50% 50%', transition: 'transform .35s ease-out' }}
       />
+      {/* скрепка: закрепить окно на месте — иначе оно едет за любым нажатием мыши */}
+      <button
+        type="button" onClick={() => set({ pinned: !prefs.pinned })}
+        title={prefs.pinned ? 'Окно закреплено — открепить, чтобы перетащить' : 'Закрепить окно на месте'}
+        className={`absolute right-1.5 top-1.5 z-10 h-6 w-6 grid place-items-center rounded-[3px] border transition-opacity ${prefs.pinned ? 'bg-brass/70 border-brass text-black opacity-90' : `bg-black/60 border-white/20 text-white ${hover ? 'opacity-100' : 'opacity-40'}`}`}
+      >
+        {prefs.pinned ? <Pin size={12} /> : <PinOff size={12} />}
+      </button>
       {/* компас */}
       <div className="absolute left-1/2 top-2 -translate-x-1/2 num text-[11px] text-white/90 drop-shadow-[0_0_3px_#000] pointer-events-none">
         {playerPos ? `${heading(playerPos.rotation, gmap?.coordinateToCardinalRotation ?? 0).label} · ${meta?.layers[floor]?.name ?? gmap?.name ?? ''}` : gmap?.name ?? 'Ожидаю скриншот…'}
@@ -240,7 +252,6 @@ export function MiniPage() {
         <Btn title="Дальше" onClick={() => set({ zoom: Math.max((meta?.minZoom ?? 1) - 1, prefs.zoom - 0.5) })}><Minus size={12} /></Btn>
         <Btn title="Ближе" onClick={() => set({ zoom: Math.min(Math.max(7, meta?.maxZoom ?? 6), prefs.zoom + 0.5) })}><Plus size={12} /></Btn>
         <Btn title={prefs.rotate ? 'Север сверху' : 'По курсу'} on={prefs.rotate} onClick={() => set({ rotate: !prefs.rotate })}>{prefs.rotate ? <Navigation size={12} /> : <Compass size={12} />}</Btn>
-        <Btn title={prefs.round ? 'Квадрат' : 'Круг'} onClick={() => set({ round: !prefs.round })}>{prefs.round ? <Square size={12} /> : <Circle size={12} />}</Btn>
         <Btn title="Подписи" on={prefs.labels} onClick={() => set({ labels: !prefs.labels })}><Tag size={12} /></Btn>
         {launcher?.set_minimap_opacity && (
           <input type="range" min={20} max={100} step={5} value={Math.round(opacity * 100)} onChange={(e) => applyOpacity(Number(e.target.value) / 100)}
