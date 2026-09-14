@@ -797,7 +797,8 @@ class Api:
             script = Path(os.environ.get("TEMP", str(base))) / "sherpa-update.ps1"
             q = lambda v: str(v).replace("'", "''")  # noqa: E731
             script.write_text(UPDATE_SCRIPT.format(pid=os.getpid(), src=q(new_dir), dst=q(ROOT), upd=q(base)), encoding="utf-8-sig")
-            flags = getattr(subprocess, "DETACHED_PROCESS", 0x8) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200) | 0x08000000  # + CREATE_NO_WINDOW
+            # CREATE_NO_WINDOW, но не DETACHED_PROCESS: без консоли PowerShell умирает сразу (проверено)
+            flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200) | 0x08000000
             subprocess.Popen(
                 ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", str(script)],
                 creationflags=flags, close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
