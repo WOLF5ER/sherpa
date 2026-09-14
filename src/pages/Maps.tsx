@@ -21,6 +21,7 @@ import { SquadPanel } from '@/components/SquadPanel'
 import { publishSquadMap, publishSquadMark, ROOM_RE } from '@/lib/squad'
 import { floorForPosition, visibleOnFloor } from '@/lib/floors'
 import { ItemCell } from '@/components/ItemCell'
+import { renderWikiPics } from '@/components/WikiPics'
 
 const MAP_ORDER = ['customs', 'factory', 'woods', 'shoreline', 'interchange', 'reserve', 'lighthouse', 'streets-of-tarkov', 'ground-zero', 'the-lab', 'the-labyrinth', 'terminal', 'icebreaker', 'night-factory', 'ground-zero-21', 'the-lab-dark']
 
@@ -487,7 +488,9 @@ export function MapsPage() {
         const add = (tag: string, cls: string, text: string) => { const n = document.createElement(tag); n.className = cls; n.textContent = text; el.appendChild(n); return n }
         add('div', 'qpop-title', v.task.name)
         add('div', 'qpop-desc', o.description)
+        if (o.approx) add('div', 'qpop-meta', '≈ координаты приближённые (сняты с карты вики) — смотри скрины')
         if (zoneObjs.length > 1) add('div', 'qpop-meta', `пунктов на картах: ${doneCount} / ${zoneObjs.length}${isDone ? ' · этот выполнен' : ''}`)
+        if (o.pics?.length) renderWikiPics(el, o.pics)
         const row = add('div', 'qpop-actions', '')
         const btn = (text: string, cls: string, fn: () => void) => {
           const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = text
@@ -504,9 +507,10 @@ export function MapsPage() {
         const dim = !onLevel(z.position) || isDone
         const qc = v.task.seasonal ? COLORS.season : COLORS.quest
         if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: 1, fillOpacity: dim ? 0.04 : 0.1, interactive: false }))
-        const m = L.marker(pos(z.position), { icon: icon('flag', qc, withLabels ? v.task.name : undefined, { size: 20, dim }) })
-        tip(m, `<b>${v.task.name}</b><br>${o.description}<br><span style="opacity:.6">${isDone ? 'пункт выполнен · ' : ''}клик — отметить</span>`)
-        m.bindPopup(() => popupFor(v, o, isDone), { closeButton: false, offset: [0, -10], className: 'qpop-wrap', maxWidth: 320 })
+        const label = withLabels ? (o.approx ? `≈ ${v.task.name}` : v.task.name) : undefined
+        const m = L.marker(pos(z.position), { icon: icon('flag', qc, label, { size: 20, dim }) })
+        tip(m, `<b>${v.task.name}</b><br>${o.description}<br><span style="opacity:.6">${o.approx ? '≈ точка приближённая · ' : ''}${isDone ? 'пункт выполнен · ' : ''}клик — подробности</span>`)
+        m.bindPopup(() => popupFor(v, o, isDone), { closeButton: false, offset: [0, -10], className: 'qpop-wrap', maxWidth: 360 })
         group.addLayer(m)
         zoneBounds.push(pos(z.position))
       }

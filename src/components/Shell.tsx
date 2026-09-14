@@ -12,6 +12,7 @@ import { ago } from '@/lib/format'
 import { Kbd } from './ui'
 import { ItemDrawer } from './ItemDrawer'
 import { SearchPalette } from './SearchPalette'
+import { Lightbox } from './WikiPics'
 
 const NAV = [
   { to: '/raid', label: 'Брифинг', icon: Crosshair },
@@ -122,6 +123,7 @@ export function Shell() {
 
       <ItemDrawer />
       <SearchPalette />
+      <Lightbox />
     </div>
   )
 }

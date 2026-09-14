@@ -3,8 +3,13 @@ import { ROUBLES } from './types'
 
 /**
  * Сезонная цепочка «KORD BREACH» (сезон 1, 03.08–07.12.2026). В данных tarkov.dev её нет —
- * собрана вручную по tarkov.help (ru) и гайдам; без координат зон (их взять неоткуда).
- * Добавляется только в режим pvp-season. Как только tarkov.dev выложит эти квесты — файл можно удалить.
+ * собрана вручную по tarkov.help (ru) и гайдам. Добавляется только в режим pvp-season.
+ * Как только tarkov.dev выложит эти квесты — файл можно удалить.
+ *
+ * Координаты точек (`at`) — приближённые (±10–30 м): сняты с карт вики (escapefromtarkov.fandom.com,
+ * гайды к квестам с обведёнными местами) через привязку к известным координатам выходов tarkov.dev;
+ * там, где место совпадает с объектом tarkov.dev (замок, рубильник, зона другого квеста) — взяты его координаты.
+ * Картинки (`pics`) — файлы вики, лицензия CC BY-NC-SA.
  */
 
 const T = {
@@ -39,7 +44,13 @@ interface Def {
   loyalty?: { trader: string; level: number }
   xp: number
   rub?: number
-  objectives: { type: ObjectiveType; d: string; maps?: string[]; items?: string[]; count?: number; fir?: boolean; optional?: boolean }[]
+  objectives: {
+    type: ObjectiveType; d: string; maps?: string[]; items?: string[]; count?: number; fir?: boolean; optional?: boolean
+    /** точки на карте [map, x, y, z] — координаты приближённые (см. шапку файла) */
+    at?: [string, number, number, number][]
+    /** файлы с вики (File:…) — карта с отметкой и скрины места */
+    pics?: string[]
+  }[]
   keys?: string[]
   wiki: string
   note?: string
@@ -53,7 +64,9 @@ const DEFS: Def[] = [
     id: 'kb-uninvited-guests-1', name: 'Незваные гости. Часть 1', nameEn: 'Uninvited Guests - Part 1', trader: T.prapor, map: M.shoreline,
     loyalty: { trader: T.prapor, level: 2 }, xp: 6000, rub: 18000, wiki: wiki('nezvanie-gosti-chast-1-kord-breach'),
     objectives: [
-      { type: 'findQuestItem', d: 'Найти кейс с военным оборудованием на локации Берег (одна из трёх точек: будка у вышки Сорди, 2-й этаж метеостанции, 2-й этаж ГЭС)', maps: [M.shoreline] },
+      { type: 'findQuestItem', d: 'Найти кейс с военным оборудованием на локации Берег (одна из трёх точек: будка у вышки Сорди, 2-й этаж метеостанции, 2-й этаж ГЭС)', maps: [M.shoreline],
+        at: [[M.shoreline, -710, -40, 98], [M.shoreline, -512, -47, 242], [M.shoreline, -231, -45, 194]],
+        pics: ['Uninvited_Guests_-_Part_1_Map.png', 'Uninvited_Guests_-_Part_1_Spawn_1.png', 'Uninvited_Guests_-_Part_1_Spawn_2.png', 'Uninvited_Guests_-_Part_1_Spawn_3.png'] },
       { type: 'extract', d: 'Выйти из рейда с кейсом', maps: [M.shoreline] },
     ],
   },
@@ -67,7 +80,8 @@ const DEFS: Def[] = [
     xp: 11000, rub: 180000, wiki: wiki('zvonki-bez-otveta-kord-breach'),
     note: 'Выходить только через «Пункт МЧС» или «Подвал Nakatani»; смерть или другой выход — провал.',
     objectives: [
-      { type: 'plantQuestItem', d: 'Заложить послание Терапевта у стойки регистрации на 2-м этаже главного офиса TerraGroup', maps: [M.groundZero] },
+      { type: 'plantQuestItem', d: 'Заложить послание Терапевта у стойки регистрации на 2-м этаже главного офиса TerraGroup', maps: [M.groundZero],
+        at: [[M.groundZero, -25, 29.5, 40]], pics: ['Saving_the_Mole_Map.png', 'Ground_Zero_TerraGroup_Building.png', 'Unanswered_Calls_stash_position.png'] },
       { type: 'extract', d: 'Выйти через «Пункт МЧС» или «Подвал Nakatani»', maps: [M.groundZero] },
     ],
   },
@@ -75,12 +89,18 @@ const DEFS: Def[] = [
     id: 'kb-cast-the-net', name: 'Забросить невод', nameEn: 'Cast the Net', trader: T.prapor, map: null,
     after: ['kb-uninvited-guests-2'], xp: 11000, rub: 180000, wiki: wiki('zabrosit-nevod-kord-breach'),
     objectives: [
-      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру на грузовике «Урал» рядом с ГЭС (Берег)', maps: [M.shoreline], items: [I.wifiCam], count: 1 },
-      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру на экскаваторе у ручья под базой контрабандистов (Берег)', maps: [M.shoreline], items: [I.wifiCam], count: 1 },
-      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру на бетономешалке у упавшего крана (Улицы Таркова)', maps: [M.streets], items: [I.wifiCam], count: 1 },
-      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру на крыше биотуалетов перед кинотеатром (Улицы Таркова)', maps: [M.streets], items: [I.wifiCam], count: 1 },
-      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру в кабине фуры на спуске к проспекту Мира (Эпицентр)', maps: [M.groundZero], items: [I.wifiCam], count: 1 },
-      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру внутри жёлтого автобуса на подземном уровне (Эпицентр)', maps: [M.groundZero], items: [I.wifiCam], count: 1 },
+      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру на грузовике «Урал» рядом с ГЭС (Берег)', maps: [M.shoreline], items: [I.wifiCam], count: 1,
+        at: [[M.shoreline, -180, -48, 145]], pics: ['Cast_the_Net_Shoreline_Map.png', 'Cast_the_Net_Shoreline_Camera_2.png'] },
+      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру на экскаваторе у ручья под базой контрабандистов (Берег)', maps: [M.shoreline], items: [I.wifiCam], count: 1,
+        at: [[M.shoreline, -595, -40, -199]], pics: ['Cast_the_Net_Shoreline_Map.png', 'Cast_the_Net_Shoreline_Camera_1.png'] },
+      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру на бетономешалке у упавшего крана (Улицы Таркова)', maps: [M.streets], items: [I.wifiCam], count: 1,
+        at: [[M.streets, 199, 4, 260]], pics: ['Cast_the_Net_Streets_of_Tarkov_Map.png', 'Cast_the_Net_Streets_of_Tarkov_Camera_1.png'] },
+      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру на крыше биотуалетов перед кинотеатром (Улицы Таркова)', maps: [M.streets], items: [I.wifiCam], count: 1,
+        at: [[M.streets, -50, 3, 381]], pics: ['Cast_the_Net_Streets_of_Tarkov_Map.png', 'Cast_the_Net_Streets_of_Tarkov_Camera_2.png'] },
+      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру в кабине фуры на спуске к проспекту Мира (Эпицентр)', maps: [M.groundZero], items: [I.wifiCam], count: 1,
+        at: [[M.groundZero, 122, 17, 63]], pics: ['Cast_the_Net_Ground_Zero_Map.png', 'Cast_the_Net_Ground_Zero_Camera_1.png'] },
+      { type: 'plantItem', d: 'Закрепить Wi-Fi камеру внутри жёлтого автобуса на подземном уровне (Эпицентр)', maps: [M.groundZero], items: [I.wifiCam], count: 1,
+        at: [[M.groundZero, 73, 14, 115]], pics: ['Cast_the_Net_Ground_Zero_Map.png', 'Cast_the_Net_Ground_Zero_Camera_2.png'] },
     ],
   },
   {
@@ -92,12 +112,18 @@ const DEFS: Def[] = [
     id: 'kb-reverse-gear', name: 'Задняя передача', nameEn: 'Reverse Gear', trader: T.prapor, map: null,
     after: ['kb-know-your-enemy'], xp: 11000, rub: 180000, wiki: wiki('zadnyaya-peredacha-kord-breach'),
     objectives: [
-      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с грузовика «Урал» рядом с ГЭС (Берег)', maps: [M.shoreline] },
-      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с экскаватора на территории контрабандистов (Берег)', maps: [M.shoreline] },
-      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с бетономешалки у упавшего крана (Улицы Таркова)', maps: [M.streets] },
-      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с крыши биотуалетов у кинотеатра «Родина» (Улицы Таркова)', maps: [M.streets] },
-      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с кабины фуры на спуске к проспекту Мира (Эпицентр)', maps: [M.groundZero] },
-      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с жёлтого автобуса на подземном уровне (Эпицентр)', maps: [M.groundZero] },
+      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с грузовика «Урал» рядом с ГЭС (Берег)', maps: [M.shoreline],
+        at: [[M.shoreline, -180, -48, 145]], pics: ['Cast_the_Net_Shoreline_Map.png', 'Cast_the_Net_Shoreline_Camera_2_close.png'] },
+      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с экскаватора на территории контрабандистов (Берег)', maps: [M.shoreline],
+        at: [[M.shoreline, -595, -40, -199]], pics: ['Cast_the_Net_Shoreline_Map.png', 'Cast_the_Net_Shoreline_Camera_1_close.png'] },
+      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с бетономешалки у упавшего крана (Улицы Таркова)', maps: [M.streets],
+        at: [[M.streets, 199, 4, 260]], pics: ['Cast_the_Net_Streets_of_Tarkov_Map.png', 'Cast_the_Net_SOT_Camera_1_close.png'] },
+      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с крыши биотуалетов у кинотеатра «Родина» (Улицы Таркова)', maps: [M.streets],
+        at: [[M.streets, -50, 3, 381]], pics: ['Cast_the_Net_Streets_of_Tarkov_Map.png', 'Cast_the_Net_SOT_Camera_2_close.png'] },
+      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с кабины фуры на спуске к проспекту Мира (Эпицентр)', maps: [M.groundZero],
+        at: [[M.groundZero, 122, 17, 63]], pics: ['Cast_the_Net_Ground_Zero_Map.png', 'Reverse_Gear_GZ_Camera_1_close.png'] },
+      { type: 'findQuestItem', d: 'Снять Wi-Fi камеру с жёлтого автобуса на подземном уровне (Эпицентр)', maps: [M.groundZero],
+        at: [[M.groundZero, 73, 14, 115]], pics: ['Cast_the_Net_Ground_Zero_Map.png', 'Reverse_Gear_GZ_Camera_2_close.png'] },
       { type: 'giveQuestItem', d: 'Передать все шесть камер Прапору' },
     ],
   },
@@ -147,14 +173,16 @@ const DEFS: Def[] = [
     id: 'kb-final-stretch', name: 'Финишная прямая', nameEn: 'Final Stretch', trader: T.fence, map: M.streets,
     after: ['kb-wolf-in-sheeps-clothing'], xp: 35000, rub: 300000, wiki: wiki('kord-breach-final-stretch'),
     note: 'Выбор: выполнение проваливает «Последствия наших решений».',
-    objectives: [{ type: 'findQuestItem', d: 'Найти ноутбук в схроне на заднем дворе кафе «Back to the 90s» и передать Скупщику', maps: [M.streets] }],
+    objectives: [{ type: 'findQuestItem', d: 'Найти ноутбук в схроне на заднем дворе кафе «Back to the 90s» и передать Скупщику', maps: [M.streets],
+      at: [[M.streets, -96.5, 4, 238.4]], pics: ['Final_Stretch_Map.png', 'Final_Stretch_Diner.png', 'Final_Stretch_Ventilation.png', 'Final_Stretch_Laptop_Spawn.png'] }],
   },
   {
     id: 'kb-consequences', name: 'Последствия наших решений', nameEn: 'Consequences of Our Decisions', trader: T.fence, map: M.streets,
     after: ['kb-wolf-in-sheeps-clothing'], xp: 35000, rub: 300000, wiki: wiki('kord-breach-consequences-of-our-decisions'),
     note: 'Выбор: выполнение проваливает «Финишную прямую». Расшифровка — в Разведцентре схрона.',
     objectives: [
-      { type: 'findQuestItem', d: 'Найти ноутбук в схроне на заднем дворе кафе «Back to the 90s» (Улицы Таркова)', maps: [M.streets] },
+      { type: 'findQuestItem', d: 'Найти ноутбук в схроне на заднем дворе кафе «Back to the 90s» (Улицы Таркова)', maps: [M.streets],
+        at: [[M.streets, -96.5, 4, 238.4]], pics: ['Final_Stretch_Map.png', 'Final_Stretch_Diner.png', 'Final_Stretch_Ventilation.png', 'Final_Stretch_Laptop_Spawn.png'] },
       { type: 'useItem', d: 'Расшифровать данные с ноутбука в Разведцентре и передать' },
     ],
   },
@@ -168,19 +196,26 @@ const DEFS: Def[] = [
     id: 'kb-stay-clear', name: 'Капкан', nameEn: 'Stay Clear of Blast Zone', trader: T.jaeger, map: M.shoreline,
     after: ['kb-consequences'], xp: 30000, rub: 300000, wiki: wiki('kord-breach-stay-clear-of-blast-zone'),
     objectives: [
-      { type: 'plantItem', d: 'Заложить ТП-200 у первого пролома в заборе у западного крыла санатория', maps: [M.shoreline], items: [I.tnt], count: 1 },
-      { type: 'plantItem', d: 'Заложить ТП-200 у второго пролома в заборе у западного крыла санатория', maps: [M.shoreline], items: [I.tnt], count: 1 },
-      { type: 'plantItem', d: 'Заложить ТП-200 у пролома в заборе у восточного крыла санатория', maps: [M.shoreline], items: [I.tnt], count: 1 },
+      { type: 'plantItem', d: 'Заложить ТП-200 у первого пролома в заборе у западного крыла санатория', maps: [M.shoreline], items: [I.tnt], count: 1,
+        at: [[M.shoreline, -125, -5, -95]], pics: ['Stay_Clear_of_Blast_Zone_Map.png', 'Stay_Clear_of_Blast_Zone_West_Fence.png'] },
+      { type: 'plantItem', d: 'Заложить ТП-200 у второго пролома в заборе у западного крыла санатория', maps: [M.shoreline], items: [I.tnt], count: 1,
+        at: [[M.shoreline, -118, -5, -44]], pics: ['Stay_Clear_of_Blast_Zone_Map.png', 'Stay_Clear_of_Blast_Zone_North_Fence.png'] },
+      { type: 'plantItem', d: 'Заложить ТП-200 у пролома в заборе у восточного крыла санатория', maps: [M.shoreline], items: [I.tnt], count: 1,
+        at: [[M.shoreline, -383, -5, -80]], pics: ['Stay_Clear_of_Blast_Zone_Map.png', 'Stay_Clear_of_Blast_Zone_East_Fence.png'] },
     ],
   },
   {
     id: 'kb-break-the-chain', name: 'Разрыв цепи', nameEn: 'Break the Chain', trader: T.mechanic, map: null,
     after: ['kb-desperate-assault'], xp: 30000, rub: 300000, wiki: wiki('kord-breach-break-the-chain'),
     objectives: [
-      { type: 'visit', d: 'Уничтожить ретранслятор на заводской трубе у незаконченной стройки (Таможня)', maps: [M.customs] },
-      { type: 'visit', d: 'Уничтожить ретранслятор на вышке ЛЭП (Таможня)', maps: [M.customs] },
-      { type: 'visit', d: 'Уничтожить ретранслятор на вершине скалы (Лес)', maps: [M.woods] },
-      { type: 'visit', d: 'Уничтожить ретранслятор на вышке сотовой связи (Лес)', maps: [M.woods] },
+      { type: 'visit', d: 'Уничтожить ретранслятор на трубе котельной у незаконченной стройки (Таможня)', maps: [M.customs],
+        at: [[M.customs, 112, 15, -60]], pics: ['Break_the_Chain_Customs_Map.jpg', 'Break_the_Chain_Factory_Chimney_Repeater.png'] },
+      { type: 'visit', d: 'Уничтожить ретранслятор на вышке ЛЭП у выхода «ЖД к военной базе» (Таможня)', maps: [M.customs],
+        at: [[M.customs, 392, 12, 160]], pics: ['Break_the_Chain_Customs_Map.jpg', 'Break_the_Chain_Power_Line_Repeater.png'] },
+      { type: 'visit', d: 'Уничтожить ретранслятор на вершине горы, где сидит снайпер (Лес)', maps: [M.woods],
+        at: [[M.woods, -165, 40, -204]], pics: ['Break_the_Chain_Woods_Map.jpg', 'Break_the_Chain_Mountain_Repeater.png'] },
+      { type: 'visit', d: 'Уничтожить ретранслятор на вышке сотовой связи у бункера диких (Лес)', maps: [M.woods],
+        at: [[M.woods, 220, 35, -740]], pics: ['Break_the_Chain_Woods_Map.jpg', 'Break_the_Chain_Cell_Tower_Repeater.png'] },
     ],
   },
   {
@@ -204,13 +239,13 @@ const DEFS: Def[] = [
     after: ['kb-price-for-information'], xp: 0, wiki: wiki('kord-breach-in-the-name-of-humanity'),
     keys: [I.obj11sr],
     objectives: [
-      { type: 'visit', d: 'Найти рычаг подачи питания на электростанции (Развязка)', maps: [M.interchange] },
-      { type: 'visit', d: 'Активировать безопасную комнату в туалете Бургер Спота ключ-картой от Объекта #11SR', maps: [M.interchange], items: [I.obj11sr] },
-      { type: 'visit', d: 'Активировать рычаг контейнера №14 в безопасной комнате и забрать кейс', maps: [M.interchange] },
+      { type: 'visit', d: 'Найти рычаг подачи питания на электростанции (Развязка)', maps: [M.interchange], at: [[M.interchange, -201.1, 23.2, -357.8]] },
+      { type: 'visit', d: 'Активировать безопасную комнату в туалете Бургер Спота ключ-картой от Объекта #11SR', maps: [M.interchange], items: [I.obj11sr], at: [[M.interchange, -51.9, 22.3, 45.8]] },
+      { type: 'visit', d: 'Активировать рычаг контейнера №14 в безопасной комнате и забрать кейс из контейнера на парковке под IDEA', maps: [M.interchange], at: [[M.interchange, -47.7, 22.9, 42.6]] },
       { type: 'shoot', d: 'Убить 3 ЧВК на Развязке ночью (20:00–08:00)', maps: [M.interchange], count: 3 },
       { type: 'visit', d: 'Перейти на Улицы Таркова', maps: [M.interchange] },
       { type: 'shoot', d: 'Убить 3 ЧВК на Улицах ночью (20:00–08:00)', maps: [M.streets], count: 3 },
-      { type: 'plantQuestItem', d: 'Заложить кейс в отеле «Пайнвуд» (3-й этаж)', maps: [M.streets] },
+      { type: 'plantQuestItem', d: 'Заложить кейс на балконе ресторана на 3-м этаже отеля «Пайнвуд»', maps: [M.streets], at: [[M.streets, -77, 16, 150]] },
       { type: 'useItem', d: 'Использовать РСП-30 (жёлтый) у провалившегося трамвая', maps: [M.streets], items: [I.rsp30y], count: 1 },
       { type: 'extract', d: 'Выжить и выйти из рейда', maps: [M.streets] },
     ],
@@ -220,9 +255,12 @@ const DEFS: Def[] = [
     after: ['kb-in-the-name-of-humanity'], xp: 0, wiki: wiki('kord-breach-historical-prospects'),
     keys: [I.key314],
     objectives: [
-      { type: 'shoot', d: 'Убить 3 ЧВК ночью (20:00–08:00) на Таможне и заложить жетоны в меченой комнате (ключ 314)', maps: [M.customs], count: 3 },
-      { type: 'shoot', d: 'Убить 3 ЧВК на Лесу и заложить жетоны в доме сектантов', maps: [M.woods], count: 3 },
-      { type: 'shoot', d: 'Убить 3 ЧВК на Улицах и заложить жетоны в квартире сектантов', maps: [M.streets], count: 3 },
+      { type: 'shoot', d: 'Убить 3 ЧВК ночью (20:00–08:00) на Таможне и заложить жетоны в меченой комнате общаги (ключ 314)', maps: [M.customs], count: 3,
+        at: [[M.customs, 180.7, 6.85, 183.7]], pics: ['TheCultPart2DormsMap.png', 'Marked_Room_Door.png'] },
+      { type: 'shoot', d: 'Убить 3 ЧВК на Лесу и заложить жетоны в меченом круге в затопленной деревне', maps: [M.woods], count: 3,
+        at: [[M.woods, -88.7, 12.6, -717.6]], pics: ['They_Are_Already_Here_Woods_Activation_Location_Map.png', 'The_second_ritual_spot_in_the_Woods.png'] },
+      { type: 'shoot', d: 'Убить 3 ЧВК на Улицах и заложить жетоны в меченом круге в квартире сектантов (Никитская, 8, 2-й этаж)', maps: [M.streets], count: 3,
+        at: [[M.streets, -130.8, 9.5, 269.7]], pics: ['Nikitskaya_Street_8_Map.png', 'Nikitskaya_Street_Second_Floor_Cultist_Apartment_Entrance.png', 'Nikitskaya_Street_Second_Floor_Cultist_Apartment_Door.png', 'Nikitskaya_Street_Second_Floor_Cultist_Apartment.png'] },
     ],
   },
 ]
@@ -238,6 +276,9 @@ export function seasonTasks(): Task[] {
       count: o.count,
       foundInRaid: o.fir,
       items: o.items,
+      zones: o.at?.map(([map, x, y, z], j) => ({ id: `${d.id}-o${i + 1}-z${j + 1}`, map, position: { x, y, z } })),
+      approx: !!o.at,
+      pics: o.pics,
     }))
     const rewardItems = d.rub ? [{ item: ROUBLES, count: d.rub }] : []
     return {

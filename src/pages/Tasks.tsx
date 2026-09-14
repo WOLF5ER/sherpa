@@ -8,6 +8,7 @@ import { dependents, objectiveLabel, prerequisites, type TaskStatus, type TaskVi
 import { search } from '@/lib/search'
 import { rub } from '@/lib/format'
 import { ItemCell } from '@/components/ItemCell'
+import { WikiPics } from '@/components/WikiPics'
 import { Chip, Eyebrow, FirBadge, Segmented, TraderMark, Toggle, Empty } from '@/components/ui'
 import { ROUBLES } from '@/data/types'
 import { CURRENCY } from '@/lib/needs'
@@ -215,6 +216,8 @@ function TaskRow({ view }: { view: TaskView }) {
                       {o.items && o.items.length > 1 && <span className="text-ink-3"> (любой из {o.items.length})</span>}
                       {o.foundInRaid && <FirBadge className="ml-2" />}
                       {o.optional && <span className="ml-2 text-[10px] uppercase tracking-[.1em] text-ink-4">необязательно</span>}
+                      {o.approx && <span className="ml-2 text-[11px] text-ink-4" title="Координаты сняты с карты вики, точность ±10–30 м">≈ на карте</span>}
+                      {o.pics && o.pics.length > 0 && <WikiPics files={o.pics} className="mt-1.5" />}
                     </span>
                     {(o.zones?.length || (mapId && (o.type === 'visit' || o.type === 'mark' || o.type === 'plantItem' || o.type === 'plantQuestItem' || o.type === 'findQuestItem'))) && mapId && data.maps[mapId] && (
                       <Link to={`/maps?map=${data.maps[mapId].normalizedName}&task=${t.id}`} className="pt-1 text-ink-3 hover:text-brass-2" title="Показать на карте"><MapPin size={14} /></Link>

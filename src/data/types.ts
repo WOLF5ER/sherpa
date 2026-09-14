@@ -160,6 +160,10 @@ export interface Objective {
   items?: string[]
   questItem?: string
   zones?: Zone[]
+  /** координаты зон приближённые (сезонные квесты — сняты с карт вики) */
+  approx?: boolean
+  /** картинки с вики: имена файлов (File:…), см. lib/wiki.ts */
+  pics?: string[]
   /** для plantQuestItem/giveQuestItem: имя квестового предмета */
 }
 
