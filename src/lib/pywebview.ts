@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 
 export interface LauncherState {
+  /** версия сборки лаунчера (dist/version.json) */
+  version?: string
   on_top: boolean
   visible: boolean
   screenshots: boolean
@@ -23,6 +25,21 @@ export interface LauncherApi {
   /** диалог «Сохранить как» + запись файла; null — отмена */
   save_file?: (name: string, text: string) => Promise<string | null>
   get_state: () => Promise<LauncherState>
+  /** обновления: последний релиз на GitHub */
+  update_info?: () => Promise<UpdateInfo>
+  check_update?: () => Promise<UpdateInfo>
+  install_update?: () => Promise<{ ok: boolean; error?: string }>
+  /** открыть ссылку в системном браузере */
+  open_url?: (url: string) => Promise<boolean>
+}
+
+export interface UpdateInfo {
+  version: string
+  update: { version: string; notes: string; url: string; size: number; page: string; published?: string | null } | null
+  state: { stage: 'idle' | 'checking' | 'downloading' | 'extracting' | 'restarting' | 'error'; done?: number; total?: number; error?: string; page?: string }
+  checked_at: number
+  can_install: boolean
+  page: string
 }
 
 export interface PlayerPos { x: number; y: number; z: number; rotation: number; file: string; ts: number }

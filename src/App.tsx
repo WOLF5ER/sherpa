@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useData } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useUI } from '@/store/ui'
+import { useRaids } from '@/store/raids'
 import { useLauncher } from '@/lib/pywebview'
 import { Shell } from '@/components/Shell'
 import { Boot } from '@/components/Boot'
@@ -19,7 +20,10 @@ import { AmmoPage } from '@/pages/Ammo'
 import { BuilderPage } from '@/pages/Builder'
 import { MiniPage } from '@/pages/Mini'
 import { SquadPage } from '@/pages/Squad'
-import type { PlayerPos } from '@/lib/pywebview'
+import { RaidsPage } from '@/pages/Raids'
+import { KeysPage } from '@/pages/Keys'
+import { SkillsPage } from '@/pages/Skills'
+import type { PlayerPos, UpdateInfo } from '@/lib/pywebview'
 import { fetchTarkovTracker, mapProgress } from '@/lib/tarkovtracker'
 import { canPickFolder, folderPermission, savedFolder, watchFolder } from '@/lib/screenshots'
 import { publishSquad, subscribeSquad, ROOM_RE } from '@/lib/squad'
@@ -59,6 +63,24 @@ export function App() {
     window.addEventListener('storage', onStorage)
     return () => { window.removeEventListener('sherpa:pos', on); window.removeEventListener('storage', onStorage) }
   }, [])
+
+  // обновления: лаунчер проверяет релизы на GitHub и шлёт событие; в браузере обновлять нечего
+  useEffect(() => {
+    if (!launcher?.update_info || isMini) return
+    launcher.update_info().then((u) => useUI.getState().setUpdateInfo(u)).catch(() => {})
+    const on = (e: Event) => useUI.getState().setUpdateInfo((e as CustomEvent<UpdateInfo>).detail)
+    window.addEventListener('sherpa:update', on)
+    return () => window.removeEventListener('sherpa:update', on)
+  }, [launcher, isMini])
+
+  // история рейдов: каждая точка «ты здесь» пишется в текущий рейд (только главное окно — у мини-карты свой store)
+  useEffect(() => {
+    if (isMini) return
+    void useRaids.getState().init()
+    return useUI.subscribe((s, prev) => {
+      if (s.playerPos && s.playerPos !== prev.playerPos) useRaids.getState().record(s.playerPos, s.currentMapId)
+    })
+  }, [isMini])
 
   // без лаунчера: папка скриншотов через File System Access API
   const folderStatus = useUI((s) => s.folderStatus)
@@ -164,6 +186,9 @@ export function App() {
         <Route path="/maps" element={<MapsPage />} />
         <Route path="/season" element={<SeasonPage />} />
         <Route path="/squad" element={<SquadPage />} />
+        <Route path="/raids" element={<RaidsPage />} />
+        <Route path="/keys" element={<KeysPage />} />
+        <Route path="/skills" element={<SkillsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/tasks" replace />} />
       </Route>

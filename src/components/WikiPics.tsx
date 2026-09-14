@@ -12,7 +12,7 @@ export function WikiPics({ files, size = 96, className = '' }: { files: string[]
     <div className={`flex flex-wrap gap-1.5 ${className}`} title={WIKI_CREDIT}>
       {list.map((f) => (
         <button key={f} type="button" onClick={() => openLightbox(urls[f])} className="rounded-[3px] border border-line-2 overflow-hidden hover:border-brass" style={{ width: size, height: Math.round(size * 9 / 16) }}>
-          <img src={wikiThumb(urls[f], size * 2)} alt="" loading="lazy" className="w-full h-full object-cover" />
+          <img src={wikiThumb(urls[f], size * 2)} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
         </button>
       ))}
     </div>
@@ -30,7 +30,7 @@ export function renderWikiPics(container: HTMLElement, files: string[], size = 8
     for (const f of list) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'qpop-pic'
       b.style.width = `${size}px`; b.style.height = `${Math.round(size * 9 / 16)}px`
-      const img = document.createElement('img'); img.src = wikiThumb(urls[f], size * 2); img.alt = ''; img.loading = 'lazy'
+      const img = document.createElement('img'); img.src = wikiThumb(urls[f], size * 2); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'
       b.appendChild(img)
       b.onclick = (e) => { e.stopPropagation(); openLightbox(urls[f]) }
       row.appendChild(b)
@@ -56,7 +56,7 @@ export function Lightbox() {
   if (!url) return null
   return (
     <div className="fixed inset-0 z-[70] bg-black/85 flex items-center justify-center p-4" onClick={() => setUrl(null)}>
-      <img src={wikiThumb(url, 1600)} alt="" className="max-w-full max-h-full object-contain rounded shadow-[var(--shadow-pop)]" />
+      <img src={wikiThumb(url, 1600)} alt="" referrerPolicy="no-referrer" className="max-w-full max-h-full object-contain rounded shadow-[var(--shadow-pop)]" />
       <button type="button" onClick={() => setUrl(null)} className="absolute top-3 right-3 p-2 text-ink-2 hover:text-ink" aria-label="Закрыть"><X size={22} /></button>
       <div className="absolute bottom-2 left-0 right-0 text-center text-[11px] text-ink-4">{WIKI_CREDIT}</div>
     </div>

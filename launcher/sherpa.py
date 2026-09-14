@@ -163,6 +163,62 @@ def load_config() -> dict:
 TT_API = "https://api.tarkovtracker.org"
 TT_UA = "Sherpa/1.0 (+https://github.com/sherpa-tarkov)"
 
+# ── обновления: последний релиз на GitHub (репозиторий публичный, токен не нужен) ──
+UPDATE_REPO = "WOLF5ER/sherpa"
+# SHERPA_UPDATE_API — подменить адрес (локальная проверка обновления на фальшивом релизе)
+UPDATE_API = os.environ.get("SHERPA_UPDATE_API") or f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
+UPDATE_PAGE = f"https://github.com/{UPDATE_REPO}/releases/latest"
+UPDATE_CHECK_EVERY = 6 * 3600
+
+
+def app_version() -> str:
+    """Версия сборки: vite кладёт dist/version.json из package.json."""
+    try:
+        return str(json.loads((DIST / "version.json").read_text(encoding="utf-8")).get("version") or "0.0.0")
+    except Exception:  # noqa: BLE001
+        return "0.0.0"
+
+
+APP_VERSION = app_version()
+
+
+def version_tuple(v: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in re.findall(r"\d+", v)[:3]) or (0,)
+
+
+def fetch_latest_release() -> dict | None:
+    """Тег, заметки и zip-архив последнего релиза; None — релизов нет или у него нет архива."""
+    req = urllib.request.Request(UPDATE_API, headers={"User-Agent": TT_UA, "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        j = json.loads(r.read().decode("utf-8"))
+    tag = str(j.get("tag_name") or "").strip().lstrip("vV")
+    asset = next((a for a in j.get("assets", []) if str(a.get("name", "")).lower().endswith(".zip")), None)
+    if not tag or not asset:
+        return None
+    return {
+        "version": tag,
+        "notes": (j.get("body") or "").strip(),
+        "url": asset["browser_download_url"],
+        "size": int(asset.get("size") or 0),
+        "page": j.get("html_url") or UPDATE_PAGE,
+        "published": j.get("published_at"),
+    }
+
+
+# скрипт подмены: ждёт выхода Sherpa, сносит старый _internal, переносит новую сборку, запускает. PowerShell — из-за путей с кириллицей.
+UPDATE_SCRIPT = r"""
+$p = {pid}; $src = '{src}'; $dst = '{dst}'; $upd = '{upd}'
+while (Get-Process -Id $p -ErrorAction SilentlyContinue) {{ Start-Sleep -Milliseconds 500 }}
+Start-Sleep -Milliseconds 800
+for ($i = 0; $i -lt 30; $i++) {{
+  try {{ if (Test-Path -LiteralPath "$dst\_internal") {{ Remove-Item -LiteralPath "$dst\_internal" -Recurse -Force -ErrorAction Stop }}; break }} catch {{ Start-Sleep -Seconds 1 }}
+}}
+robocopy $src $dst /E /MOVE /R:10 /W:1 | Out-Null
+Start-Process -FilePath "$dst\Sherpa.exe" -WorkingDirectory $dst
+Remove-Item -LiteralPath $upd -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
+"""
+
 
 class QuietHandler(SimpleHTTPRequestHandler):
     protocol_version = "HTTP/1.1"  # keep-alive и chunked-потоки; каждый ответ обязан иметь Content-Length или chunked
@@ -559,10 +615,15 @@ class Api:
     _port: int = 4879
     _tunnel_url: str | None = None
     _tunnel_state: str = "off"  # off | starting | up | missing
+    # обновления
+    _update: dict | None = None            # найденная новая версия (см. fetch_latest_release)
+    _update_state: dict = {"stage": "idle"}  # idle | checking | downloading | extracting | restarting | error
+    _update_checked: float = 0.0
 
     @timed
     def get_state(self):
         return {
+            "version": APP_VERSION,
             "on_top": self._on_top, "visible": self._visible,
             "screenshots": self._shots_enabled, "screenshots_path": str(self._shots_path or ""),
             "screenshots_path_exists": bool(self._shots_path and self._shots_path.exists()),
@@ -643,6 +704,142 @@ class Api:
             except Exception:  # noqa: BLE001
                 pass
             threading.Event().wait(1.0)
+
+    # ── обновления ──
+    def update_info(self):
+        return {"version": APP_VERSION, "update": self._update, "state": self._update_state, "checked_at": self._update_checked, "can_install": FROZEN, "page": UPDATE_PAGE}
+
+    def _push_update(self):
+        info = self.update_info()
+        for w in [self._window]:
+            if w is None:
+                continue
+            try:
+                w.evaluate_js(f"window.dispatchEvent(new CustomEvent('sherpa:update', {{detail: {json.dumps(info, ensure_ascii=False)}}}))")
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _set_update_state(self, **kv):
+        self._update_state = dict(kv)
+        self._push_update()
+
+    def _check_update(self):
+        try:
+            self._update_state = {"stage": "checking"}
+            rel = fetch_latest_release()
+            self._update_checked = time.time()
+            if rel and version_tuple(rel["version"]) > version_tuple(APP_VERSION):
+                self._update = rel
+                print(f"[sherpa] есть обновление: {rel['version']} (сейчас {APP_VERSION})")
+            else:
+                self._update = None
+            self._update_state = {"stage": "idle"}
+        except Exception as e:  # noqa: BLE001
+            print(f"[sherpa] проверка обновлений: {e}")
+            self._update_state = {"stage": "error", "error": f"не удалось проверить: {e}"}
+        self._push_update()
+
+    def _update_loop(self):
+        time.sleep(15)  # не мешаем старту
+        while True:
+            self._check_update()
+            time.sleep(UPDATE_CHECK_EVERY)
+
+    @timed
+    def check_update(self):
+        threading.Thread(target=self._check_update, daemon=True).start()
+        return self.update_info()
+
+    @timed
+    def install_update(self):
+        """Скачать архив релиза, распаковать и перезапуститься через внешний скрипт (файлы exe заняты, пока он работает)."""
+        if not FROZEN:
+            return {"ok": False, "error": "обновление ставится только в собранной Sherpa.exe"}
+        if not self._update:
+            return {"ok": False, "error": "обновления нет"}
+        if self._update_state.get("stage") in ("downloading", "extracting", "restarting"):
+            return {"ok": True}
+        threading.Thread(target=self._install_update, daemon=True).start()
+        return {"ok": True}
+
+    def _install_update(self):
+        upd = self._update
+        base = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "Sherpa" / "update"
+        try:
+            shutil.rmtree(base, ignore_errors=True)
+            base.mkdir(parents=True, exist_ok=True)
+            zip_path = base / f"Sherpa-{upd['version']}.zip"
+            self._set_update_state(stage="downloading", done=0, total=upd["size"])
+            req = urllib.request.Request(upd["url"], headers={"User-Agent": TT_UA})
+            with urllib.request.urlopen(req, timeout=60) as r, open(zip_path, "wb") as f:
+                total = int(r.headers.get("Content-Length") or upd["size"] or 0)
+                done, last = 0, 0.0
+                while True:
+                    chunk = r.read(256 * 1024)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    done += len(chunk)
+                    if time.time() - last > 0.3:
+                        self._set_update_state(stage="downloading", done=done, total=total)
+                        last = time.time()
+            self._set_update_state(stage="extracting")
+            import zipfile
+            new_dir = base / "new"
+            with zipfile.ZipFile(zip_path) as z:
+                z.extractall(new_dir)
+            if not (new_dir / "Sherpa.exe").exists():
+                # архив с папкой Sherpa внутри
+                inner = next((d for d in new_dir.iterdir() if d.is_dir() and (d / "Sherpa.exe").exists()), None)
+                if inner is None:
+                    raise RuntimeError("в архиве нет Sherpa.exe")
+                new_dir = inner
+            script = Path(os.environ.get("TEMP", str(base))) / "sherpa-update.ps1"
+            q = lambda v: str(v).replace("'", "''")  # noqa: E731
+            script.write_text(UPDATE_SCRIPT.format(pid=os.getpid(), src=q(new_dir), dst=q(ROOT), upd=q(base)), encoding="utf-8-sig")
+            flags = getattr(subprocess, "DETACHED_PROCESS", 0x8) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200) | 0x08000000  # + CREATE_NO_WINDOW
+            subprocess.Popen(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", str(script)],
+                creationflags=flags, close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            print(f"[sherpa] обновление {upd['version']} скачано, перезапуск")
+            self._set_update_state(stage="restarting")
+            time.sleep(0.6)
+            self._quit()
+        except Exception as e:  # noqa: BLE001
+            print(f"[sherpa] обновление не удалось: {e}")
+            self._set_update_state(stage="error", error=str(e), page=upd.get("page") if upd else UPDATE_PAGE)
+
+    def _quit(self):
+        """Закрыть все окна — webview.start() вернётся, main() погасит туннель. Если окно не закрылось — выходим жёстко."""
+        self.close_minimap()
+        w = self._window
+        try:
+            if w is not None:
+                w.destroy()
+        except Exception:  # noqa: BLE001
+            pass
+
+        def hard():
+            time.sleep(4)
+            try:
+                if self._tunnel_proc is not None:
+                    self._tunnel_proc.terminate()
+            except Exception:  # noqa: BLE001
+                pass
+            os._exit(0)
+        threading.Thread(target=hard, daemon=True).start()
+
+    @timed
+    def open_url(self, url: str):
+        """Открыть ссылку в системном браузере (из WebView2 внешние ссылки открывать нечем)."""
+        if not str(url).startswith(("http://", "https://")):
+            return False
+        try:
+            os.startfile(url)  # noqa: S606
+            return True
+        except Exception:  # noqa: BLE001
+            return False
 
     # ── сеть для сквада: включается из интерфейса, без перезапуска ──
     def _save_cfg(self, **kv):
@@ -940,6 +1137,9 @@ def main():
     print(f"[sherpa] папка скриншотов: {api._shots_path} ({'есть' if api._shots_path.exists() else 'не найдена — укажи в панели «Ты здесь»'})")
     api._shots_seen = time.time()  # старые скриншоты не считаем
     threading.Thread(target=api._poll_screenshots, daemon=True).start()
+    if FROZEN:
+        threading.Thread(target=api._update_loop, daemon=True).start()
+    print(f"[sherpa] версия {APP_VERSION}")
     window = webview.create_window(
         "Sherpa",
         f"http://127.0.0.1:{port}/",

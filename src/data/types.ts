@@ -164,7 +164,8 @@ export interface Objective {
   approx?: boolean
   /** картинки с вики: имена файлов (File:…), см. lib/wiki.ts */
   pics?: string[]
-  /** для plantQuestItem/giveQuestItem: имя квестового предмета */
+  /** тип skill: какой навык и до какого уровня */
+  skill?: { name: string; level: number }
 }
 
 export interface TaskRequirement {
@@ -175,6 +176,8 @@ export interface TaskRequirement {
 export interface Task {
   id: string
   name: string
+  /** английское имя — для привязки внешних справочников (вики) */
+  nameEn: string
   normalizedName: string
   trader: string
   map: string | null

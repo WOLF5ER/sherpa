@@ -198,10 +198,12 @@ export function normalize(raw: RawBundle): GameData {
       items: o.items ?? (o.item ? [o.item] : undefined),
       questItem: o.questItem ?? undefined,
       zones: o.zones ?? undefined,
+      skill: o.type === 'skill' && o.skill ? { name: String(o.skill), level: Number(o.level) || 0 } : undefined,
     }))
     tasks[t.id] = {
       id: t.id,
       name: tTask(t.name),
+      nameEn: raw.tasksEn[t.name] ?? t.name,
       normalizedName: t.normalizedName,
       trader: t.trader,
       map: t.map ?? null,

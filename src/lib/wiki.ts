@@ -1,7 +1,7 @@
 /**
  * Картинки с вики (escapefromtarkov.fandom.com) для пунктов сезонных квестов: карта с отметкой и скрины места.
  * Имена файлов лежат в данных (Objective.pics), адреса берём через MediaWiki API (CORS открыт, origin=*),
- * кэшируем в localStorage. Хотлинк со static.wikia.nocookie.net работает только с Referer — браузер его шлёт сам.
+ * кэшируем в localStorage. Хотлинк со static.wikia.nocookie.net с чужим Referer отдаёт заглушку 300×171 — картинки грузим с referrerPolicy="no-referrer".
  */
 
 const API = 'https://escapefromtarkov.fandom.com/api.php'
@@ -31,9 +31,14 @@ export async function wikiImageUrls(files: string[]): Promise<Record<string, str
         const r = await fetch(url)
         const d = await r.json()
         const out: Record<string, string> = {}
+        // MediaWiki приводит первую букву к заглавной («skill_x.png» → «Skill_x.png») — возвращаем под тем именем, что просили
+        const back: Record<string, string> = {}
+        for (const n of (d?.query?.normalized ?? []) as { from: string; to: string }[]) back[String(n.to).replace(/^File:/, '').replace(/ /g, '_')] = String(n.from).replace(/^File:/, '').replace(/ /g, '_')
         for (const p of Object.values<any>(d?.query?.pages ?? {})) {
           const u = p?.imageinfo?.[0]?.url
-          if (u && p.title) out[String(p.title).replace(/^File:/, '').replace(/ /g, '_')] = u
+          if (!u || !p.title) continue
+          const t = String(p.title).replace(/^File:/, '').replace(/ /g, '_')
+          out[back[t] ?? t] = u
         }
         Object.assign(c, out); save()
         return out

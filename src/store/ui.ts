@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { PlayerPos } from '@/lib/pywebview'
+import type { PlayerPos, UpdateInfo } from '@/lib/pywebview'
 import type { SquadMember, SquadMark } from '@/lib/squad'
+import { useRaids } from './raids'
 
 interface UIState {
   /** открытая карточка предмета */
@@ -58,6 +59,9 @@ interface UIState {
   /** карта, выбранная на странице карт (для сквада) */
   currentMapId: string | null
   setCurrentMapId: (id: string | null) => void
+  /** обновление Sherpa (от лаунчера; в браузере — null) */
+  updateInfo: UpdateInfo | null
+  setUpdateInfo: (u: UpdateInfo | null) => void
 }
 
 export type MapStyle = 'scheme' | 'render'
@@ -88,7 +92,8 @@ export const useUI = create<UIState>()(
         trail: playerPos ? [...s.trail.filter((p) => p.ts !== playerPos.ts), playerPos].slice(-200) : s.trail,
       })),
       trail: [],
-      clearTrail: () => set({ trail: [], playerPos: null }),
+      // сброс следа заодно закрывает текущий рейд в истории — следующий скриншот начнёт новый
+      clearTrail: () => { useRaids.getState().endCurrent(); set({ trail: [], playerPos: null }) },
       followPlayer: true,
       setFollowPlayer: (followPlayer) => set({ followPlayer }),
       autoFloor: true,
@@ -114,6 +119,8 @@ export const useUI = create<UIState>()(
       setTheme: (theme) => set({ theme }),
       currentMapId: null,
       setCurrentMapId: (currentMapId) => set({ currentMapId }),
+      updateInfo: null,
+      setUpdateInfo: (updateInfo) => set({ updateInfo }),
     }),
     {
       name: 'sherpa:ui',

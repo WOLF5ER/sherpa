@@ -27,6 +27,8 @@ export interface ProfileData {
   traderLevels: Record<string, number>
   /** полученные достижения (отмечаются вручную) */
   achievements: Record<string, true>
+  /** уровни навыков (вручную): id навыка tarkov.dev (Endurance, StressResistance…) → уровень 0–51 */
+  skills: Record<string, number>
   /** токен TarkovTracker для импорта прогресса (хранится только локально) */
   ttToken: string
   ttSyncedAt: number | null
@@ -53,6 +55,7 @@ export interface ProfileState extends ProfileData {
   setHave: (item: string, n: number) => void
   setTraderLevel: (trader: string, level: number | null) => void
   toggleAchievement: (id: string) => void
+  setSkill: (id: string, level: number) => void
   setKappaOnly: (v: boolean) => void
   setShowLockedTasks: (v: boolean) => void
   setTtToken: (t: string) => void
@@ -66,12 +69,12 @@ export interface ProfileState extends ProfileData {
 
 export const blankProfile = (name: string, seasonal = false, gameMode: GameMode = 'regular'): ProfileData => ({
   name, level: 1, faction: 'USEC', gameMode, seasonal, fleaDisabled: false,
-  completed: {}, objectivesDone: {}, stations: {}, have: {}, traderLevels: {}, achievements: {}, ttToken: '', ttSyncedAt: null,
+  completed: {}, objectivesDone: {}, stations: {}, have: {}, traderLevels: {}, achievements: {}, skills: {}, ttToken: '', ttSyncedAt: null,
 })
 
 const PROFILE_KEYS: (keyof ProfileData)[] = [
   'name', 'level', 'faction', 'gameMode', 'seasonal', 'fleaDisabled', 'completed', 'objectivesDone', 'stations', 'have', 'traderLevels', 'achievements',
-  'ttToken', 'ttSyncedAt',
+  'skills', 'ttToken', 'ttSyncedAt',
 ]
 
 function snapshot(s: ProfileData): ProfileData {
@@ -138,6 +141,13 @@ export const useProfile = create<ProfileState>()(
         else achievements[id] = true
         return { achievements }
       }),
+      setSkill: (id, level) => set((s) => {
+        const skills = { ...s.skills }
+        const v = Math.max(0, Math.min(51, Math.round(level) || 0))
+        if (v <= 0) delete skills[id]
+        else skills[id] = v
+        return { skills }
+      }),
       setKappaOnly: (kappaOnly) => set({ kappaOnly }),
       setShowLockedTasks: (showLockedTasks) => set({ showLockedTasks }),
       setTtToken: (ttToken) => set({ ttToken: ttToken.trim() }),
@@ -180,7 +190,7 @@ export const useProfile = create<ProfileState>()(
     }),
     {
       name: 'sherpa:profile',
-      version: 6,
+      version: 7,
       migrate: (persisted, version) => {
         let p = (persisted ?? {}) as Partial<ProfileState>
         if (version < 2) {
@@ -211,6 +221,12 @@ export const useProfile = create<ProfileState>()(
           p = { ...p, objectivesDone: p.objectivesDone ?? {} }
           const profiles = { ...(p.profiles ?? {}) }
           for (const id of Object.keys(profiles)) profiles[id] = { ...profiles[id], objectivesDone: profiles[id].objectivesDone ?? {} }
+          p.profiles = profiles
+        }
+        if (version < 7) {
+          p = { ...p, skills: p.skills ?? {} }
+          const profiles = { ...(p.profiles ?? {}) }
+          for (const id of Object.keys(profiles)) profiles[id] = { ...profiles[id], skills: profiles[id].skills ?? {} }
           p.profiles = profiles
         }
         return p as ProfileState

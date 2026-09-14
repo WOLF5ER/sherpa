@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import L from 'leaflet'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Play, Pause, SkipBack } from 'lucide-react'
 import { useGame } from '@/store/data'
 import { useUI } from '@/store/ui'
 import { useProfile } from '@/store/profile'
+import { useRaids, type Raid } from '@/store/raids'
 import { useTaskViews } from '@/lib/useCtx'
 import { findMeta } from '@/data/mapMeta'
 import { makeCRS, pos, boundsOf, scaledBounds, icon, dot, COLORS, svgBaseFor, applySvgFloor, containerIcon, MARKER_SVG, type IconKind } from '@/lib/leaflet'
@@ -117,6 +118,10 @@ const KEYCARDS: { id: string; label: string; color: string }[] = [
 const KEYCARD_COLORS = Object.fromEntries(KEYCARDS.map((k) => [k.id, k.color]))
 const isKeycard = (it: { categories: string[] } | undefined) => !!it?.categories.includes(KEYCARD_CATEGORY)
 const LEDX = '5c0530ee86f774697952d952'
+/** цвет трека повтора рейда */
+const REPLAY_COLOR = '#b58cff'
+const REPLAY_SPEEDS = [10, 30, 100]
+const fmtClock = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 /** типы пунктов, у которых есть «место» на карте */
 const PLACE_OBJECTIVES = new Set<Objective['type']>(['visit', 'findQuestItem', 'plantItem', 'plantQuestItem', 'mark', 'useItem'])
 
@@ -157,6 +162,39 @@ export function MapsPage() {
   const taskParam = params.get('task')
   const keyParam = params.get('key')
   const itemParam = params.get('item')
+  const raidParam = params.get('raid')
+
+  // ── повтор рейда из истории: трек целиком + бегунок по времени ──
+  const [replay, setReplay] = useState<Raid | null>(null)
+  const [replayT, setReplayT] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState(30)
+  const replayRef = useRef<L.LayerGroup | null>(null)
+  const replayFitted = useRef<string | null>(null) // id рейда, под который карта уже вписана
+  useEffect(() => {
+    if (!raidParam) { setReplay(null); setPlaying(false); return }
+    let on = true
+    void useRaids.getState().load(raidParam).then((r) => { if (!on) return; setReplay(r); setReplayT(0); setPlaying(false) })
+    return () => { on = false }
+  }, [raidParam])
+  const replayDur = replay ? replay.end - replay.start : 0
+  useEffect(() => {
+    if (!playing || !replay) return
+    const t = setInterval(() => setReplayT((v) => {
+      const next = v + 100 * speed
+      if (next >= replayDur) { setPlaying(false); return replayDur }
+      return next
+    }), 100)
+    return () => clearInterval(t)
+  }, [playing, replay, speed, replayDur])
+  // точка трека на текущем времени повтора
+  const replayPoint = useMemo(() => {
+    if (!replay?.points.length) return null
+    const at = replay.start + replayT
+    let p = replay.points[0]
+    for (const q of replay.points) { if (q.t <= at) p = q; else break }
+    return p
+  }, [replay, replayT])
 
   // ── где лежит предмет: считаем по всем картам ──
   const itemSpots = useMemo(() => {
@@ -183,6 +221,10 @@ export function MapsPage() {
   useEffect(() => {
     if (itemSpots?.length && !paramMap) setMapId(itemSpots[0].map.id)
   }, [itemSpots, paramMap])
+  useEffect(() => {
+    if (replay?.mapId && data.maps[replay.mapId] && findMeta(data.maps[replay.mapId].normalizedName)) setMapId(replay.mapId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replay])
   useEffect(() => {
     const byParam = paramMap && mapsWithMeta.find((m) => m.normalizedName === paramMap)
     if (byParam && byParam.id !== mapId) setMapId(byParam.id)
@@ -588,12 +630,44 @@ export function MapsPage() {
     }
   }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
 
-  // ── авто-этаж: по высоте последней точки ──
+  // ── авто-этаж: по высоте последней точки (при повторе рейда — по точке повтора) ──
   useEffect(() => {
-    if (!autoFloor || !playerPos || !meta) return
-    const f = floorForPosition(meta, playerPos)
-    setFloor(f)
-  }, [playerPos, meta, autoFloor])
+    if (!autoFloor || !meta) return
+    const p = replay ? replayPoint : playerPos
+    if (!p) return
+    setFloor(floorForPosition(meta, p))
+  }, [playerPos, replayPoint, replay, meta, autoFloor])
+
+  // ── повтор рейда: трек, пройденная часть и стрелка ──
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !meta) return
+    replayRef.current?.remove()
+    replayRef.current = null
+    if (!replay || replay.mapId !== gmap?.id || !replay.points.length || !replayPoint) return
+    const group = L.layerGroup()
+    const pts = replay.points
+    group.addLayer(L.polyline(pts.map(pos), { color: REPLAY_COLOR, weight: 2, opacity: 0.35, interactive: false }))
+    const done = pts.filter((p) => p.t <= replayPoint.t)
+    if (done.length > 1) group.addLayer(L.polyline(done.map(pos), { color: REPLAY_COLOR, weight: 3, opacity: 0.9, interactive: false }))
+    const first = pts[0], last = pts[pts.length - 1]
+    group.addLayer(L.circleMarker(pos(first), { radius: 5, color: '#0d0f0c', weight: 1, fillColor: COLORS.pmc, fillOpacity: 1 }).bindTooltip('Старт · ' + new Date(first.t).toLocaleTimeString('ru-RU'), { direction: 'top' }))
+    group.addLayer(L.circleMarker(pos(last), { radius: 5, color: '#0d0f0c', weight: 1, fillColor: COLORS.boss, fillOpacity: 1 }).bindTooltip('Финиш · ' + new Date(last.t).toLocaleTimeString('ru-RU'), { direction: 'top' }))
+    let rot = meta.coordinateRotation ?? 0
+    if (rot === 90 || rot === 270) rot += 180
+    const deg = replayPoint.r + rot
+    const html = `<div style="width:26px;height:26px;transform:translate(-13px,-13px) rotate(${deg}deg);filter:drop-shadow(0 0 4px #000)">
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 2 L20 22 L12 17 L4 22 Z" fill="${REPLAY_COLOR}" stroke="#0d0f0c" stroke-width="1.5" stroke-linejoin="round"/></svg></div>`
+    const m = L.marker(pos(replayPoint), { icon: L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 0] }), zIndexOffset: 2100 })
+    m.bindTooltip(`<b>Повтор</b><br>${new Date(replayPoint.t).toLocaleTimeString('ru-RU')}`, { direction: 'top', offset: [0, -14] })
+    group.addLayer(m)
+    group.addTo(map)
+    replayRef.current = group
+    if (replayFitted.current !== replay.id) {
+      replayFitted.current = replay.id
+      map.fitBounds(L.latLngBounds(pts.map(pos)).pad(0.3), { maxZoom: meta.maxZoom - 1 })
+    } else if (playing && follow) map.panTo(pos(replayPoint), { animate: true })
+  }, [replay, replayPoint, gmap, meta, playing, follow])
 
   // ── «ты здесь» + след ──
   useEffect(() => {
@@ -734,6 +808,40 @@ export function MapsPage() {
             )}
           </div>
           <button type="button" onClick={clearParams} className="p-1 text-ink-3 hover:text-ink" aria-label="Убрать"><X size={16} /></button>
+        </div>
+      )}
+
+      {/* повтор рейда */}
+      {raidParam && (
+        <div className="absolute left-3 bottom-3 z-[500] panel glass px-3 py-2 flex flex-col gap-1.5 shadow-[0_10px_30px_rgba(0,0,0,.5)] w-[360px] max-w-[calc(100%-24px)]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: REPLAY_COLOR }} />
+            <div className="min-w-0 flex-1 text-[13px]">
+              <Eyebrow>Повтор рейда</Eyebrow>
+              <div className="truncate">
+                {replay ? `${data.maps[replay.mapId]?.name ?? 'Карта?'} · ${new Date(replay.start).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${replay.n} точек` : 'загружаю…'}
+              </div>
+            </div>
+            <button type="button" onClick={clearParams} className="p-1 text-ink-3 hover:text-ink" aria-label="Закрыть"><X size={16} /></button>
+          </div>
+          {replay && replay.mapId !== gmap?.id && <div className="text-[11px] text-scav">Трек с другой карты — переключи карту на {data.maps[replay.mapId]?.name ?? '…'}</div>}
+          {replay && replay.points.length > 0 && (
+            <>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => { setReplayT(0); setPlaying(false) }} className="p-1 text-ink-3 hover:text-ink" title="В начало"><SkipBack size={14} /></button>
+                <button type="button" onClick={() => { if (replayT >= replayDur) setReplayT(0); setPlaying(!playing) }} className="w-8 h-8 grid place-items-center rounded-[4px] border border-brass-3 text-brass-2 bg-brass/10 hover:bg-brass/20" title={playing ? 'Пауза' : 'Играть'}>
+                  {playing ? <Pause size={14} /> : <Play size={14} />}
+                </button>
+                <input type="range" min={0} max={Math.max(1, replayDur)} step={1000} value={replayT} onChange={(e) => { setReplayT(Number(e.target.value)); setPlaying(false) }} className="flex-1" />
+                <span className="num text-[12px] text-ink-2 whitespace-nowrap">{fmtClock(replayT)} / {fmtClock(replayDur)}</span>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] text-ink-3">
+                скорость
+                {REPLAY_SPEEDS.map((sp) => <button key={sp} type="button" onClick={() => setSpeed(sp)} className={`chip h-5 px-2 ${speed === sp ? 'chip-on' : ''}`}>×{sp}</button>)}
+                {replayPoint && <span className="ml-auto num">{new Date(replayPoint.t).toLocaleTimeString('ru-RU')} · h {replayPoint.y.toFixed(0)}</span>}
+              </div>
+            </>
+          )}
         </div>
       )}
 

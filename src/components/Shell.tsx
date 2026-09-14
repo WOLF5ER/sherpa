@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon, Radar, Users,
+  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon, Radar, Users, KeyRound, Footprints, Dumbbell, Download,
 } from 'lucide-react'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
 import { MODE_LABEL, type GameMode } from '@/data/loader'
@@ -18,12 +18,15 @@ const NAV = [
   { to: '/raid', label: 'Брифинг', icon: Crosshair },
   { to: '/tasks', label: 'Задачи', icon: ListChecks },
   { to: '/needs', label: 'Предметы', icon: Backpack },
+  { to: '/keys', label: 'Ключи', icon: KeyRound },
   { to: '/hideout', label: 'Схрон', icon: Warehouse },
   { to: '/market', label: 'Барахолка', icon: Coins },
   { to: '/crafts', label: 'Крафты', icon: FlaskConical },
   { to: '/ammo', label: 'Патроны', icon: Target },
   { to: '/builder', label: 'Сборка', icon: Wrench },
+  { to: '/skills', label: 'Навыки', icon: Dumbbell },
   { to: '/maps', label: 'Карты', icon: MapIcon },
+  { to: '/raids', label: 'Рейды', icon: Footprints },
   { to: '/squad', label: 'Сквад', icon: Users },
   { to: '/season', label: 'Сезон', icon: Medal },
   { to: '/profile', label: 'Профиль', icon: UserRound },
@@ -53,13 +56,13 @@ export function Shell() {
           <div className="h-14 grid place-items-center border-b border-line">
             <Logo />
           </div>
-          <div className="flex-1 flex flex-col py-2">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col py-1.5 [scrollbar-width:none]">
             {NAV.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
                 className={({ isActive }) =>
-                  `relative flex flex-col items-center gap-0.5 py-1.5 text-[10px] font-display uppercase tracking-[.1em] transition-colors
+                  `relative shrink-0 flex flex-col items-center gap-0.5 py-1 text-[10px] font-display uppercase tracking-[.1em] transition-colors
                    ${isActive ? 'text-brass-2' : 'text-ink-3 hover:text-ink'}`}
               >
                 {({ isActive }) => (
@@ -99,6 +102,7 @@ export function Shell() {
           </button>
           <div className="flex-1" />
           <ModeSwitch />
+          <UpdateButton />
           <ScavTimer />
           <Freshness />
           <ThemeButton />
@@ -174,6 +178,23 @@ function ScavTimer() {
       <Timer size={14} />
       {active ? <span className="num">{mm}:{String(ss).padStart(2, '0')}</span> : readyAt ? 'Дикий готов' : 'Дикий'}
     </button>
+  )
+}
+
+/** Есть новая версия — кнопка ведёт в профиль, где кнопка «Установить». */
+function UpdateButton() {
+  const info = useUI((s) => s.updateInfo)
+  const overlay = useUI((s) => s.overlay)
+  if (!info?.update) return null
+  const st = info.state.stage
+  const busy = st === 'downloading' || st === 'extracting' || st === 'restarting'
+  const pct = st === 'downloading' && info.state.total ? Math.round(((info.state.done ?? 0) / info.state.total) * 100) : null
+  return (
+    <NavLink to="/profile" title={`Доступна Sherpa ${info.update.version} (сейчас ${info.version}). Открыть профиль — там «Что нового» и установка.`}
+      className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[4px] border border-brass-3 text-brass-2 bg-brass/10 hover:bg-brass/20 transition-colors text-[12px] font-display uppercase tracking-[.1em] whitespace-nowrap">
+      <Download size={14} className={busy ? 'animate-bounce' : ''} />
+      {!overlay && (busy ? (st === 'downloading' ? `Качаю${pct != null ? ` ${pct}%` : '…'}` : st === 'restarting' ? 'Перезапуск…' : 'Распаковка…') : `Обновление ${info.update.version}`)}
+    </NavLink>
   )
 }
 

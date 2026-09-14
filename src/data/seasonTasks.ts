@@ -284,6 +284,7 @@ export function seasonTasks(): Task[] {
     return {
       id: d.id,
       name: d.name + SUFFIX,
+      nameEn: d.nameEn,
       normalizedName: d.id,
       trader: d.trader,
       map: d.map ?? null,

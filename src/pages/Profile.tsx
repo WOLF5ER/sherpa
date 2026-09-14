@@ -1,10 +1,11 @@
 import { useMemo, useRef } from 'react'
-import { Download, Upload, Trash2, DatabaseZap } from 'lucide-react'
+import { Download, Upload, Trash2, DatabaseZap, RefreshCw, ExternalLink, Sparkles } from 'lucide-react'
 import { useGame, useData } from '@/store/data'
 import { useProfile } from '@/store/profile'
+import { useUI } from '@/store/ui'
 import { clearCache } from '@/data/loader'
 import { deriveTraderLevel } from '@/lib/useCtx'
-import { Eyebrow, Segmented, Stepper } from '@/components/ui'
+import { Eyebrow, Progress, Segmented, Stepper } from '@/components/ui'
 import { ProfileSwitcher } from '@/components/ProfileSwitcher'
 import { TarkovTrackerImport } from '@/components/TarkovTrackerImport'
 import { useLauncher } from '@/lib/pywebview'
@@ -36,7 +37,7 @@ export function ProfilePage() {
     const text = JSON.stringify({
       name: p.name, level: p.level, faction: p.faction, gameMode: p.gameMode, seasonal: p.seasonal, fleaDisabled: p.fleaDisabled,
       completed: p.completed, stations: p.stations, have: p.have, traderLevels: p.traderLevels, achievements: p.achievements,
-      objectivesDone: p.objectivesDone,
+      objectivesDone: p.objectivesDone, skills: p.skills,
     }, null, 2)
     const name = `sherpa-profile-${new Date().toISOString().slice(0, 10)}.json`
     // в лаунчере (WebView2) скачивание blob-ссылок не работает — просим лаунчер показать «Сохранить как»
@@ -60,7 +61,7 @@ export function ProfilePage() {
         name: j.name ?? p.name, level: j.level ?? p.level, faction: j.faction ?? p.faction, gameMode: j.gameMode ?? p.gameMode,
         seasonal: !!j.seasonal, fleaDisabled: !!j.fleaDisabled, achievements: j.achievements ?? {},
         completed: j.completed ?? {}, stations: j.stations ?? {}, have: j.have ?? {}, traderLevels: j.traderLevels ?? {},
-        objectivesDone: j.objectivesDone ?? {},
+        objectivesDone: j.objectivesDone ?? {}, skills: j.skills ?? {},
       })
     } catch {
       alert('Файл не похож на профиль Sherpa')
@@ -73,6 +74,8 @@ export function ProfilePage() {
         <h1 className="display text-[34px] text-ink">Профиль</h1>
         <div className="mt-1 text-[13px] text-ink-3">Всё хранится только на этом компьютере. Уровень и выполненные квесты определяют, что показывать в «Задачах» и «Предметах».</div>
       </header>
+
+      <UpdatePanel />
 
       <section className="panel p-4">
         <ProfileSwitcher />
@@ -159,7 +162,10 @@ export function ProfilePage() {
 
       <section className="grid gap-6 md:grid-cols-2">
         <div className="panel p-4">
-          <Eyebrow>Оверлей</Eyebrow>
+          <div className="flex items-baseline justify-between gap-2">
+            <Eyebrow>Оверлей</Eyebrow>
+            <VersionLine />
+          </div>
           <div className="mt-3 text-[12px] text-ink-3 leading-5">
             Лаунчер (<span className="num">start.bat</span>) открывает Sherpa отдельным окном поверх игры.<br />
             <span className="num text-ink-2">F10</span> — показать/скрыть, <span className="num text-ink-2">F9</span> — поверх всех окон. В игре нужен режим «Без рамки» (Borderless).
@@ -199,4 +205,81 @@ export function ProfilePage() {
       </section>
     </div>
   )
+}
+
+/** Версия и ручная проверка обновлений (в лаунчере); в браузере — просто версия. */
+function VersionLine() {
+  const launcher = useLauncher()
+  const info = useUI((s) => s.updateInfo)
+  const checking = info?.state.stage === 'checking'
+  return (
+    <span className="num text-[11px] text-ink-4 inline-flex items-center gap-2">
+      Sherpa {info?.version ?? __APP_VERSION__}
+      {launcher?.check_update && !info?.update && (
+        <button type="button" onClick={() => launcher.check_update?.().then((u) => useUI.getState().setUpdateInfo(u)).catch(() => {})} disabled={checking}
+          className="inline-flex items-center gap-1 text-ink-4 hover:text-ink-2 disabled:opacity-60" title={info?.checked_at ? `Проверено ${new Date(info.checked_at * 1000).toLocaleTimeString('ru-RU')}` : 'Проверить обновления'}>
+          <RefreshCw size={11} className={checking ? 'animate-spin' : ''} />{checking ? 'проверяю…' : info?.checked_at ? 'последняя' : 'проверить'}
+        </button>
+      )}
+      {info?.state.stage === 'error' && !info.update && <span className="text-danger normal-case" title={info.state.error}>не проверилось</span>}
+    </span>
+  )
+}
+
+/** Найдено обновление: что нового, размер, «Установить и перезапустить». Ставится только в собранной Sherpa.exe. */
+function UpdatePanel() {
+  const launcher = useLauncher()
+  const info = useUI((s) => s.updateInfo)
+  if (!info?.update) return null
+  const u = info.update
+  const st = info.state
+  const busy = st.stage === 'downloading' || st.stage === 'extracting' || st.stage === 'restarting'
+  const pct = st.stage === 'downloading' && st.total ? (st.done ?? 0) / st.total : null
+  const mb = (u.size / 1024 / 1024).toFixed(0)
+  const openPage = () => { if (launcher?.open_url) void launcher.open_url(u.page); else window.open(u.page, '_blank') }
+  return (
+    <section className="panel p-4 border-brass-3 bg-brass/5">
+      <div className="flex items-start gap-3 flex-wrap">
+        <Sparkles size={18} className="text-brass-2 mt-0.5 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="display text-[18px] text-ink">Доступна Sherpa {u.version}</div>
+          <div className="mt-0.5 text-[12px] text-ink-3">Сейчас {info.version} · архив {mb} МБ{u.published ? ` · ${new Date(u.published).toLocaleDateString('ru-RU')}` : ''}. Прогресс и настройки останутся: они лежат отдельно от программы.</div>
+          {u.notes && (
+            <div className="mt-2 text-[12px] text-ink-2 leading-5 max-h-48 overflow-y-auto flex flex-col gap-0.5">
+              {notesLines(u.notes).map((l, i) => l.kind === 'h' ? <div key={i} className="eyebrow mt-1.5">{l.text}</div> : l.kind === 'li' ? <div key={i} className="pl-3">• {l.text}</div> : <div key={i}>{l.text}</div>)}
+            </div>
+          )}
+          {busy && (
+            <div className="mt-3">
+              <div className="text-[12px] text-ink-2">{st.stage === 'downloading' ? `Скачиваю… ${pct != null ? Math.round(pct * 100) : 0}%` : st.stage === 'extracting' ? 'Распаковываю…' : 'Перезапускаюсь — окно закроется и откроется снова через несколько секунд'}</div>
+              <Progress value={st.stage === 'downloading' ? (pct ?? 0) : 1} className="mt-1.5" />
+            </div>
+          )}
+          {st.stage === 'error' && <div className="mt-2 text-[12px] text-danger">Не вышло: {st.error}. Скачай архив со страницы релиза и распакуй поверх папки Sherpa.</div>}
+        </div>
+        <div className="flex flex-col gap-2 shrink-0">
+          {info.can_install && launcher?.install_update ? (
+            <button type="button" disabled={busy} onClick={() => void launcher.install_update?.()} className="chip chip-on h-8 disabled:opacity-60"><Download size={12} /> {busy ? 'Обновляю…' : 'Установить и перезапустить'}</button>
+          ) : (
+            <div className="text-[11px] text-ink-4 max-w-[200px]">Автоустановка — только в Sherpa.exe. В браузере или из исходников — <span className="num">git pull</span> и пересборка.</div>
+          )}
+          <button type="button" onClick={openPage} className="chip hover:text-ink hover:border-ink-4 h-8"><ExternalLink size={12} /> Страница релиза</button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/** Заметки релиза — markdown с GitHub; рисуем самое простое: заголовки, пункты, абзацы. Ссылки на PR/коммиты выкидываем. */
+function notesLines(md: string): { kind: 'h' | 'li' | 'p'; text: string }[] {
+  const out: { kind: 'h' | 'li' | 'p'; text: string }[] = []
+  for (const raw of md.split(/\r?\n/)) {
+    const line = raw.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\[(.+?)\]\((.+?)\)/g, '$1').replace(/\s+by @\S+ in \S+$/, '').replace(/\s+in https?:\/\/\S+$/, '').trim()
+    if (!line) continue
+    if (/^#+\s/.test(line)) out.push({ kind: 'h', text: line.replace(/^#+\s*/, '') })
+    else if (/^[-*]\s/.test(line)) out.push({ kind: 'li', text: line.replace(/^[-*]\s*/, '') })
+    else if (/^\*\*Full Changelog\*\*|^Full Changelog/i.test(line)) continue
+    else out.push({ kind: 'p', text: line })
+  }
+  return out
 }
