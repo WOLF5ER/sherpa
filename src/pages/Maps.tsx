@@ -19,7 +19,7 @@ import { Chip, Eyebrow, Segmented } from '@/components/ui'
 import { PositionPanel } from '@/components/PositionPanel'
 import { SquadPanel } from '@/components/SquadPanel'
 import { publishSquadMap, publishSquadMark, ROOM_RE } from '@/lib/squad'
-import { floorForPosition } from '@/lib/floors'
+import { floorForPosition, visibleOnFloor } from '@/lib/floors'
 import { ItemCell } from '@/components/ItemCell'
 
 const MAP_ORDER = ['customs', 'factory', 'woods', 'shoreline', 'interchange', 'reserve', 'lighthouse', 'streets-of-tarkov', 'ground-zero', 'the-lab', 'the-labyrinth', 'terminal', 'icebreaker', 'night-factory', 'ground-zero-21', 'the-lab-dark']
@@ -336,9 +336,7 @@ export function MapsPage() {
     if (!map || !group || !gmap || !meta) return
     group.clearLayers()
 
-    const layer = floor >= 0 ? meta.layers[floor] : undefined
-    const range: [number, number] | undefined = layer?.extents?.[0]?.height ?? (floor === -1 ? meta.heightRange : undefined)
-    const onLevel = (p: XYZ) => !range || (p.y >= range[0] && p.y <= range[1])
+    const onLevel = (p: XYZ) => visibleOnFloor(meta, floor, p)
     const tip = (m: L.Layer, html: string, opts: L.TooltipOptions = {}) => m.bindTooltip(html, { direction: 'top', offset: [0, -12], ...opts })
 
     if (toggles.exitsPmc || toggles.exitsScav || toggles.exitsShared) {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Plus, Minus, Circle, Square, Navigation, Compass, X, Tag } from 'lucide-react'
 import { useGame } from '@/store/data'
+import type { XYZ } from '@/data/types'
 import { useUI, type MapStyle } from '@/store/ui'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
@@ -9,7 +10,7 @@ import { useLauncher } from '@/lib/pywebview'
 import { findMeta, type MapMeta } from '@/data/mapMeta'
 import { makeCRS, pos, boundsOf, icon, COLORS, svgBaseFor, applySvgFloor } from '@/lib/leaflet'
 import { extractsOf } from '@/lib/extracts'
-import { floorForPosition, heading } from '@/lib/floors'
+import { floorForPosition, visibleOnFloor, heading } from '@/lib/floors'
 
 /**
  * Мини-карта: отдельное маленькое окно поверх игры. Карта по курсу (стрелка всегда вверх),
@@ -136,23 +137,26 @@ export function MiniPage() {
     const group = staticRef.current
     if (!group || !gmap || !meta) return
     group.clearLayers()
+    // не на текущем этаже — приглушаем, как на большой карте
+    const dim = (p: XYZ) => !visibleOnFloor(meta, floor, p)
     for (const x of extractsOf(data, gmap, gameMode)) {
       if (!x.extract || x.faction === 'scav') continue
       const color = x.faction === 'pmc' ? COLORS.pmc : x.faction === 'shared' ? COLORS.shared : COLORS.btr
-      group.addLayer(L.marker(pos(x.extract.position), { icon: icon('exit', color, prefs.labels ? x.label : undefined, { size: 18 }) }))
+      group.addLayer(L.marker(pos(x.extract.position), { icon: icon('exit', color, prefs.labels ? x.label : undefined, { size: 18, dim: dim(x.extract.position) }) }))
     }
-    for (const t of gmap.transits) group.addLayer(L.marker(pos(t.position), { icon: icon('transit', COLORS.transit, undefined, { size: 16 }) }))
+    for (const t of gmap.transits) group.addLayer(L.marker(pos(t.position), { icon: icon('transit', COLORS.transit, undefined, { size: 16, dim: dim(t.position) }) }))
     for (const v of views.values()) {
       if (v.status !== 'available') continue
       for (const o of v.task.objectives) for (const z of o.zones ?? []) {
         if (z.map !== gmap.id || objectivesDone[o.id]) continue
-        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: COLORS.quest, weight: 1, fillOpacity: 0.12, interactive: false }))
-        group.addLayer(L.marker(pos(z.position), { icon: icon('flag', COLORS.quest, prefs.labels ? v.task.name : undefined, { size: 16 }) }))
+        const d = dim(z.position)
+        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: COLORS.quest, weight: 1, fillOpacity: d ? 0.04 : 0.12, opacity: d ? 0.3 : 1, interactive: false }))
+        group.addLayer(L.marker(pos(z.position), { icon: icon('flag', COLORS.quest, prefs.labels ? v.task.name : undefined, { size: 16, dim: d }) }))
       }
     }
     for (const mk of marks[gmap.id] ?? []) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#e06ba0', prefs.labels ? mk.name : undefined, { size: 16 }) }))
     for (const mk of Object.values(squadMarks)) if (mk.map === gmap.normalizedName) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#5fd0d0', prefs.labels ? `${mk.label} · ${mk.by}` : undefined, { size: 16 }) }))
-  }, [gmap, meta, data, views, gameMode, marks, squadMarks, prefs.labels, objectivesDone])
+  }, [gmap, meta, data, views, gameMode, marks, squadMarks, prefs.labels, objectivesDone, floor])
 
   // ── живое: я, след, друзья; центрирование и поворот ──
   const hd = playerPos && meta ? mapHeading(meta, playerPos.rotation) : 0

@@ -8,25 +8,33 @@ function inRect(r: Rect, p: XYZ): boolean {
   return p.x >= Math.min(x1, x2) && p.x <= Math.max(x1, x2) && p.z >= Math.min(z1, z2) && p.z <= Math.max(z1, z2)
 }
 
-/**
- * Авто-этаж: индекс слоя, на котором находится точка (по высоте и, если заданы, по прямоугольникам),
- * или -1 — основной уровень. Логика та же, что у tarkov.dev (markerIsOnLayer).
- */
+function onExtent(ext: NonNullable<MapMeta['layers'][number]['extents']>[number], p: XYZ): boolean {
+  const h = ext.height
+  if (!h || p.y < h[0] || p.y >= h[1]) return false
+  const rects = (ext.bounds ?? []) as Rect[]
+  return rects.length === 0 || rects.some((r) => inRect(r, p))
+}
+
+/** Точка на слое: по высоте и, если у слоя заданы прямоугольники, — по ним (markerIsOnLayer у tarkov.dev). */
+export function onLayer(layer: MapMeta['layers'][number], p: XYZ): boolean {
+  return (layer.extents ?? []).some((ext) => onExtent(ext, p))
+}
+
+/** Авто-этаж: первый слой, на котором находится точка, или -1 — основной уровень (как activateMarkerLayer у tarkov.dev). */
 export function floorForPosition(meta: MapMeta, p: XYZ): number {
-  let fallback = -1
-  meta.layers.forEach((layer, i) => {
-    for (const ext of layer.extents ?? []) {
-      const h = ext.height
-      if (!h || p.y < h[0] || p.y >= h[1]) continue
-      const rects = (ext.bounds ?? []) as Rect[]
-      if (rects.length) {
-        if (rects.some((r) => inRect(r, p))) { fallback = i; return }
-      } else if (fallback === -1) {
-        fallback = i
-      }
-    }
-  })
-  return fallback
+  return meta.layers.findIndex((l) => onLayer(l, p))
+}
+
+/**
+ * Показывать ли точку на выбранном этаже (иначе — приглушить). На основном уровне точка скрывается,
+ * если она целиком внутри ограниченного прямоугольниками участка какого-то этажа (2-й этаж общаги на Таможне),
+ * или вне heightRange карты (Улицы: всё выше 10 — этажи).
+ */
+export function visibleOnFloor(meta: MapMeta, floor: number, p: XYZ): boolean {
+  if (floor >= 0) return onLayer(meta.layers[floor], p)
+  for (const l of meta.layers) for (const ext of l.extents ?? []) if (ext.bounds?.length && onExtent(ext, p)) return false
+  const hr = meta.heightRange
+  return !hr || (p.y >= hr[0] && p.y < hr[1])
 }
 
 /** Курс в градусах 0–360 (0 — север карты) и румб. Ориентировочно: зависит от поворота карты. */
