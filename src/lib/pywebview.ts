@@ -37,6 +37,9 @@ export interface LauncherApi {
   /** диалог «Сохранить как» + запись файла; null — отмена */
   save_file?: (name: string, text: string) => Promise<string | null>
   get_state: () => Promise<LauncherState>
+  /** резервная копия прогресса (localStorage sherpa:*) в AppData — переживает смену порта и обновления */
+  state_get?: () => Promise<StateBackup | null>
+  state_put?: (text: string) => Promise<boolean>
   /** обновления: последний релиз на GitHub */
   update_info?: () => Promise<UpdateInfo>
   check_update?: () => Promise<UpdateInfo>
@@ -53,6 +56,8 @@ export interface UpdateInfo {
   can_install: boolean
   page: string
 }
+
+export interface StateBackup { savedAt: number; keys: Record<string, string> }
 
 export interface PlayerPos { x: number; y: number; z: number; rotation: number; file: string; ts: number }
 

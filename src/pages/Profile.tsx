@@ -217,7 +217,10 @@ export function ProfilePage() {
         <div className="panel p-4">
           <Eyebrow>Резервная копия</Eyebrow>
           <div className="mt-3 text-[13px] text-ink-2 num">{p.name}: {doneCount} выполненных квестов · {Object.keys(p.have).length} предметов в счётчиках</div>
-          <div className="mt-1 text-[12px] text-ink-3">Экспорт — файл Sherpa, чтобы перенести прогресс в лаунчер, на другой ПК или другому персонажу.</div>
+          <div className="mt-1 text-[12px] text-ink-3">
+            Экспорт — файл Sherpa, чтобы перенести прогресс в лаунчер, на другой ПК или другому персонажу.
+            {launcher?.state_get && <><br />Лаунчер сам держит копию прогресса в <span className="num">%LOCALAPPDATA%\Sherpa\state.json</span> и восстанавливает её после обновления.</>}
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" onClick={() => void exportJson()} className="chip hover:text-ink hover:border-ink-4"><Upload size={12} /> Экспорт профиля</button>
             <button type="button" onClick={() => fileRef.current?.click()} className="chip hover:text-ink hover:border-ink-4"><Download size={12} /> Импорт</button>

@@ -156,7 +156,7 @@ def load_config() -> dict:
     cfg = dict(DEFAULT_CONFIG)
     if CONFIG_PATH.exists():
         try:
-            cfg.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
+            cfg.update(json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig")))  # utf-8-sig: Блокнот/PowerShell пишут BOM
         except Exception as e:  # noqa: BLE001
             print(f"[sherpa] config.json не прочитан ({e}), использую значения по умолчанию")
     else:
@@ -1096,6 +1096,37 @@ class Api:
         Path(str(path)).write_text(text, encoding="utf-8")
         print(f"[sherpa] экспорт профиля: {path}")
         return str(path)
+
+    # ── резервная копия прогресса ──
+    # localStorage WebView2 привязан к origin (порт): сменился порт или профиль браузера — прогресс «пропал».
+    # Страница зеркалит все ключи sherpa:* в файл в AppData и при старте восстанавливает их, если файл новее.
+    _STATE_FILE = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "Sherpa" / "state.json"
+
+    def state_get(self):
+        """Снимок прогресса из файла: {"savedAt": ms, "keys": {...}} или None."""
+        for p in (self._STATE_FILE, self._STATE_FILE.with_suffix(".bak")):
+            try:
+                if p.exists():
+                    return json.loads(p.read_text(encoding="utf-8"))
+            except Exception as e:  # noqa: BLE001
+                print(f"[sherpa] резервная копия {p.name} не читается: {e}")
+        return None
+
+    def state_put(self, text: str):
+        """Записать снимок атомарно; прошлый остаётся в state.bak."""
+        p = self._STATE_FILE
+        try:
+            json.loads(text)  # не пишем мусор
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_suffix(".tmp")
+            tmp.write_text(text, encoding="utf-8")
+            if p.exists():
+                os.replace(p, p.with_suffix(".bak"))
+            os.replace(tmp, p)
+            return True
+        except Exception as e:  # noqa: BLE001
+            print(f"[sherpa] резервная копия не записалась: {e}")
+            return False
 
     def close_minimap(self):
         w = self._mini
