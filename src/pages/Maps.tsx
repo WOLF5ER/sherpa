@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import L from 'leaflet'
-import { ChevronLeft, ChevronRight, X, Play, Pause, SkipBack } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, X, Play, Pause, SkipBack } from 'lucide-react'
 import { useGame } from '@/store/data'
 import { useUI } from '@/store/ui'
 import { useProfile } from '@/store/profile'
@@ -257,6 +257,11 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
     try { return { ...DEFAULT_TOGGLES, ...JSON.parse(localStorage.getItem('sherpa:mapToggles2') ?? '{}') } } catch { return DEFAULT_TOGGLES }
   })
   useEffect(() => { try { localStorage.setItem('sherpa:mapToggles2', JSON.stringify(toggles)) } catch { /* ignore */ } }, [toggles])
+  /** свёрнутые секции меню слоёв — по названию секции */
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem('sherpa:mapSections') ?? '{}') } catch { return {} }
+  })
+  useEffect(() => { try { localStorage.setItem('sherpa:mapSections', JSON.stringify(collapsed)) } catch { /* ignore */ } }, [collapsed])
   // этаж хранится вместе с id карты: при смене карты эффекты этого же коммита уже видят -1, а не индекс с прошлой карты
   const [floorState, setFloorState] = useState<{ mapId: string; floor: number }>({ mapId: '', floor: -1 })
   const floor = floorState.mapId === mapId ? floorState.floor : -1
@@ -909,10 +914,18 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
               </div>
             </div>
             <div className="mt-1.5 flex flex-col gap-2.5">
-              {LAYER_SECTIONS.map((sec) => (
+              {LAYER_SECTIONS.map((sec) => {
+                const isOpen = !collapsed[sec.title]
+                const activeN = sec.rows.filter((r) => toggles[r.key] && layerCounts[r.key] > 0).length
+                return (
                 <div key={sec.title}>
-                  <div className="eyebrow text-[10px] text-ink-4 mb-0.5">{sec.title}</div>
-                  <div className="flex flex-col gap-px">
+                  <button type="button" onClick={() => setCollapsed({ ...collapsed, [sec.title]: isOpen })}
+                    className="w-full flex items-center gap-1 eyebrow text-[10px] text-ink-4 hover:text-ink-2 mb-0.5">
+                    <ChevronDown size={11} className={`transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+                    <span className="flex-1 text-left">{sec.title}</span>
+                    {!isOpen && activeN > 0 && <span className="num text-[10px] text-brass">{activeN}</span>}
+                  </button>
+                  {isOpen && <div className="flex flex-col gap-px">
                     {sec.rows.map(({ key, label, color, icon: ic }) => {
                       const n = layerCounts[key]
                       const on = toggles[key] && n > 0
@@ -978,9 +991,10 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
                         </div>
                       )
                     })}
-                  </div>
+                  </div>}
                 </div>
-              ))}
+                )
+              })}
             </div>
             <div className="mt-2 pt-2 border-t border-line flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-3">
               {LEGEND.map((l) => <span key={l.label} className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: l.color }} />{l.label}</span>)}
