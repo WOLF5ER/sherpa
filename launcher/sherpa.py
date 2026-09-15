@@ -1532,7 +1532,29 @@ def hotkey_loop(api: Api, cfg: dict):
         user32.DispatchMessageW(ctypes.byref(msg))
 
 
+def unblock_files():
+    """Снять «метку интернета» (поток Zone.Identifier) с файлов пакета.
+
+    Архив, скачанный браузером и распакованный Проводником, помечает каждый файл как «из интернета»; .NET Framework
+    отказывается грузить такие сборки — pythonnet падает с «Failed to resolve Python.Runtime.Loader.Initialize», окно не
+    открывается. Убираем поток у всех dll/pyd/exe пакета (это «Разблокировать» из свойств файла, только для всех сразу).
+    """
+    if not FROZEN:
+        return
+    n = 0
+    base = Path(getattr(sys, "_MEIPASS", ROOT))
+    for f in [Path(sys.executable), *base.rglob("*.dll"), *base.rglob("*.pyd"), *base.rglob("*.exe")]:
+        try:
+            os.remove(f"{f}:Zone.Identifier")
+            n += 1
+        except OSError:
+            pass
+    if n:
+        print(f"[sherpa] снята метка «из интернета» с {n} файлов")
+
+
 def main():
+    unblock_files()
     try:
         import webview  # pywebview
     except ImportError:
@@ -1692,7 +1714,16 @@ if __name__ == "__main__":
         traceback.print_exc()
         if FROZEN:
             try:
-                ctypes.windll.user32.MessageBoxW(None, "Sherpa не запустилась. Подробности — в sherpa.log рядом с Sherpa.exe.", "Sherpa", 0x10)
+                msg = "Sherpa не запустилась. Подробности — в sherpa.log рядом с Sherpa.exe."
+                if "Python.Runtime" in traceback.format_exc():
+                    # .NET не загрузил сборку pythonnet: файлы заблокированы Windows/антивирусом или нет .NET Framework 4.7.2+
+                    msg = ("Windows не дала загрузить компонент Sherpa (Python.Runtime.dll).\n\n"
+                           "Обычно это «метка интернета» на скачанном архиве или антивирус. Что сделать:\n"
+                           "1. Правый клик по скачанному zip → Свойства → галочка «Разблокировать» → распаковать заново.\n"
+                           "2. Проверь, не отправил ли антивирус файлы из папки _internal в карантин.\n"
+                           "3. Нужен .NET Framework 4.7.2 или новее (в Windows 10/11 он есть).\n\n"
+                           "Подробности — в sherpa.log рядом с Sherpa.exe.")
+                ctypes.windll.user32.MessageBoxW(None, msg, "Sherpa", 0x10)
             except Exception:  # noqa: BLE001
                 pass
         raise
