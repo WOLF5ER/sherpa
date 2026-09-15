@@ -19,19 +19,19 @@ import { Lightbox } from './WikiPics'
 const NAV = [
   { to: '/raid', label: 'Брифинг', icon: Crosshair },
   { to: '/tasks', label: 'Задачи', icon: ListChecks },
-  { to: '/needs', label: 'Предметы', icon: Backpack },
-  { to: '/keys', label: 'Ключи', icon: KeyRound },
-  { to: '/hideout', label: 'Схрон', icon: Warehouse },
-  { to: '/market', label: 'Барахолка', icon: Coins },
-  { to: '/crafts', label: 'Крафты', icon: FlaskConical },
-  { to: '/ammo', label: 'Патроны', icon: Target },
-  { to: '/builder', label: 'Сборка', icon: Wrench },
-  { to: '/skills', label: 'Навыки', icon: Dumbbell },
   { to: '/maps', label: 'Карты', icon: MapIcon },
   { to: '/raids', label: 'Рейды', icon: Footprints },
   { to: '/squad', label: 'Сквад', icon: Users },
-  { to: '/season', label: 'Сезон', icon: Medal },
+  { to: '/market', label: 'Барахолка', icon: Coins },
+  { to: '/crafts', label: 'Крафты', icon: FlaskConical },
   { to: '/profile', label: 'Профиль', icon: UserRound },
+  { to: '/needs', label: 'Предметы', icon: Backpack },
+  { to: '/hideout', label: 'Схрон', icon: Warehouse },
+  { to: '/keys', label: 'Ключи', icon: KeyRound },
+  { to: '/ammo', label: 'Патроны', icon: Target },
+  { to: '/builder', label: 'Сборка', icon: Wrench },
+  { to: '/skills', label: 'Навыки', icon: Dumbbell },
+  { to: '/season', label: 'Сезон', icon: Medal },
 ]
 
 export function Shell() {
