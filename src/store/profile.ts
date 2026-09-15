@@ -25,6 +25,8 @@ export interface ProfileData {
   have: Record<string, number>
   /** ручной уровень торговца (если не задан — считается по уровню игрока) */
   traderLevels: Record<string, number>
+  /** репутация у Скупщика (карма дикого) — влияет на кулдаун дикого */
+  fenceRep: number
   /** полученные достижения (отмечаются вручную) */
   achievements: Record<string, true>
   /** уровни навыков (вручную): id навыка tarkov.dev (Endurance, StressResistance…) → уровень 0–51 */
@@ -54,6 +56,7 @@ export interface ProfileState extends ProfileData {
   setStation: (id: string, level: number) => void
   setHave: (item: string, n: number) => void
   setTraderLevel: (trader: string, level: number | null) => void
+  setFenceRep: (rep: number) => void
   toggleAchievement: (id: string) => void
   setSkill: (id: string, level: number) => void
   setKappaOnly: (v: boolean) => void
@@ -69,11 +72,11 @@ export interface ProfileState extends ProfileData {
 
 export const blankProfile = (name: string, seasonal = false, gameMode: GameMode = 'regular'): ProfileData => ({
   name, level: 1, faction: 'USEC', gameMode, seasonal, fleaDisabled: false,
-  completed: {}, objectivesDone: {}, stations: {}, have: {}, traderLevels: {}, achievements: {}, skills: {}, ttToken: '', ttSyncedAt: null,
+  completed: {}, objectivesDone: {}, stations: {}, have: {}, traderLevels: {}, fenceRep: 0, achievements: {}, skills: {}, ttToken: '', ttSyncedAt: null,
 })
 
 const PROFILE_KEYS: (keyof ProfileData)[] = [
-  'name', 'level', 'faction', 'gameMode', 'seasonal', 'fleaDisabled', 'completed', 'objectivesDone', 'stations', 'have', 'traderLevels', 'achievements',
+  'name', 'level', 'faction', 'gameMode', 'seasonal', 'fleaDisabled', 'completed', 'objectivesDone', 'stations', 'have', 'traderLevels', 'fenceRep', 'achievements',
   'skills', 'ttToken', 'ttSyncedAt',
 ]
 
@@ -135,6 +138,7 @@ export const useProfile = create<ProfileState>()(
         else traderLevels[trader] = level
         return { traderLevels }
       }),
+      setFenceRep: (rep) => set({ fenceRep: Number.isFinite(rep) ? Math.round(Math.max(-10, Math.min(10, rep)) * 100) / 100 : 0 }),
       toggleAchievement: (id) => set((s) => {
         const achievements = { ...s.achievements }
         if (achievements[id]) delete achievements[id]
@@ -190,7 +194,7 @@ export const useProfile = create<ProfileState>()(
     }),
     {
       name: 'sherpa:profile',
-      version: 7,
+      version: 8,
       migrate: (persisted, version) => {
         let p = (persisted ?? {}) as Partial<ProfileState>
         if (version < 2) {
@@ -227,6 +231,12 @@ export const useProfile = create<ProfileState>()(
           p = { ...p, skills: p.skills ?? {} }
           const profiles = { ...(p.profiles ?? {}) }
           for (const id of Object.keys(profiles)) profiles[id] = { ...profiles[id], skills: profiles[id].skills ?? {} }
+          p.profiles = profiles
+        }
+        if (version < 8) {
+          p = { ...p, fenceRep: p.fenceRep ?? 0 }
+          const profiles = { ...(p.profiles ?? {}) }
+          for (const id of Object.keys(profiles)) profiles[id] = { ...profiles[id], fenceRep: profiles[id].fenceRep ?? 0 }
           p.profiles = profiles
         }
         return p as ProfileState

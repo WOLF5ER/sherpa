@@ -125,6 +125,12 @@ export interface WeaponProps {
   defaultRecoilHorizontal: number | null
 }
 
+/** Ступень репутации Скупщика: с minRep и выше действует множитель кулдауна дикого */
+export interface FenceLevel {
+  minRep: number
+  scavCooldown: number
+}
+
 export interface Trader {
   id: string
   name: string
@@ -370,6 +376,8 @@ export interface GameData {
   flea: FleaSettings
   categoryNames: Record<string, string>
   scavCooldownSeconds: number
+  /** пороги репутации Скупщика → множитель кулдауна дикого (из tarkov.dev, отсортированы по возрастанию) */
+  fenceLevels: FenceLevel[]
   /** последний скан барахолки в сводном файле */
   priceScanAt: number
   /** сводка старше 12 ч — цены надо подтягивать по истории поштучно */

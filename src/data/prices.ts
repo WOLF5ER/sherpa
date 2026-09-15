@@ -55,7 +55,7 @@ async function fetchSummary(mode: GameMode, id: string): Promise<PriceSummary | 
   const k = key(mode, id)
   const cached = mem.get(k) ?? (await get<{ at: number; summary: PriceSummary }>(k).catch(() => undefined))
   if (cached && Date.now() - cached.at < TTL) { mem.set(k, cached); return cached.summary }
-  const res = await fetch(`${BASE}/${mode}/prices/${id}`)
+  const res = await fetch(`${BASE}/${mode}/prices/${id}`, { cache: 'no-cache' })
   if (!res.ok) return null
   const body = await res.json() as { data?: PricePoint[] | { historicalPrices?: PricePoint[] } }
   const raw = Array.isArray(body.data) ? body.data : body.data?.historicalPrices ?? []

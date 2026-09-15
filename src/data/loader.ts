@@ -10,10 +10,12 @@ export const MODE_LABEL: Record<GameMode, string> = { regular: 'PvP', pve: 'PvE'
 const BASE = 'https://json.tarkov.dev'
 export const PRICE_TTL_MS = 15 * 60 * 1000
 
-const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v13`
+const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v14`
 
 async function getJson<T = unknown>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(`${BASE}/${path}`, { signal })
+  // json.tarkov.dev не шлёт Cache-Control — WebView2 по эвристике (Last-Modified) отдаёт вчерашний ответ из кэша часами.
+  // no-cache = всегда переспросить сервер по ETag: свежее — скачается, то же — дешёвый 304.
+  const res = await fetch(`${BASE}/${path}`, { signal, cache: 'no-cache' })
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`)
   return res.json() as Promise<T>
 }

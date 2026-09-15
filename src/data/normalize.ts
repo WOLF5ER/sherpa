@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type {
-  Achievement, Barter, Craft, GameData, GameMap, HideoutStation, Item, ItemBg, Objective, QuestItem, Slot, Task, Trader,
+  Achievement, Barter, Craft, FenceLevel, GameData, GameMap, HideoutStation, Item, ItemBg, Objective, QuestItem, Slot, Task, Trader,
 } from './types'
 
 type Dict = Record<string, string>
@@ -170,6 +170,7 @@ export function normalize(raw: RawBundle): GameData {
 
   // ── торговцы ──
   const traders: Record<string, Trader> = {}
+  let fenceLevels: FenceLevel[] = []
   const traderList: any[] = Array.isArray(raw.traders.data) ? raw.traders.data : Object.values(raw.traders.data)
   for (const t of traderList) {
     traders[t.id] = {
@@ -181,6 +182,12 @@ export function normalize(raw: RawBundle): GameData {
       levels: (t.levels ?? []).map((l: any) => ({
         level: l.level, requiredPlayerLevel: l.requiredPlayerLevel, requiredReputation: l.requiredReputation,
       })),
+    }
+    if (t.normalizedName === 'fence') {
+      fenceLevels = (t.reputationLevels ?? [])
+        .filter((r: any) => typeof r.minimumReputation === 'number' && typeof r.scavCooldownModifier === 'number')
+        .map((r: any) => ({ minRep: r.minimumReputation, scavCooldown: r.scavCooldownModifier }))
+        .sort((a: FenceLevel, b: FenceLevel) => a.minRep - b.minRep)
     }
   }
 
@@ -360,6 +367,7 @@ export function normalize(raw: RawBundle): GameData {
     items, traders, tasks, questItems, stations, crafts, barters, maps,
     lootContainerNames, lootContainerTypes, mobNames, achievements, flea, categoryNames,
     scavCooldownSeconds: raw.items.data.settings?.scavCooldownSeconds ?? 1500,
+    fenceLevels,
     priceScanAt,
     priceAggregateStale: Date.now() - priceScanAt > 12 * 3600 * 1000,
   }

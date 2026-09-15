@@ -10,6 +10,7 @@ import { useData } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useUI } from '@/store/ui'
 import { ago } from '@/lib/format'
+import { fmtMinutes, scavCooldown } from '@/lib/scav'
 import { Kbd } from './ui'
 import { ItemDrawer } from './ItemDrawer'
 import { SearchPalette } from './SearchPalette'
@@ -165,7 +166,13 @@ function ScavTimer() {
     const t = setInterval(() => tick((x) => x + 1), 1000)
     return () => clearInterval(t)
   }, [readyAt])
-  const cooldown = data?.scavCooldownSeconds ?? 1500
+  const stations = useProfile((s) => s.stations)
+  const fenceRep = useProfile((s) => s.fenceRep)
+  const cd = data ? scavCooldown(data, stations, fenceRep) : null
+  const cooldown = cd?.seconds ?? 1500
+  const mods = cd
+    ? [cd.hideout ? `разведцентр −${Math.round(cd.hideout * 100)}%` : '', cd.fence !== 1 ? `Скупщик ${cd.fenceRep >= 0 ? '+' : ''}${cd.fenceRep} → ×${cd.fence}` : ''].filter(Boolean).join(', ')
+    : ''
   const left = readyAt ? Math.max(0, readyAt - Date.now()) : 0
   const active = !!readyAt && left > 0
   const mm = Math.floor(left / 60000)
@@ -174,7 +181,7 @@ function ScavTimer() {
     <button
       type="button"
       onClick={() => setReadyAt(active ? null : Date.now() + cooldown * 1000)}
-      title={active ? 'Сбросить таймер дикого' : `Запустить кулдаун дикого (${Math.round(cooldown / 60)} мин)`}
+      title={active ? 'Сбросить таймер дикого' : `Запустить кулдаун дикого (${fmtMinutes(cooldown)}${mods ? `: ${mods}` : ''}). Разведцентр и репутация Скупщика — в профиле.`}
       className={`h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[4px] border text-[12px] font-display uppercase tracking-[.1em] transition-colors
         ${active ? 'border-scav/60 text-scav bg-scav/10' : readyAt ? 'border-fir/60 text-fir bg-fir/10' : 'border-line-2 text-ink-3 hover:text-ink hover:border-ink-4'}`}
     >

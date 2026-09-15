@@ -3,6 +3,7 @@ import { Download, Upload, Trash2, DatabaseZap, RefreshCw, ExternalLink, Sparkle
 import { useGame, useData } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useUI } from '@/store/ui'
+import { fmtMinutes, scavCooldown } from '@/lib/scav'
 import { clearCache } from '@/data/loader'
 import { deriveTraderLevel } from '@/lib/useCtx'
 import { Eyebrow, Progress, Segmented, Stepper } from '@/components/ui'
@@ -31,12 +32,13 @@ export function ProfilePage() {
   const stations = useMemo(() => Object.values(data.stations).sort((a, b) => a.name.localeCompare(b.name, 'ru')), [data])
   const traders = useMemo(() => Object.values(data.traders).filter((t) => t.levels.length > 1), [data])
   const doneCount = Object.keys(p.completed).length
+  const cd = scavCooldown(data, p.stations, p.fenceRep)
 
   const [exportMsg, setExportMsg] = useState<string | null>(null)
   const exportJson = async () => {
     const text = JSON.stringify({
       name: p.name, level: p.level, faction: p.faction, gameMode: p.gameMode, seasonal: p.seasonal, fleaDisabled: p.fleaDisabled,
-      completed: p.completed, stations: p.stations, have: p.have, traderLevels: p.traderLevels, achievements: p.achievements,
+      completed: p.completed, stations: p.stations, have: p.have, traderLevels: p.traderLevels, fenceRep: p.fenceRep, achievements: p.achievements,
       objectivesDone: p.objectivesDone, skills: p.skills,
     }, null, 2)
     const name = `sherpa-profile-${new Date().toISOString().slice(0, 10)}.json`
@@ -61,7 +63,7 @@ export function ProfilePage() {
         name: j.name ?? p.name, level: j.level ?? p.level, faction: j.faction ?? p.faction, gameMode: j.gameMode ?? p.gameMode,
         seasonal: !!j.seasonal, fleaDisabled: !!j.fleaDisabled, achievements: j.achievements ?? {},
         completed: j.completed ?? {}, stations: j.stations ?? {}, have: j.have ?? {}, traderLevels: j.traderLevels ?? {},
-        objectivesDone: j.objectivesDone ?? {}, skills: j.skills ?? {},
+        objectivesDone: j.objectivesDone ?? {}, skills: j.skills ?? {}, fenceRep: typeof j.fenceRep === 'number' ? j.fenceRep : 0,
       })
     } catch {
       alert('Файл не похож на профиль Sherpa')
@@ -153,6 +155,29 @@ export function ProfilePage() {
               </div>
             )
           })}
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-baseline justify-between">
+          <Eyebrow>Скупщик и кулдаун дикого</Eyebrow>
+          <span className="text-[12px] text-ink-3">База {fmtMinutes(cd.base)}; разведцентр и репутация уменьшают</span>
+        </div>
+        <div className="mt-3 panel px-3 py-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <label className="flex items-center gap-2 text-[13px] text-ink">
+            Репутация у Скупщика
+            <input
+              type="number" step={0.01} min={-10} max={10} value={p.fenceRep}
+              onChange={(e) => p.setFenceRep(Number(e.target.value))}
+              className="input focus:input-focus h-8 w-24 text-[12px] num"
+            />
+          </label>
+          <div className="text-[12px] text-ink-3">
+            Кулдаун дикого: <span className="num text-ink">{fmtMinutes(cd.seconds)}</span>
+            {cd.hideout > 0 && <> · разведцентр <span className="num">−{Math.round(cd.hideout * 100)}%</span></>}
+            {cd.fence !== 1 && <> · Скупщик от <span className="num">{cd.fenceRep}</span> → <span className="num">×{cd.fence}</span></>}
+            {cd.hideout === 0 && cd.fence === 1 && ' · без скидок'}
+          </div>
         </div>
       </section>
 
