@@ -1308,6 +1308,22 @@ class Api:
         self._cloud_stage, self._cloud_error, self._cloud_synced = "ok", "", time.time()
         return {"ok": True}
 
+    def cloud_req(self, method: str, path: str, body: str | None = None):
+        """Произвольный запрос к облаку от страницы (история рейдов): {"status": int, "body": str}. Токен подставляет лаунчер."""
+        if not self._account_load():
+            return {"status": 401, "body": ""}
+        if not re.fullmatch(r"/[A-Za-z0-9_/.-]{0,120}", str(path)) or method not in ("GET", "PUT", "DELETE", "POST"):
+            return {"status": 400, "body": "bad request"}
+        try:
+            st, txt = self._cloud(method, path, body=body)
+        except Exception as e:  # noqa: BLE001
+            self._cloud_stage, self._cloud_error = "error", f"облако недоступно: {e}"
+            return {"status": 0, "body": str(e)}
+        if st == 401:
+            self._account_save(None)
+            self._cloud_stage, self._cloud_error = "error", "сессия истекла — войди заново"
+        return {"status": st, "body": txt}
+
     def close_minimap(self):
         w = self._mini
         self._mini = None

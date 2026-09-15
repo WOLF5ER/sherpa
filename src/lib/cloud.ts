@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AccountInfo, LauncherApi, StateBackup } from './pywebview'
 import { meaningful } from './backup'
+import { installRaidsSync, syncRaids } from './raidsSync'
 
 /**
  * Облачная синхронизация: снимок прогресса (тот же, что в state.json) лежит в облаке под Discord-аккаунтом.
@@ -53,7 +54,7 @@ export const useCloud = create<CloudState>()((set, get) => ({
     const started = Date.now()
     const tick = async () => {
       const i = await get().refresh()
-      if (i?.user) { set({ note: '' }); await get().sync(); return }
+      if (i?.user) { set({ note: '' }); await get().sync(); void syncRaids(); return }
       if (i?.stage === 'error') { set({ note: i.error }); return }
       if (Date.now() - started > 180_000) { set({ note: 'Вход не подтверждён — попробуй ещё раз' }); return }
       setTimeout(tick, 2000)
@@ -92,6 +93,7 @@ export const useCloud = create<CloudState>()((set, get) => ({
       }
       set({ note: '', syncedAt: Date.now() })
       await get().refresh()
+      void syncRaids()
     } catch (e) {
       set({ note: e instanceof Error ? e.message : String(e) })
     } finally {
@@ -124,4 +126,5 @@ export async function installCloud(a: LauncherApi, snapshot: () => StateBackup, 
   useCloud.setState({ available: true })
   const info = await useCloud.getState().refresh()
   if (info?.user) await useCloud.getState().sync()
+  installRaidsSync(a)
 }

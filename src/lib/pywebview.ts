@@ -46,6 +46,8 @@ export interface LauncherApi {
   account_logout?: () => Promise<AccountInfo>
   cloud_get?: () => Promise<StateBackup | { error: string } | null>
   cloud_put?: (text: string) => Promise<{ ok: boolean; stale?: boolean; error?: string }>
+  /** произвольный запрос к облаку (история рейдов); токен подставляет лаунчер */
+  cloud_req?: (method: string, path: string, body: string | null) => Promise<{ status: number; body: string }>
   /** обновления: последний релиз на GitHub */
   update_info?: () => Promise<UpdateInfo>
   check_update?: () => Promise<UpdateInfo>

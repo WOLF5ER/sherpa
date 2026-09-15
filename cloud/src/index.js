@@ -6,7 +6,14 @@
 //   GET  /state                   → снимок прогресса ({savedAt, keys}) или 204
 //   PUT  /state                   → сохранить снимок (JSON ≤ 2 МБ, savedAt обязателен)
 //   POST /logout                  → отозвать токен
+//   GET  /raids                   → индекс истории рейдов {list, deleted} или 204
+//   PUT  /raids                   → сохранить индекс
+//   GET  /raids/<id>              → рейд с точками; PUT — сохранить; DELETE — удалить
 // KV: tok:<token> → {id, name, avatar, at};  state:<discordId> → снимок (метаданные: savedAt)
+//     raids:<discordId> → индекс;  raid:<discordId>:<raidId> → рейд
+
+const MAX_RAID = 1024 * 1024
+const RAID_ID = /^[a-z0-9]{6,40}$/
 
 const MAX_STATE = 2 * 1024 * 1024
 const TOKEN_TTL = 60 * 60 * 24 * 180 // полгода без входа — токен умирает
@@ -121,6 +128,46 @@ export default {
       if (curAt > snap.savedAt) return json({ ok: false, stale: true, savedAt: curAt }, 409)
       await env.SYNC.put(`state:${a.user.id}`, body, { metadata: { savedAt: snap.savedAt } })
       return json({ ok: true, savedAt: snap.savedAt })
+    }
+
+    if (p === '/raids') {
+      const key = `raids:${a.user.id}`
+      if (req.method === 'GET') {
+        const raw = await env.SYNC.get(key)
+        if (!raw) return new Response(null, { status: 204 })
+        return new Response(raw, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } })
+      }
+      if (req.method === 'PUT') {
+        const body = await req.text()
+        if (body.length > MAX_RAID) return json({ error: 'too large' }, 413)
+        let idx
+        try { idx = JSON.parse(body) } catch { return json({ error: 'bad json' }, 400) }
+        if (!idx || !Array.isArray(idx.list) || !idx.deleted || typeof idx.deleted !== 'object') return json({ error: 'bad index' }, 400)
+        await env.SYNC.put(key, body)
+        return json({ ok: true })
+      }
+    }
+    const rm = /^\/raids\/([a-z0-9]{6,40})$/.exec(p)
+    if (rm) {
+      const key = `raid:${a.user.id}:${rm[1]}`
+      if (req.method === 'GET') {
+        const raw = await env.SYNC.get(key)
+        if (!raw) return json({ error: 'not found' }, 404)
+        return new Response(raw, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } })
+      }
+      if (req.method === 'PUT') {
+        const body = await req.text()
+        if (body.length > MAX_RAID) return json({ error: 'too large' }, 413)
+        let r
+        try { r = JSON.parse(body) } catch { return json({ error: 'bad json' }, 400) }
+        if (!r || r.id !== rm[1] || !Array.isArray(r.points)) return json({ error: 'bad raid' }, 400)
+        await env.SYNC.put(key, body)
+        return json({ ok: true })
+      }
+      if (req.method === 'DELETE') {
+        await env.SYNC.delete(key)
+        return json({ ok: true })
+      }
     }
 
     return json({ error: 'not found' }, 404)

@@ -25,13 +25,17 @@ export interface RaidSummary {
   /** первая и последняя точки — для «где заспавнился» и «у какого выхода закончил» без загрузки всего трека */
   first?: RaidPoint
   last?: RaidPoint
+  /** когда последний раз менялся (точки, исход, заметка) — по нему сливаем с облаком */
+  u?: number
 }
 export interface Raid extends RaidSummary { points: RaidPoint[] }
 
 export const OUTCOME_LABEL: Record<Outcome, string> = { survived: 'Выжил', died: 'Погиб', runner: 'Сбежал' }
 
-const INDEX_KEY = 'sherpa:raids:index'
-const raidKey = (id: string) => `sherpa:raid:${id}`
+export const INDEX_KEY = 'sherpa:raids:index'
+/** надгробия удалённых рейдов: id → когда удалили (для слияния с облаком) */
+export const DELETED_KEY = 'sherpa:raids:deleted'
+export const raidKey = (id: string) => `sherpa:raid:${id}`
 /** пауза между скриншотами, после которой начинается новый рейд */
 export const GAP_MS = 20 * 60 * 1000
 /** шаг длиннее — не ходьба (БТР, переход), в дистанцию не идёт */
@@ -52,9 +56,18 @@ interface RaidsState {
   setMap: (id: string, mapId: string) => void
   remove: (id: string) => void
   removeMany: (ids: string[]) => void
+  /** кто-то хочет знать об изменениях (облачная синхронизация); ставится снаружи */
+  onChanged: (() => void) | null
 }
 
-const summary = (r: Raid): RaidSummary => ({ id: r.id, mapId: r.mapId, start: r.start, end: r.end, n: r.n, dist: r.dist, outcome: r.outcome, note: r.note, first: r.points[0], last: r.points[r.points.length - 1] })
+async function markDeleted(ids: string[]) {
+  const map = (await idbGet<Record<string, number>>(DELETED_KEY).catch(() => undefined)) ?? {}
+  const now = Date.now()
+  for (const id of ids) map[id] = now
+  await idbSet(DELETED_KEY, map).catch(() => {})
+}
+
+const summary = (r: Raid): RaidSummary => ({ id: r.id, mapId: r.mapId, start: r.start, end: r.end, n: r.n, dist: r.dist, outcome: r.outcome, note: r.note, first: r.points[0], last: r.points[r.points.length - 1], u: r.u })
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 function saveCurrentSoon(r: Raid) {
@@ -70,16 +83,19 @@ async function patch(id: string, fn: (r: Raid) => void, get: () => RaidsState, s
   if (!r) return
   fn(r)
   r.n = r.points.length
+  r.u = Date.now()
   await idbSet(raidKey(id), r).catch(() => {})
   const list = get().list.map((x) => (x.id === id ? summary(r) : x))
   saveIndex(list)
   set({ list, current: cur ? { ...r } : get().current })
+  get().onChanged?.()
 }
 
 export const useRaids = create<RaidsState>()((set, get) => ({
   loaded: false,
   list: [],
   current: null,
+  onChanged: null,
 
   init: async () => {
     if (get().loaded) return
@@ -114,12 +130,15 @@ export const useRaids = create<RaidsState>()((set, get) => ({
     cur.points.push(p)
     cur.end = t
     cur.n = cur.points.length
+    cur.u = Date.now()
     const sum = summary(cur)
     const list = fresh ? [sum, ...s.list] : s.list.map((x) => (x.id === cur!.id ? sum : x))
     if (fresh || s.list.length !== list.length) saveIndex(list)
     else if (cur.n % 10 === 0) saveIndex(list) // индекс — изредка, точки — в документе
     saveCurrentSoon(cur)
     set({ current: cur, list })
+    // новый рейд — предыдущий закончился; и изредка по ходу, чтобы идущий рейд был виден с другого ПК
+    if (fresh || cur.n % 50 === 0) s.onChanged?.()
   },
 
   endCurrent: () => {
@@ -129,6 +148,7 @@ export const useRaids = create<RaidsState>()((set, get) => ({
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
     void idbSet(raidKey(s.current.id), s.current).catch(() => {})
     set({ current: null })
+    s.onChanged?.()
   },
 
   load: async (id) => {
@@ -147,6 +167,7 @@ export const useRaids = create<RaidsState>()((set, get) => ({
     saveIndex(list)
     void idbDel(raidKey(id)).catch(() => {})
     set({ list, current: s.current?.id === id ? null : s.current })
+    void markDeleted([id]).then(() => s.onChanged?.())
   },
   removeMany: (ids) => {
     const drop = new Set(ids)
@@ -155,5 +176,6 @@ export const useRaids = create<RaidsState>()((set, get) => ({
     saveIndex(list)
     for (const id of ids) void idbDel(raidKey(id)).catch(() => {})
     set({ list, current: s.current && drop.has(s.current.id) ? null : s.current })
+    void markDeleted(ids).then(() => s.onChanged?.())
   },
 }))
