@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type {
-  Achievement, Barter, Craft, FenceLevel, GameData, GameMap, HideoutStation, Item, ItemBg, Objective, QuestItem, Slot, Task, Trader,
+  Achievement, Barter, Craft, FenceLevel, GameData, GameMap, HideoutStation, Item, ItemBg, Objective, QuestItem, Slot, Task, Trader, XYZ, Zone,
 } from './types'
+import { OBJECTIVE_PICS, ZONE_FIXES } from './zoneFixes'
 
 type Dict = Record<string, string>
 
@@ -33,6 +34,31 @@ export interface RawBundle {
   hideoutEn: Dict
   crafts: any
   barters: any
+}
+
+/**
+ * Возможные места квестового предмета (possibleLocations) → метки на карте.
+ * Точки одного места обычно лежат в паре метров друг от друга (варианты спавна в одной комнате) — сливаем те,
+ * что ближе 12 м, в одну метку со счётчиком; далёкие остаются отдельными.
+ */
+function itemZones(objectiveId: string, locations: any[]): Zone[] {
+  const out: Zone[] = []
+  for (const loc of locations ?? []) {
+    const map: string = loc?.map
+    const pts: XYZ[] = (loc?.positions ?? []).filter((q: any) => q && typeof q.x === 'number')
+    if (!map || !pts.length) continue
+    const clusters: XYZ[][] = []
+    for (const q of pts) {
+      const c = clusters.find((cl) => cl.some((r) => Math.hypot(r.x - q.x, r.z - q.z) < 12 && Math.abs(r.y - q.y) < 4))
+      if (c) c.push(q); else clusters.push([q])
+    }
+    clusters.forEach((cl, i) => {
+      const n = cl.length
+      const position = { x: cl.reduce((a, q) => a + q.x, 0) / n, y: cl.reduce((a, q) => a + q.y, 0) / n, z: cl.reduce((a, q) => a + q.z, 0) / n }
+      out.push({ id: `${objectiveId}@${map}#${i}`, map, position, spots: n })
+    })
+  }
+  return out
 }
 
 /** Свойства патронов, брони, оружия — только то, что показываем. */
@@ -194,19 +220,29 @@ export function normalize(raw: RawBundle): GameData {
   // ── квесты ──
   const tasks: Record<string, Task> = {}
   for (const t of Object.values<any>(raw.tasks.data.tasks)) {
-    const objectives: Objective[] = (t.objectives ?? []).map((o: any): Objective => ({
-      id: o.id,
-      type: o.type,
-      description: tTask(o.description),
-      optional: !!o.optional,
-      maps: o.maps ?? [],
-      count: o.count,
-      foundInRaid: o.foundInRaid,
-      items: o.items ?? (o.item ? [o.item] : undefined),
-      questItem: o.questItem ?? undefined,
-      zones: o.zones ?? undefined,
-      skill: o.type === 'skill' && o.skill ? { name: String(o.skill), level: Number(o.level) || 0 } : undefined,
-    }))
+    const objectives: Objective[] = (t.objectives ?? []).map((o: any): Objective => {
+      let zones: Zone[] | undefined = o.zones?.length ? o.zones : undefined
+      if (!zones && o.possibleLocations?.length) zones = itemZones(o.id, o.possibleLocations)
+      const fix = !zones ? ZONE_FIXES[o.id] : undefined
+      if (fix) zones = [{ id: `fix:${o.id}`, map: fix.map, position: fix.position }]
+      const maps: string[] = o.maps ?? []
+      if (zones) for (const z of zones) if (z.map && !maps.includes(z.map)) maps.push(z.map)
+      return {
+        id: o.id,
+        type: o.type,
+        description: tTask(o.description),
+        optional: !!o.optional,
+        maps,
+        count: o.count,
+        foundInRaid: o.foundInRaid,
+        items: o.items ?? (o.item ? [o.item] : undefined),
+        questItem: o.questItem ?? undefined,
+        zones,
+        approx: fix ? true : undefined,
+        pics: OBJECTIVE_PICS[o.id],
+        skill: o.type === 'skill' && o.skill ? { name: String(o.skill), level: Number(o.level) || 0 } : undefined,
+      }
+    })
     tasks[t.id] = {
       id: t.id,
       name: tTask(t.name),
@@ -220,6 +256,12 @@ export function normalize(raw: RawBundle): GameData {
         trader: r.trader, requirementType: r.requirementType, value: r.value,
       })),
       storyVar: (() => { const g = (t.otherRequirements ?? []).find((o: any) => o?.type === 'globalVariable'); return g ? { id: g.variableId, value: Number(g.value) || 1 } : undefined })(),
+      storyGate: (() => {
+        const g = (t.otherRequirements ?? []).find((o: any) => o?.type === 'storyObjective')
+        return g ? `${g.storyChapter?.name ?? 'сюжет'}: ${g.objective?.name ?? ''}`.trim() : undefined
+      })(),
+      prestige: t.requiredPrestige ? 1 : undefined, // в json это id престижа, уровень не важен — квест просто вне пула
+      patched: t.__patched?.length ? t.__patched : undefined,
       objectives,
       kappaRequired: !!t.kappaRequired,
       lightkeeperRequired: !!t.lightkeeperRequired,
@@ -230,6 +272,7 @@ export function normalize(raw: RawBundle): GameData {
       neededKeys: (t.neededKeys ?? []).map((k: any) => ({ keys: k.keys ?? [], map: k.map ?? null })),
       rewardItems: (t.finishRewards?.items ?? []).map((r: any) => ({ item: r.item, count: r.count })),
       rewardStanding: (t.finishRewards?.traderStanding ?? []).map((r: any) => ({ trader: r.trader, standing: r.standing })),
+      unlocksTraders: t.finishRewards?.traderUnlock?.length ? t.finishRewards.traderUnlock.map((x: any) => (typeof x === 'string' ? x : x?.id)).filter(Boolean) : undefined,
     }
   }
 

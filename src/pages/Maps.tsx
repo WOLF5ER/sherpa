@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import L from 'leaflet'
 import { ChevronLeft, ChevronRight, ChevronDown, X, Play, Pause, SkipBack, Crosshair, Check } from 'lucide-react'
 import { useGame } from '@/store/data'
@@ -189,6 +189,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
   const setCurrentMapId = useUI((s) => s.setCurrentMapId)
   const squadRef = useRef<L.LayerGroup | null>(null)
   const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const mapsWithMeta = useMemo(() => {
     const list = Object.values(data.maps).filter((m) => findMeta(m.normalizedName))
@@ -631,22 +632,56 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       const focusMode = !taskParam && questZones.some(({ v }) => tracked.has(v.task.id))
       // при большом числе зон подписи только по наведению — иначе каша
       const withLabels = questZones.length <= 14 || !!taskParam
-      // всплывашка с кнопками: отметить пункт / всё задание. Реальные DOM-узлы — с обработчиками, без innerHTML
-      const popupFor = (v: TaskView, o: Objective, isDone: boolean) => {
+      // всплывашка-сводка квеста (как у tarkov-navigator): картинка, кто даёт, что требует, все цели с текущей,
+      // награды, кнопки. Реальные DOM-узлы — с обработчиками, без innerHTML
+      const popupFor = (v: TaskView, o: Objective, isDone: boolean, z: Zone) => {
+        const t = v.task
         const el = document.createElement('div')
         el.className = 'qpop'
-        const zoneObjs = v.task.objectives.filter((x) => x.zones?.length)
-        const doneCount = zoneObjs.filter((x) => objectivesDone[x.id]).length
-        const add = (tag: string, cls: string, text: string) => { const n = document.createElement(tag); n.className = cls; n.textContent = text; el.appendChild(n); return n }
-        const head = add('div', 'qpop-head', '')
-        const trader = data.traders[v.task.trader]
+        const add = (parent: HTMLElement, tag: string, cls: string, text = '') => { const n = document.createElement(tag); n.className = cls; if (text) n.textContent = text; parent.appendChild(n); return n }
+        if (t.taskImageLink) { const im = document.createElement('img'); im.src = t.taskImageLink; im.alt = ''; im.className = 'qpop-img'; im.loading = 'lazy'; el.appendChild(im) }
+        const head = add(el, 'div', 'qpop-head')
+        const trader = data.traders[t.trader]
         if (trader?.imageLink) { const im = document.createElement('img'); im.src = trader.imageLink; im.alt = ''; im.title = trader.name; im.className = 'qpop-trader'; head.appendChild(im) }
-        const title = document.createElement('div'); title.className = 'qpop-title'; title.textContent = v.task.name; head.appendChild(title)
-        add('div', 'qpop-desc', o.description)
-        if (o.approx) add('div', 'qpop-meta', '≈ координаты приближённые (сняты с карты вики) — смотри скрины')
-        if (zoneObjs.length > 1) add('div', 'qpop-meta', `пунктов на картах: ${doneCount} / ${zoneObjs.length}${isDone ? ' · этот выполнен' : ''}`)
+        const titleWrap = add(head, 'div', 'min-w-0')
+        const title = add(titleWrap, 'button', 'qpop-title', t.name)
+        ;(title as HTMLButtonElement).type = 'button'
+        title.title = 'Открыть в разделе «Задачи»'
+        title.onclick = (e) => { e.stopPropagation(); map.closePopup(); navigate(`/tasks?task=${t.id}`) }
+        add(titleWrap, 'div', 'qpop-sub', `${trader?.name ?? ''}${t.experience ? ` · опыт ${t.experience.toLocaleString('ru-RU')}` : ''}${t.minPlayerLevel > 0 ? ` · ${t.minPlayerLevel} ур.` : ''}`)
+        // требования: предшественники, уровень торговца, пул
+        const req: string[] = []
+        for (const r of t.taskRequirements) { const p = data.tasks[r.task]; if (p && !r.status.includes('failed')) req.push(p.name) }
+        for (const r of t.traderRequirements) if (r.requirementType === 'level' && r.value > 1) req.push(`${data.traders[r.trader]?.name ?? ''} ур. ${r.value}`)
+        if (v.storyLocked) req.push(v.storyLocked.have < 0 ? `${data.traders[v.storyLocked.trader]?.name ?? ''} ур. ${v.storyLocked.ll}` : `квесты ${data.traders[v.storyLocked.trader]?.name ?? ''} ур. ${v.storyLocked.ll}: ${v.storyLocked.have} из ${v.storyLocked.need}`)
+        if (t.storyGate) req.push(t.storyGate)
+        if (req.length) { const r = add(el, 'div', 'qpop-req'); add(r, 'span', 'qpop-k', 'Требует: '); r.appendChild(document.createTextNode(req.join(', '))) }
+        add(el, 'div', 'qpop-k mt-2', 'Цели')
+        const ul = add(el, 'ul', 'qpop-list')
+        for (const ob of t.objectives) {
+          const li = add(ul, 'li', `qpop-obj${ob.id === o.id ? ' is-cur' : ''}${objectivesDone[ob.id] ? ' is-done' : ''}${ob.optional ? ' is-opt' : ''}`, ob.description)
+          if (ob.optional) add(li, 'span', 'qpop-opt', ' необязательно')
+        }
+        const zoneObjs = t.objectives.filter((x) => x.zones?.length)
+        const doneCount = zoneObjs.filter((x) => objectivesDone[x.id]).length
+        const metaLines: string[] = []
+        if (z.spots && z.spots > 1) metaLines.push(`здесь ${z.spots} возможных точек спавна предмета`)
+        const sameObj = questZones.filter((q) => q.o.id === o.id && q.z.map === gmap.id).length
+        if (sameObj > 1) metaLines.push(`предмет может лежать в одном из ${sameObj} мест на карте`)
+        if (o.approx) metaLines.push('≈ координаты приближённые — смотри скрины')
+        if (zoneObjs.length > 1) metaLines.push(`пунктов на картах: ${doneCount} / ${zoneObjs.length}${isDone ? ' · этот выполнен' : ''}`)
+        for (const m of metaLines) add(el, 'div', 'qpop-meta', m)
         if (o.pics?.length) renderWikiPics(el, o.pics)
-        const row = add('div', 'qpop-actions', '')
+        // награды
+        const rew: string[] = []
+        for (const r of t.rewardStanding) rew.push(`${data.traders[r.trader]?.name ?? ''} ${r.standing > 0 ? '+' : ''}${r.standing.toFixed(2)}`)
+        const items = t.rewardItems.map((r) => { const it = data.items[r.item]; return it ? `${it.name}${r.count > 1 ? ` ×${r.count.toLocaleString('ru-RU')}` : ''}` : '' }).filter(Boolean)
+        if (rew.length || items.length) {
+          add(el, 'div', 'qpop-k mt-2', 'Награды')
+          if (rew.length) { const r = add(el, 'div', 'qpop-rew'); add(r, 'span', 'qpop-k', 'Репутация: '); r.appendChild(document.createTextNode(rew.join(' · '))) }
+          if (items.length) { const r = add(el, 'div', 'qpop-rew'); add(r, 'span', 'qpop-k', 'Предметы: '); r.appendChild(document.createTextNode(items.join(' · '))) }
+        }
+        const row = add(el, 'div', 'qpop-actions')
         const btn = (text: string, cls: string, fn: () => void) => {
           const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = text
           b.onclick = (e) => { e.stopPropagation(); map.closePopup(); fn() }
@@ -654,7 +689,8 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
         }
         if (!isDone) btn('✓ Пункт выполнен', 'chip chip-on', () => toggleObjective(o.id, true))
         else btn('Вернуть пункт', 'chip', () => toggleObjective(o.id, false))
-        btn('Задание выполнено', 'chip', () => toggleTask(v.task.id, true))
+        btn('Задание выполнено', 'chip', () => toggleTask(t.id, true))
+        if (t.wikiLink) { const a = document.createElement('a'); a.href = t.wikiLink; a.target = '_blank'; a.rel = 'noreferrer'; a.className = 'chip'; a.textContent = t.seasonal ? 'tarkov.help' : 'Открыть на вики'; row.appendChild(a) }
         return el
       }
       for (const { v, o, z } of questZones) {
@@ -665,8 +701,8 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
         if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: hot ? 2 : 1, fillOpacity: dim ? 0.04 : hot ? 0.18 : 0.1, interactive: false }))
         const label = hot || (withLabels && !focusMode) ? (o.approx ? `≈ ${v.task.name}` : v.task.name) : undefined
         const m = L.marker(pos(z.position), { icon: icon('flag', qc, label, { size: hot ? 24 : 20, dim, hot }), zIndexOffset: hot ? 1000 : 0 })
-        tip(m, `<b>${v.task.name}</b><br>${o.description}<br><span style="opacity:.6">${o.approx ? '≈ точка приближённая · ' : ''}${isDone ? 'пункт выполнен · ' : ''}клик — подробности</span>`)
-        m.bindPopup(() => popupFor(v, o, isDone), { closeButton: false, offset: [0, -10], className: 'qpop-wrap', maxWidth: 360 })
+        tip(m, `<b>${v.task.name}</b><br>${o.description}<br><span style="opacity:.6">${o.approx ? '≈ точка приближённая · ' : ''}${z.spots && z.spots > 1 ? `${z.spots} точки спавна · ` : ''}${isDone ? 'пункт выполнен · ' : ''}клик — подробности</span>`)
+        m.bindPopup(() => popupFor(v, o, isDone, z), { closeButton: true, offset: [0, -10], className: 'qpop-wrap', maxWidth: 340, maxHeight: 400 })
         group.addLayer(m)
         zoneBounds.push(pos(z.position))
       }
@@ -686,7 +722,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       const pts = gmap.locks.filter((l) => l.key === keyParam).map((l) => pos(l.position))
       if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.8), { maxZoom: meta.maxZoom - 1 })
     }
-  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask, tracked])
+  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask, tracked, navigate])
 
   // ── авто-этаж: по высоте последней точки (при повторе рейда — по точке повтора) ──
   useEffect(() => {

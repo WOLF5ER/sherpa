@@ -152,6 +152,8 @@ export interface Zone {
   outline?: XYZ[]
   top?: number
   bottom?: number
+  /** возможное место квестового предмета (possibleLocations tarkov.dev): сколько точек спавна слито в эту метку */
+  spots?: number
 }
 
 export interface Objective {
@@ -190,8 +192,12 @@ export interface Task {
   minPlayerLevel: number
   taskRequirements: TaskRequirement[]
   traderRequirements: { trader: string; requirementType: string; value: number }[]
-  /** сюжетный пул торговца (otherRequirements globalVariable): переменная и нужный этап — см. data/storyPools.ts */
+  /** пул торговца (otherRequirements globalVariable): переменная и сколько квестов пула нужно выполнить — см. data/storyPools.ts */
   storyVar?: { id: string; value: number }
+  /** сюжетная глава, без которой квест не выдаётся (из overlay; главы не отслеживаем — только подсказка) */
+  storyGate?: string
+  /** квест доступен только по престижу (tarkov.dev requiredPrestige) */
+  prestige?: number
   objectives: Objective[]
   kappaRequired: boolean
   lightkeeperRequired: boolean
@@ -202,10 +208,14 @@ export interface Task {
   neededKeys: { keys: string[]; map: string | null }[]
   rewardItems: { item: string; count: number }[]
   rewardStanding: { trader: string; standing: number }[]
+  /** награда: открывает торговцев (Знакомство → Егерь) — квесты этих торговцев до этого недоступны */
+  unlocksTraders?: string[]
   /** сезонная цепочка (KORD BREACH), собранная вручную — в данных tarkov.dev её нет */
   seasonal?: boolean
   /** заметка от составителя: условия выбора, подводные камни */
   note?: string
+  /** поправка из tarkov-data-overlay: какие поля были исправлены относительно tarkov.dev */
+  patched?: string[]
 }
 
 export interface QuestItem {

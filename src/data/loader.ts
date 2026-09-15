@@ -1,6 +1,7 @@
 import { get, set, del } from 'idb-keyval'
 import { mergeSeasonTasks } from './seasonTasks'
 import { normalize, type RawBundle } from './normalize'
+import { applyOverlay, fetchOverlay } from './overlay'
 import type { GameData } from './types'
 
 export type GameMode = 'regular' | 'pve' | 'pvp-season'
@@ -10,7 +11,7 @@ export const MODE_LABEL: Record<GameMode, string> = { regular: 'PvP', pve: 'PvE'
 const BASE = 'https://json.tarkov.dev'
 export const PRICE_TTL_MS = 15 * 60 * 1000
 
-const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v14`
+const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v16`
 
 async function getJson<T = unknown>(path: string, signal?: AbortSignal): Promise<T> {
   // json.tarkov.dev не шлёт Cache-Control — WebView2 по эвристике (Last-Modified) отдаёт вчерашний ответ из кэша часами.
@@ -30,7 +31,7 @@ export async function fetchAll(mode: GameMode, onProgress?: (msg: string) => voi
     maps, mapsRu, mapsEn,
     traders, tradersRu, tradersEn,
     hideout, hideoutRu, hideoutEn,
-    crafts, barters,
+    crafts, barters, overlay,
   ] = await Promise.all([
     getJson(`${m}/items`, signal), getJson(`regular/items_ru`, signal), getJson(`regular/items_en`, signal),
     getJson(`${m}/tasks`, signal), getJson(`regular/tasks_ru`, signal), getJson(`regular/tasks_en`, signal),
@@ -38,8 +39,12 @@ export async function fetchAll(mode: GameMode, onProgress?: (msg: string) => voi
     getJson(`${m}/traders`, signal), getJson(`regular/traders_ru`, signal), getJson(`regular/traders_en`, signal),
     getJson(`${m}/hideout`, signal), getJson(`regular/hideout_ru`, signal), getJson(`regular/hideout_en`, signal),
     getJson(`${m}/crafts`, signal), getJson(`${m}/barters`, signal),
+    fetchOverlay(signal),
   ])
   onProgress?.('Собираю справочник…')
+  // поправки TarkovTracker (фракции, уровни лояльности, удалённые квесты) — поверх сырых задач tarkov.dev
+  const patchedCount = applyOverlay((tasks as { data?: { tasks?: Record<string, unknown> } })?.data?.tasks ?? {}, overlay, m)
+  console.info(`[overlay] ${overlay ? `v${overlay.$meta?.version ?? '?'} от ${overlay.$meta?.generated?.slice(0, 10) ?? '?'}, поправлено задач: ${patchedCount}` : 'нет'}`)
   const pick = (x: unknown) => ((x as { data?: Record<string, string> })?.data ?? {}) as Record<string, string>
   const raw: RawBundle = {
     items, itemsRu: pick(itemsRu), itemsEn: pick(itemsEn),

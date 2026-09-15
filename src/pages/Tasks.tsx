@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Check, ChevronDown, ExternalLink, KeyRound, Lock, MapPin, Search } from 'lucide-react'
 import { useGame } from '@/store/data'
@@ -15,6 +15,11 @@ import { CURRENCY } from '@/lib/needs'
 
 type Filter = 'all' | TaskStatus
 
+const PATCH_RU: Record<string, string> = {
+  factionName: 'фракция', minPlayerLevel: 'уровень', traderRequirements: 'уровень торговца', taskRequirements: 'предшественники',
+  otherRequirements: 'сюжет', zones: 'координаты',
+}
+
 export function TasksPage() {
   const data = useGame()
   const views = useTaskViews()
@@ -26,10 +31,14 @@ export function TasksPage() {
   const kappaOnly = useProfile((s) => s.kappaOnly)
   const setKappaOnly = useProfile((s) => s.setKappaOnly)
 
+  // ?task=<id> — переход с карты: находим квест по имени, раскрываем и подсвечиваем строку
+  const [focusId, setFocusId] = useState<string | null>(null)
   useEffect(() => {
     const pq = params.get('q')
+    const pt = params.get('task')
+    if (pt && data.tasks[pt]) { setQ(data.tasks[pt].name); setFilter('all'); setTrader(null); setMap(null); setFocusId(pt); setParams({}, { replace: true }); return }
     if (pq != null) { setQ(pq); setFilter('all'); setParams({}, { replace: true }) }
-  }, [params, setParams])
+  }, [params, setParams, data])
 
   const all = useMemo(() => [...views.values()], [views])
   const counts = useMemo(() => {
@@ -106,22 +115,30 @@ export function TasksPage() {
         <Empty title="Ничего не найдено" hint="Смени фильтры или проверь уровень в профиле — квесты выше уровня показываются как «впереди»." />
       ) : (
         <ul className="flex flex-col gap-1.5">
-          {list.map((v) => <TaskRow key={v.task.id} view={v} />)}
+          {list.map((v) => <TaskRow key={v.task.id} view={v} focus={v.task.id === focusId} />)}
         </ul>
       )}
     </div>
   )
 }
 
-function TaskRow({ view }: { view: TaskView }) {
+function TaskRow({ view, focus = false }: { view: TaskView; focus?: boolean }) {
   const data = useGame()
+  const rowRef = useRef<HTMLLIElement>(null)
   const views = useTaskViews()
   const toggle = useProfile((s) => s.toggleTask)
   const objectivesDone = useProfile((s) => s.objectivesDone)
   const toggleObjective = useProfile((s) => s.toggleObjective)
   const completeMany = useProfile((s) => s.completeMany)
   const uncompleteMany = useProfile((s) => s.uncompleteMany)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(focus)
+  useEffect(() => {
+    if (!focus) return
+    setOpen(true)
+    // дать списку отрисоваться, затем проскроллить к строке
+    const id = window.setTimeout(() => rowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50)
+    return () => window.clearTimeout(id)
+  }, [focus])
   const t = view.task
   const done = view.status === 'done'
   const locked = view.status === 'locked'
@@ -145,7 +162,7 @@ function TaskRow({ view }: { view: TaskView }) {
   }
 
   return (
-    <li className={`panel transition-colors ${done ? 'opacity-55' : ''} ${open ? 'border-line-2' : ''}`}>
+    <li ref={rowRef} className={`panel transition-colors ${done ? 'opacity-55' : ''} ${open ? 'border-line-2' : ''} ${focus ? 'ring-1 ring-brass/50' : ''}`}>
       <div className="flex items-center gap-3 px-3 py-2.5">
         <button
           type="button"
@@ -175,7 +192,10 @@ function TaskRow({ view }: { view: TaskView }) {
               <span key={l.trader} className="inline-flex items-center gap-1"><Lock size={11} />{data.traders[l.trader]?.name} ур. {l.level}</span>
             ))}
             {locked && view.storyLocked && (
-              <span className="inline-flex items-center gap-1" title="Квесты торговца открываются по мере выполнения его других квестов на этом уровне лояльности (EFT 1.0)"><Lock size={11} />{view.storyLocked.have === 0 ? 'нужен уровень лояльности торговца' : `сюжет торговца: этап ${view.storyLocked.have} из ${view.storyLocked.need}`}</span>
+              <span className="inline-flex items-center gap-1" title="Квесты торговца выдаются по мере выполнения других его квестов на этом уровне лояльности (EFT 1.1); цепочки и сюжетные квесты не считаются"><Lock size={11} />{view.storyLocked.have < 0 ? `${data.traders[view.storyLocked.trader]?.name ?? ''} ур. ${view.storyLocked.ll}` : `квесты ${data.traders[view.storyLocked.trader]?.name ?? ''} ур. ${view.storyLocked.ll}: ${view.storyLocked.have} из ${view.storyLocked.need}`}</span>
+            )}
+            {locked && view.storyGate && (
+              <span className="inline-flex items-center gap-1 truncate" title="Выдаётся по ходу сюжетной главы; главы приложение не отслеживает — отметь выполненным вручную, когда получишь"><Lock size={11} />{view.storyGate}</span>
             )}
           </div>
         </button>
@@ -256,6 +276,11 @@ function TaskRow({ view }: { view: TaskView }) {
               </div>
             </div>
             {t.note && <div className="text-[12px] text-ink-2 leading-4 border-l-2 border-season/60 pl-2">{t.note}</div>}
+            {t.patched && (
+              <div className="text-[11px] text-ink-3 leading-4" title="Поправки проекта tarkov-data-overlay (TarkovTracker), каждая подтверждена вики">
+                поправлено по вики: {t.patched.map((k) => PATCH_RU[k] ?? k).join(', ')}
+              </div>
+            )}
             <a href={t.wikiLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-brass-2">{t.seasonal ? 'tarkov.help' : 'Вики'} <ExternalLink size={11} /></a>
             {!done && missingPrereqs.length > 0 && (
               <Toggle value={false} onChange={() => completeMany([t.id, ...missingPrereqs])} label={`Выполнено вместе с ${missingPrereqs.length} предыдущими`} />
