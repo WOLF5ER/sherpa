@@ -814,7 +814,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
     marksRef.current = group
   }, [marks, squadMarks, gmap, meta, removeMark, squad.url, squad.room, squad.name])
 
-  // квесты с точками на этой карте — список для отслеживания (отслеживаемые первыми, затем по алфавиту)
+  // квесты с точками на этой карте — список для отслеживания (по алфавиту; отмеченные не всплывают наверх, чтобы случайную галочку снять на том же месте)
   const questsHere = useMemo(() => {
     if (!gmap) return []
     const out: { v: TaskView; points: L.LatLngExpression[] }[] = []
@@ -824,7 +824,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       for (const o of v.task.objectives) if (!objectivesDone[o.id]) for (const z of o.zones ?? []) if (z.map === gmap.id) points.push(pos(z.position))
       if (points.length) out.push({ v, points })
     }
-    return out.sort((a, b) => Number(tracked.has(b.v.task.id)) - Number(tracked.has(a.v.task.id)) || a.v.task.name.localeCompare(b.v.task.name, 'ru'))
+    return out.sort((a, b) => a.v.task.name.localeCompare(b.v.task.name, 'ru'))
   }, [gmap, views, questScope, objectivesDone, tracked])
   const [questFilter, setQuestFilter] = useState('')
   const focusQuest = (points: L.LatLngExpression[]) => {
