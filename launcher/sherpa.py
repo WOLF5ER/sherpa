@@ -242,8 +242,17 @@ class QuietHandler(SimpleHTTPRequestHandler):
         pass
 
     def end_headers(self):
-        self.send_header("Cache-Control", "no-cache")
+        # index.html не кэшировать вовсе: профиль WebView2 общий для всех версий, и при запуске более старой версии
+        # (кэш от новой, mtime файла старше) SimpleHTTP отвечал 304 — окно брало чужой index.html, его /assets/*.js
+        # давали 404 и оставался чёрный экран. Хэшированные /assets/ — обычный no-cache (имена уникальны)
+        self.send_header("Cache-Control", "no-cache" if self.path.startswith(("/assets/", "/api/")) else "no-store")
         super().end_headers()
+
+    def send_head(self):
+        # 304 по If-Modified-Since — только для /assets/ с хэшем в имени; всё остальное отдаём целиком всегда
+        if not self.path.startswith("/assets/") and "If-Modified-Since" in self.headers:
+            del self.headers["If-Modified-Since"]
+        return super().send_head()
 
     def do_GET(self):
         # /api/tt/<path> → TarkovTracker: их API требует User-Agent и не отдаёт CORS сторонним сайтам
@@ -1628,7 +1637,8 @@ def main():
             print(f"[sherpa] окно не загрузилось за 12 с — повторяю ({attempt + 1}/3)")
             try:
                 from System import Action
-                window.native.BeginInvoke(Action(lambda: window.load_url(url)))
+                # новый адрес (?r=…) — мимо HTTP-кэша WebView2, вдруг там index.html другой версии
+                window.native.BeginInvoke(Action(lambda: window.load_url(f"{url}?r={int(time.time())}")))
             except Exception as e:  # noqa: BLE001
                 print(f"[sherpa] не удалось перезагрузить окно: {e}")
     threading.Thread(target=boot_watchdog, daemon=True).start()

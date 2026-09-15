@@ -14,7 +14,12 @@
           if (tries >= 3) return
           sessionStorage.setItem('sherpa:boot-retry', String(tries + 1))
           console.warn('[sherpa] перезагрузка: ' + why)
-          setTimeout(function () { location.reload() }, 800)
+          // новый адрес (?r=…), а не reload(): reload() шлёт If-Modified-Since, и сервер другой версии может ответить 304 —
+          // страница останется чужой, а её /assets/*.js так и будут 404
+          setTimeout(function () {
+            var q = new URLSearchParams(location.search); q.set('r', String(Date.now()))
+            location.replace(location.pathname + '?' + q.toString() + location.hash)
+          }, 800)
         }
         window.addEventListener('error', function (e) {
           var t = e.target
