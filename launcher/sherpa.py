@@ -48,7 +48,8 @@ DEFAULT_CONFIG = {
     "port": 4879,
     "width": 1180,
     "height": 760,
-    "on_top": True,
+    # «поверх всех окон» — выключено по умолчанию; F9 или кнопка в шапке переключают, выбор запоминается
+    "on_top": False,
     "hotkey_toggle": "F10",
     "hotkey_on_top": "F9",
     "hotkey_minimap": "F8",
@@ -639,6 +640,7 @@ class Api:
     def set_on_top(self, value: bool):
         self._on_top = bool(value)
         self._apply_on_top()
+        self._save_cfg(on_top=self._on_top)
         return self._on_top
 
     @timed
