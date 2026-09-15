@@ -40,6 +40,12 @@ export interface LauncherApi {
   /** резервная копия прогресса (localStorage sherpa:*) в AppData — переживает смену порта и обновления */
   state_get?: () => Promise<StateBackup | null>
   state_put?: (text: string) => Promise<boolean>
+  /** аккаунт (Discord) и облачная синхронизация снимка прогресса — запросы к облаку делает лаунчер */
+  account_info?: () => Promise<AccountInfo>
+  account_login?: () => Promise<AccountInfo>
+  account_logout?: () => Promise<AccountInfo>
+  cloud_get?: () => Promise<StateBackup | { error: string } | null>
+  cloud_put?: (text: string) => Promise<{ ok: boolean; stale?: boolean; error?: string }>
   /** обновления: последний релиз на GitHub */
   update_info?: () => Promise<UpdateInfo>
   check_update?: () => Promise<UpdateInfo>
@@ -55,6 +61,15 @@ export interface UpdateInfo {
   checked_at: number
   can_install: boolean
   page: string
+}
+
+export interface AccountUser { id: string; name: string; avatar: string | null }
+export interface AccountInfo {
+  user: AccountUser | null
+  stage: 'idle' | 'pending' | 'ok' | 'error'
+  error: string
+  synced_at: number
+  cloud_url: string
 }
 
 export interface StateBackup { savedAt: number; keys: Record<string, string> }

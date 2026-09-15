@@ -3,6 +3,7 @@ import { useProfile } from '@/store/profile'
 import { useUI } from '@/store/ui'
 import { useBuilds } from '@/store/builds'
 import { useWatch } from '@/store/watch'
+import { cloudPush, installCloud } from './cloud'
 
 /**
  * Прогресс живёт в localStorage WebView2, а он привязан к origin (порту) и профилю браузера: занялся порт 4879,
@@ -21,11 +22,32 @@ function snapshot(): StateBackup {
   return { savedAt: Date.now(), keys }
 }
 
-/** Есть ли в снимке что-то, ради чего стоит восстанавливаться (не пустой профиль). */
-function meaningful(b: StateBackup | null): b is StateBackup {
+/**
+ * Есть ли в снимке что-то, ради чего стоит восстанавливаться. Пустой профиль (свежий origin, персонаж 1 уровня без единой
+ * отметки) — не считается: такой снимок никогда не должен ни сохраняться с отметкой времени, ни уезжать в облако,
+ * иначе новый экземпляр «новее всех» и затирает настоящий прогресс.
+ */
+export function meaningful(b: StateBackup | null): b is StateBackup {
   if (!b?.keys) return false
   const p = b.keys['sherpa:profile']
-  return typeof p === 'string' && p.length > 0
+  if (typeof p !== 'string' || !p) return false
+  try {
+    const st = JSON.parse(p)?.state
+    if (!st) return false
+    const has = (o: unknown) => !!o && typeof o === 'object' && Object.keys(o as object).length > 0
+    return (st.level ?? 1) > 1 || has(st.completed) || has(st.stations) || has(st.have) || has(st.achievements) || has(st.skills)
+      || has(st.profiles) || has(st.objectivesDone) || !!st.ttToken
+  } catch { return false }
+}
+
+/** Записать снимок в localStorage (без перезагрузки — её делает вызывающий). */
+function apply(b: StateBackup): boolean {
+  if (!meaningful(b)) return false
+  try {
+    for (const [k, v] of Object.entries(b.keys)) if (k.startsWith(PREFIX) && typeof v === 'string') localStorage.setItem(k, v)
+    localStorage.setItem(AT_KEY, String(b.savedAt))
+    return true
+  } catch { return false }
 }
 
 export function installBackup() {
@@ -39,31 +61,29 @@ export function installBackup() {
       timer = null
       try {
         const snap = snapshot()
+        if (!meaningful(snap)) return // нечего копировать — и время не помечаем
         localStorage.setItem(AT_KEY, String(snap.savedAt))
         void api.state_put!(JSON.stringify(snap)).catch(() => {})
+        void cloudPush(snap)
       } catch { /* localStorage недоступен — нечего копировать */ }
     }
     const schedule = () => { if (timer == null) timer = window.setTimeout(save, 1500) }
     api.state_get().then((file) => {
       let localAt = 0
       try { localAt = Number(localStorage.getItem(AT_KEY)) || 0 } catch { /* ignore */ }
-      if (meaningful(file) && file.savedAt > localAt + 1000) {
+      if (meaningful(file) && file.savedAt > localAt + 1000 && apply(file)) {
         // файл свежее — значит, локальный снимок старый или пустой (новый origin): восстанавливаем и перезагружаем
-        try {
-          for (const [k, v] of Object.entries(file.keys)) localStorage.setItem(k, v)
-          localStorage.setItem(AT_KEY, String(file.savedAt))
-        } catch { return }
         console.info('[sherpa] прогресс восстановлен из резервной копии', new Date(file.savedAt).toLocaleString('ru-RU'))
         location.reload()
         return
       }
-      // локальный снимок актуален — зеркалим изменения в файл
+      // локальный снимок актуален — зеркалим изменения в файл (и в облако, если вошли в аккаунт)
       useProfile.subscribe(schedule)
       useUI.subscribe(schedule)
       useBuilds.subscribe(schedule)
       useWatch.subscribe(schedule)
       window.addEventListener('pagehide', () => { if (timer != null) { clearTimeout(timer); save() } })
-      save()
+      void installCloud(api, snapshot, apply)
     }).catch(() => {})
   }
   const api = window.pywebview?.api

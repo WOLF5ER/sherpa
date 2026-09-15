@@ -1,0 +1,12 @@
+# Облачная синхронизация прогресса Sherpa: вход через Discord, снимок прогресса в KV.
+# Деплой: cd cloud && npx wrangler login && npx wrangler kv namespace create SYNC (id → ниже) && npx wrangler secret put DISCORD_CLIENT_SECRET && npx wrangler deploy
+name = "sherpa-sync"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+DISCORD_CLIENT_ID = "1549249853479981166"
+
+[[kv_namespaces]]
+binding = "SYNC"
+id = "b06e08dea64e4c3ba54d556303585f05"

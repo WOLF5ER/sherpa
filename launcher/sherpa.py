@@ -19,6 +19,8 @@ import math
 import os
 import queue
 import re
+import base64
+import secrets
 import shutil
 import socket
 import subprocess
@@ -70,6 +72,8 @@ DEFAULT_CONFIG = {
     "lan": False,
     # сквад: поднять публичный адрес через cloudflared (winget install Cloudflare.cloudflared)
     "squad_tunnel": False,
+    # облачная синхронизация прогресса (вход через Discord); пусто — встроенный адрес воркера Sherpa Sync
+    "cloud_url": "",
 }
 
 # ── сквад: комнаты живут в памяти хоста, пока он запущен ──
@@ -129,6 +133,9 @@ def squad_mark(room: str, mark: dict, remove: bool):
 LAST_POS: dict | None = None
 LAST_MAP: str = ""  # карта, открытая в главном окне (normalizedName) — телефон едет за ней
 DEBUG_API = None  # экземпляр Api для отладочного эндпоинта
+ACCOUNT_API = None  # экземпляр Api — колбэк входа через Discord (/api/auth/callback)
+CLOUD_URL = "https://sherpa-sync.artem-blinov-2011.workers.dev"  # воркер cloud/ (см. cloud/wrangler.toml)
+ACCOUNT_FILE = Path(os.environ["LOCALAPPDATA"]) / "Sherpa" / "account.json" if os.environ.get("LOCALAPPDATA") else None
 SSE_CLIENTS: list[queue.Queue] = []
 
 
@@ -243,6 +250,25 @@ class QuietHandler(SimpleHTTPRequestHandler):
             return self._proxy_tt()
         if self.path == "/api/pos/last":
             return self._json(LAST_POS or {}, 200 if LAST_POS else 204)
+        if self.path.startswith("/api/auth/callback"):
+            # сюда Discord (через воркер) возвращает браузер после входа: ?token=…&nonce=…
+            from urllib.parse import parse_qs, urlparse
+            q = parse_qs(urlparse(self.path).query)
+            if ACCOUNT_API is None:
+                ok, msg = False, "лаунчер не готов"
+            else:
+                ok, msg = ACCOUNT_API._account_finish(q.get("token", [""])[0], q.get("nonce", [""])[0], self.client_address[0])
+            title = "Вход выполнен" if ok else "Не вышло"
+            body = ("<!doctype html><meta charset=utf-8><title>Sherpa</title>"
+                    "<body style='font:16px system-ui;background:#111310;color:#e8e6df;display:grid;place-items:center;height:100vh;margin:0'>"
+                    "<div style='text-align:center'><div style='font-size:22px;margin-bottom:8px'>" + title + "</div>"
+                    "<div style='color:#9a9a90'>" + msg + "</div></div>").encode("utf-8")
+            self.send_response(200 if ok else 400)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return None
         if self.path == "/api/live":
             # «карта на телефоне»: телефон опрашивает раз в 2 с — позиция и карта хоста (SSE через туннель не стримится)
             return self._json({"pos": LAST_POS, "map": LAST_MAP, "ts": time.time()})
@@ -1128,6 +1154,160 @@ class Api:
             print(f"[sherpa] резервная копия не записалась: {e}")
             return False
 
+    # ── аккаунт и облачная синхронизация (Discord → воркер Sherpa Sync → KV) ──
+    # Токен и профиль Discord лежат в AppData/Sherpa/account.json; страница токен не видит — все запросы к облаку делает лаунчер.
+    _account: dict | None = None      # {"token": …, "user": {"id","name","avatar"}}
+    _login_nonce: str | None = None
+    _cloud_stage: str = "idle"        # idle | pending | ok | error
+    _cloud_error: str = ""
+    _cloud_synced: float = 0.0
+
+    def _cloud_url(self) -> str:
+        return (str(self._cfg.get("cloud_url") or "") or CLOUD_URL).rstrip("/")
+
+    def _account_load(self):
+        if self._account is None and ACCOUNT_FILE and ACCOUNT_FILE.exists():
+            try:
+                a = json.loads(ACCOUNT_FILE.read_text(encoding="utf-8"))
+                if a.get("token") and a.get("user"):
+                    self._account = a
+            except Exception as e:  # noqa: BLE001
+                print(f"[sherpa] account.json не читается: {e}")
+        return self._account
+
+    def _account_save(self, a: dict | None):
+        self._account = a
+        if not ACCOUNT_FILE:
+            return
+        try:
+            if a is None:
+                if ACCOUNT_FILE.exists():
+                    ACCOUNT_FILE.unlink()
+            else:
+                ACCOUNT_FILE.parent.mkdir(parents=True, exist_ok=True)
+                ACCOUNT_FILE.write_text(json.dumps(a, ensure_ascii=False), encoding="utf-8")
+        except Exception as e:  # noqa: BLE001
+            print(f"[sherpa] account.json не записался: {e}")
+
+    def _cloud(self, method: str, path: str, body: str | None = None, token: str | None = None):
+        """Запрос к воркеру. Возвращает (status, text)."""
+        tok = token or ((self._account_load() or {}).get("token"))
+        headers = {"User-Agent": f"Sherpa/{APP_VERSION}", "Accept": "application/json"}
+        if tok:
+            headers["Authorization"] = f"Bearer {tok}"
+        data = None
+        if body is not None:
+            data = body.encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(self._cloud_url() + path, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return resp.status, resp.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode("utf-8", "replace")
+
+    def account_info(self):
+        a = self._account_load()
+        return {
+            "user": (a or {}).get("user"), "stage": self._cloud_stage, "error": self._cloud_error,
+            "synced_at": self._cloud_synced, "cloud_url": self._cloud_url(),
+        }
+
+    def account_login(self):
+        """Открыть в браузере вход через Discord; результат прилетит на /api/auth/callback."""
+        self._login_nonce = secrets.token_urlsafe(24)
+        state = base64.urlsafe_b64encode(json.dumps({"port": self._port, "nonce": self._login_nonce}).encode()).decode().rstrip("=")
+        self._cloud_stage, self._cloud_error = "pending", ""
+        url = f"{self._cloud_url()}/auth/discord?state={state}"
+        try:
+            os.startfile(url)  # noqa: S606
+        except Exception as e:  # noqa: BLE001
+            self._cloud_stage, self._cloud_error = "error", f"не открылся браузер: {e}"
+        return self.account_info()
+
+    def _account_finish(self, token: str, nonce: str, client_ip: str):
+        if client_ip not in ("127.0.0.1", "::1"):
+            return False, "вход принимается только с этого компьютера"
+        if not nonce or nonce != self._login_nonce:
+            return False, "код входа не совпал — начни вход заново из Sherpa"
+        if not re.fullmatch(r"[a-f0-9]{64}", token or ""):
+            return False, "плохой токен"
+        try:
+            st, txt = self._cloud("GET", "/me", token=token)
+        except Exception as e:  # noqa: BLE001
+            self._cloud_stage, self._cloud_error = "error", f"облако недоступно: {e}"
+            return False, self._cloud_error
+        if st != 200:
+            self._cloud_stage, self._cloud_error = "error", f"облако не подтвердило вход ({st})"
+            return False, self._cloud_error
+        try:
+            user = json.loads(txt)
+        except Exception:  # noqa: BLE001
+            return False, "облако ответило мусором"
+        self._login_nonce = None
+        self._account_save({"token": token, "user": {"id": user.get("id"), "name": user.get("name"), "avatar": user.get("avatar")}})
+        self._cloud_stage, self._cloud_error = "ok", ""
+        print(f"[sherpa] вход в аккаунт: {user.get('name')} ({user.get('id')})")
+        return True, "Можно закрыть вкладку и вернуться в Sherpa."
+
+    def account_logout(self):
+        if self._account_load():
+            try:
+                self._cloud("POST", "/logout")
+            except Exception:  # noqa: BLE001
+                pass
+        self._account_save(None)
+        self._cloud_stage, self._cloud_error, self._cloud_synced = "idle", "", 0.0
+        return self.account_info()
+
+    def cloud_get(self):
+        """Снимок из облака: dict, None (пусто) или {"error": …}."""
+        if not self._account_load():
+            return {"error": "not logged in"}
+        try:
+            st, txt = self._cloud("GET", "/state")
+        except Exception as e:  # noqa: BLE001
+            self._cloud_stage, self._cloud_error = "error", f"облако недоступно: {e}"
+            return {"error": self._cloud_error}
+        if st == 401:
+            self._account_save(None)
+            self._cloud_stage, self._cloud_error = "error", "сессия истекла — войди заново"
+            return {"error": self._cloud_error}
+        if st == 204:
+            self._cloud_stage, self._cloud_error, self._cloud_synced = "ok", "", time.time()
+            return None
+        if st != 200:
+            self._cloud_stage, self._cloud_error = "error", f"облако ответило {st}"
+            return {"error": self._cloud_error}
+        self._cloud_stage, self._cloud_error, self._cloud_synced = "ok", "", time.time()
+        try:
+            return json.loads(txt)
+        except Exception:  # noqa: BLE001
+            return {"error": "облако ответило мусором"}
+
+    def cloud_put(self, text: str):
+        """Отправить снимок в облако. Возвращает {"ok": bool, "stale"?: bool, "error"?: str}."""
+        if not self._account_load():
+            return {"ok": False, "error": "not logged in"}
+        try:
+            st, txt = self._cloud("PUT", "/state", body=text)
+        except Exception as e:  # noqa: BLE001
+            self._cloud_stage, self._cloud_error = "error", f"облако недоступно: {e}"
+            return {"ok": False, "error": self._cloud_error}
+        if st == 401:
+            self._account_save(None)
+            self._cloud_stage, self._cloud_error = "error", "сессия истекла — войди заново"
+            return {"ok": False, "error": self._cloud_error}
+        if st == 409:
+            # в облаке снимок новее — страница подтянет его при следующей синхронизации
+            self._cloud_stage, self._cloud_error = "ok", ""
+            return {"ok": False, "stale": True}
+        if st != 200:
+            self._cloud_stage, self._cloud_error = "error", f"облако ответило {st}"
+            return {"ok": False, "error": self._cloud_error}
+        self._cloud_stage, self._cloud_error, self._cloud_synced = "ok", "", time.time()
+        return {"ok": True}
+
     def close_minimap(self):
         w = self._mini
         self._mini = None
@@ -1377,8 +1557,9 @@ def main():
         pass
 
     api = Api()
-    global DEBUG_API
+    global DEBUG_API, ACCOUNT_API
     DEBUG_API = api
+    ACCOUNT_API = api
     api._lan_url = lan_url
     api._cfg = cfg
     api._port = port

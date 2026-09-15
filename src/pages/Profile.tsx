@@ -1,9 +1,11 @@
 import { useMemo, useRef } from 'react'
-import { Download, Upload, Trash2, DatabaseZap, RefreshCw, ExternalLink, Sparkles } from 'lucide-react'
+import { Download, Upload, Trash2, DatabaseZap, RefreshCw, ExternalLink, Sparkles, Cloud, LogOut, LogIn } from 'lucide-react'
 import { useGame, useData } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useUI } from '@/store/ui'
 import { fmtMinutes, scavCooldown } from '@/lib/scav'
+import { useCloud } from '@/lib/cloud'
+import { ago } from '@/lib/format'
 import { clearCache } from '@/data/loader'
 import { deriveTraderLevel } from '@/lib/useCtx'
 import { Eyebrow, Progress, Segmented, Stepper } from '@/components/ui'
@@ -214,6 +216,7 @@ export function ProfilePage() {
             </div>
           )}
         </div>
+        <AccountPanel />
         <div className="panel p-4">
           <Eyebrow>Резервная копия</Eyebrow>
           <div className="mt-3 text-[13px] text-ink-2 num">{p.name}: {doneCount} выполненных квестов · {Object.keys(p.have).length} предметов в счётчиках</div>
@@ -231,6 +234,50 @@ export function ProfilePage() {
           {exportMsg && <div className="mt-2 text-[12px] text-fir">{exportMsg}</div>}
         </div>
       </section>
+    </div>
+  )
+}
+
+/** Аккаунт Discord и облачная синхронизация прогресса (только в лаунчере). */
+function AccountPanel() {
+  const c = useCloud()
+  const [, tick] = useState(0)
+  useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 30_000); return () => clearInterval(t) }, [])
+  const user = c.info?.user ?? null
+  return (
+    <div className="panel p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <Eyebrow>Аккаунт</Eyebrow>
+        {user && c.syncedAt > 0 && <span className="num text-[11px] text-ink-4">{c.busy ? 'синхронизирую…' : `облако ${ago(c.syncedAt)}`}</span>}
+      </div>
+      {!c.available ? (
+        <div className="mt-3 text-[12px] text-ink-3 leading-5">Вход через Discord и синхронизация прогресса между компьютерами работают в лаунчере (Sherpa.exe).</div>
+      ) : user ? (
+        <>
+          <div className="mt-3 flex items-center gap-3">
+            {user.avatar ? <img src={user.avatar} alt="" className="w-9 h-9 rounded-full object-cover" /> : <Cloud size={20} className="text-ink-3" />}
+            <div className="min-w-0">
+              <div className="text-[13px] text-ink truncate">{user.name}</div>
+              <div className="text-[11px] text-ink-4">Discord · прогресс хранится в облаке и подтягивается на любом ПК после входа</div>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => void c.sync()} disabled={c.busy} className="chip hover:text-ink hover:border-ink-4 disabled:opacity-60"><RefreshCw size={12} className={c.busy ? 'animate-spin' : ''} /> Синхронизировать</button>
+            <button type="button" onClick={() => { if (confirm('Выйти из аккаунта? Прогресс на этом ПК останется, в облаке тоже.')) void c.logout() }} className="chip hover:text-danger hover:border-danger/60"><LogOut size={12} /> Выйти</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mt-3 text-[12px] text-ink-3 leading-5">
+            Войди через Discord — прогресс (персонажи, квесты, схрон, сборки, настройки) будет храниться в облаке
+            и сам появится на другом компьютере после входа. Если на обоих ПК что-то отмечали — побеждает более поздняя запись.
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => void c.login()} disabled={c.info?.stage === 'pending'} className="chip hover:text-ink hover:border-ink-4 disabled:opacity-60"><LogIn size={12} /> {c.info?.stage === 'pending' ? 'Жду подтверждения в браузере…' : 'Войти через Discord'}</button>
+          </div>
+        </>
+      )}
+      {c.note && <div className={`mt-2 text-[12px] ${c.info?.stage === 'error' ? 'text-danger' : 'text-ink-3'}`}>{c.note}</div>}
     </div>
   )
 }
