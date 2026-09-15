@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import L from 'leaflet'
-import { ChevronLeft, ChevronRight, ChevronDown, X, Play, Pause, SkipBack } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, X, Play, Pause, SkipBack, Crosshair, Check } from 'lucide-react'
 import { useGame } from '@/store/data'
 import { useUI } from '@/store/ui'
 import { useProfile } from '@/store/profile'
@@ -182,6 +182,10 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
   const squadName = squad.name
   const squadActive = !!squad.room && ROOM_RE.test(squad.room) && (!!squad.url || !!window.pywebview)
   const currentMapId = useUI((s) => s.currentMapId)
+  const trackedTasks = useUI((s) => s.trackedTasks)
+  const toggleTracked = useUI((s) => s.toggleTracked)
+  const clearTracked = useUI((s) => s.clearTracked)
+  const tracked = useMemo(() => new Set(trackedTasks), [trackedTasks])
   const setCurrentMapId = useUI((s) => s.setCurrentMapId)
   const squadRef = useRef<L.LayerGroup | null>(null)
   const [params, setParams] = useSearchParams()
@@ -365,11 +369,11 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
     z.weapons = gmap.stationaryWeapons.length
     z.btr = gmap.btrStops.filter((b) => b.position).length
     for (const v of views.values()) {
-      if (v.status === 'done' || (questScope === 'available' && v.status !== 'available')) continue
+      if (v.status === 'done' || (questScope === 'available' && v.status !== 'available' && !tracked.has(v.task.id))) continue
       for (const o of v.task.objectives) for (const zz of o.zones ?? []) if (zz.map === gmap.id && !objectivesDone[o.id]) z.quests++
     }
     return z
-  }, [gmap, data, gameMode, loosePoints, cardPoints, ledxPoints, views, questScope, objectivesDone])
+  }, [gmap, data, gameMode, loosePoints, cardPoints, ledxPoints, views, questScope, objectivesDone, tracked])
   const [panelOpen, setPanelOpen] = useState(!overlay && !live)
   const panelPadRef = useRef(0)
   panelPadRef.current = panelOpen ? (overlay ? 220 : 280) : 0
@@ -615,10 +619,13 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       const zoneBounds: L.LatLngExpression[] = []
       const questZones: { v: TaskView; o: Objective; z: Zone }[] = []
       for (const v of views.values()) {
-        if (taskParam ? v.task.id !== taskParam : (v.status === 'done' || (questScope === 'available' && v.status !== 'available'))) continue
+        // отслеживаемые квесты показываем даже вне «доступных»
+        if (taskParam ? v.task.id !== taskParam : (v.status === 'done' || (questScope === 'available' && v.status !== 'available' && !tracked.has(v.task.id)))) continue
         // выполненные пункты прячем; в режиме «показать задание» оставляем их бледными, чтобы можно было вернуть
         for (const o of v.task.objectives) for (const z of o.zones ?? []) if (z.map === gmap.id && (taskParam || !objectivesDone[o.id])) questZones.push({ v, o, z })
       }
+      // отслеживаемые квесты на этой карте: их метки горят, остальные приглушены и без подписей
+      const focusMode = !taskParam && questZones.some(({ v }) => tracked.has(v.task.id))
       // при большом числе зон подписи только по наведению — иначе каша
       const withLabels = questZones.length <= 14 || !!taskParam
       // всплывашка с кнопками: отметить пункт / всё задание. Реальные DOM-узлы — с обработчиками, без innerHTML
@@ -649,11 +656,12 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       }
       for (const { v, o, z } of questZones) {
         const isDone = !!objectivesDone[o.id]
-        const dim = !onLevel(z.position) || isDone
+        const hot = focusMode && tracked.has(v.task.id) && !isDone
+        const dim = !onLevel(z.position) || isDone || (focusMode && !hot)
         const qc = v.task.seasonal ? COLORS.season : COLORS.quest
-        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: 1, fillOpacity: dim ? 0.04 : 0.1, interactive: false }))
-        const label = withLabels ? (o.approx ? `≈ ${v.task.name}` : v.task.name) : undefined
-        const m = L.marker(pos(z.position), { icon: icon('flag', qc, label, { size: 20, dim }) })
+        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: hot ? 2 : 1, fillOpacity: dim ? 0.04 : hot ? 0.18 : 0.1, interactive: false }))
+        const label = hot || (withLabels && !focusMode) ? (o.approx ? `≈ ${v.task.name}` : v.task.name) : undefined
+        const m = L.marker(pos(z.position), { icon: icon('flag', qc, label, { size: hot ? 24 : 20, dim, hot }), zIndexOffset: hot ? 1000 : 0 })
         tip(m, `<b>${v.task.name}</b><br>${o.description}<br><span style="opacity:.6">${o.approx ? '≈ точка приближённая · ' : ''}${isDone ? 'пункт выполнен · ' : ''}клик — подробности</span>`)
         m.bindPopup(() => popupFor(v, o, isDone), { closeButton: false, offset: [0, -10], className: 'qpop-wrap', maxWidth: 360 })
         group.addLayer(m)
@@ -675,7 +683,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       const pts = gmap.locks.filter((l) => l.key === keyParam).map((l) => pos(l.position))
       if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.8), { maxZoom: meta.maxZoom - 1 })
     }
-  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask])
+  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask, tracked])
 
   // ── авто-этаж: по высоте последней точки (при повторе рейда — по точке повтора) ──
   useEffect(() => {
@@ -802,6 +810,25 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
     group.addTo(map)
     marksRef.current = group
   }, [marks, squadMarks, gmap, meta, removeMark, squad.url, squad.room, squad.name])
+
+  // квесты с точками на этой карте — список для отслеживания (отслеживаемые первыми, затем по алфавиту)
+  const questsHere = useMemo(() => {
+    if (!gmap) return []
+    const out: { v: TaskView; points: L.LatLngExpression[] }[] = []
+    for (const v of views.values()) {
+      if (v.status === 'done' || (questScope === 'available' && v.status !== 'available' && !tracked.has(v.task.id))) continue
+      const points: L.LatLngExpression[] = []
+      for (const o of v.task.objectives) if (!objectivesDone[o.id]) for (const z of o.zones ?? []) if (z.map === gmap.id) points.push(pos(z.position))
+      if (points.length) out.push({ v, points })
+    }
+    return out.sort((a, b) => Number(tracked.has(b.v.task.id)) - Number(tracked.has(a.v.task.id)) || a.v.task.name.localeCompare(b.v.task.name, 'ru'))
+  }, [gmap, views, questScope, objectivesDone, tracked])
+  const [questFilter, setQuestFilter] = useState('')
+  const focusQuest = (points: L.LatLngExpression[]) => {
+    const map = mapRef.current
+    if (!map || !meta || !points.length) return
+    map.fitBounds(L.latLngBounds(points).pad(0.6), { maxZoom: meta.maxZoom - 1 })
+  }
 
   // квесты на этой карте, у пунктов которых нет координат (KORD BREACH — целиком, у tarkov.dev — часть): показываем словами
   const questsNoPoint = useMemo(() => {
@@ -1047,6 +1074,36 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
             <div>
               <Eyebrow>Квесты на карте</Eyebrow>
               <div className="mt-1.5"><Segmented value={questScope} onChange={setQuestScope} options={[{ value: 'available', label: 'Доступные' }, { value: 'all', label: 'Все' }]} /></div>
+              {questsHere.length > 0 && (
+                <div className="mt-2">
+                  {questsHere.length > 8 && (
+                    <input value={questFilter} onChange={(e) => setQuestFilter(e.target.value)} placeholder="Найти квест…" className="input focus:input-focus h-7 text-[12px] w-full mb-1" />
+                  )}
+                  <ul className="flex flex-col gap-px">
+                    {questsHere.filter(({ v }) => !questFilter || v.task.name.toLowerCase().includes(questFilter.toLowerCase())).map(({ v, points }) => {
+                      const on = tracked.has(v.task.id)
+                      const trader = data.traders[v.task.trader]
+                      const qc = v.task.seasonal ? COLORS.season : COLORS.quest
+                      return (
+                        <li key={v.task.id} className={`layer-row h-7 pr-1 ${on ? 'layer-on' : ''}`} style={on ? { borderColor: qc } : undefined}>
+                          <button type="button" onClick={() => toggleTracked(v.task.id)} title={on ? 'Не отслеживать' : 'Отслеживать на карте'}
+                            className={`shrink-0 w-3.5 h-3.5 rounded-sm border grid place-items-center ${on ? 'border-brass bg-brass text-bg' : 'border-line-2 hover:border-brass'}`}>
+                            {on && <Check size={10} strokeWidth={3} />}
+                          </button>
+                          {trader?.imageLink && <img src={trader.imageLink} alt="" title={trader.name} className="w-4 h-4 rounded-sm shrink-0 object-cover" />}
+                          <button type="button" onClick={() => toggleTracked(v.task.id)} className={`truncate flex-1 text-left text-[12px] ${on ? 'text-ink' : ''}`}>{v.task.name.replace(' [KORD BREACH]', '')}</button>
+                          <span className="num text-[11px]">{points.length}</span>
+                          <button type="button" onClick={() => focusQuest(points)} title="Показать на карте" className="shrink-0 text-ink-4 hover:text-brass"><Crosshair size={12} /></button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {trackedTasks.length > 0 && (
+                    <button type="button" onClick={clearTracked} className="mt-1 text-[11px] text-ink-3 hover:text-ink">Сбросить выбор ({trackedTasks.length})</button>
+                  )}
+                  <div className="mt-1 text-[11px] text-ink-4">Отметь квест — его точки загорятся на карте, остальные приглушатся. Прицел — навести карту.</div>
+                </div>
+              )}
               {questsNoPoint.length > 0 && (
                 <div className="mt-2">
                   <div className="text-[11px] text-ink-4 mb-1">Без точки на карте — где искать, словами:</div>

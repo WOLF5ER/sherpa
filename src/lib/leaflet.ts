@@ -75,9 +75,9 @@ export type IconKind = keyof typeof SVG
 /** те же глифы для легенды/меню слоёв */
 export const MARKER_SVG: Record<IconKind, string> = SVG
 
-export function icon(kind: IconKind, color: string, label?: string, opts: { square?: boolean; dim?: boolean; size?: number; rawLabel?: boolean } = {}): L.DivIcon {
+export function icon(kind: IconKind, color: string, label?: string, opts: { square?: boolean; dim?: boolean; size?: number; rawLabel?: boolean; hot?: boolean } = {}): L.DivIcon {
   const size = opts.size ?? 22
-  const cls = `mk${opts.square ? ' mk-sq' : ''}${opts.dim ? ' mk-dim' : ''}${size <= 16 ? ' mk-xs' : ''}`
+  const cls = `mk${opts.square ? ' mk-sq' : ''}${opts.dim ? ' mk-dim' : ''}${opts.hot ? ' mk-hot' : ''}${size <= 16 ? ' mk-xs' : ''}`
   const text = label ? (opts.rawLabel ? label : escape(label)) : ''
   const html = `<div class="${cls}" style="background:${color};width:${size}px;height:${size}px;transform:translate(${-size / 2}px,${-size / 2}px)">${SVG[kind]}${text ? `<span class="mk-label">${text}</span>` : ''}</div>`
   return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 0] })

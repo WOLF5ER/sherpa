@@ -56,6 +56,10 @@ interface UIState {
   setSquadMarks: (m: Record<string, SquadMark>) => void
   theme: 'dark' | 'light'
   setTheme: (t: 'dark' | 'light') => void
+  /** отслеживаемые квесты: их метки подсвечены на карте, остальные приглушены */
+  trackedTasks: string[]
+  toggleTracked: (id: string) => void
+  clearTracked: () => void
   /** карта, выбранная на странице карт (для сквада) */
   currentMapId: string | null
   setCurrentMapId: (id: string | null) => void
@@ -117,6 +121,9 @@ export const useUI = create<UIState>()(
       setSquadMarks: (squadMarks) => set({ squadMarks }),
       theme: 'dark',
       setTheme: (theme) => set({ theme }),
+      trackedTasks: [],
+      toggleTracked: (id) => set((s) => ({ trackedTasks: s.trackedTasks.includes(id) ? s.trackedTasks.filter((x) => x !== id) : [...s.trackedTasks, id] })),
+      clearTracked: () => set({ trackedTasks: [] }),
       currentMapId: null,
       setCurrentMapId: (currentMapId) => set({ currentMapId }),
       updateInfo: null,
@@ -135,6 +142,6 @@ export const useUI = create<UIState>()(
         const p = (persisted ?? {}) as Partial<UIState>
         return { ...current, ...p, squad: { ...current.squad, ...(p.squad ?? {}) } }
       },
-      partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, mapStyle: s.mapStyle, marks: s.marks, squad: s.squad, theme: s.theme, currentMapId: s.currentMapId }) },
+      partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, mapStyle: s.mapStyle, marks: s.marks, squad: s.squad, theme: s.theme, currentMapId: s.currentMapId, trackedTasks: s.trackedTasks }) },
   ),
 )

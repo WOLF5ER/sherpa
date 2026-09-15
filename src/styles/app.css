@@ -320,6 +320,18 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 .mk-xs svg { width: 11px; height: 11px; stroke-width: 2.2; }
 .mk-sq { border-radius: 4px; }
 .mk-dim { opacity: .55; }
+/* отслеживаемый квест: метка крупнее и «дышит» светящимся кольцом */
+.mk-hot {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(240,196,106,.45), 0 0 14px 4px rgba(240,196,106,.55), 0 2px 6px rgba(0,0,0,.6);
+  animation: mk-pulse 1.6s ease-in-out infinite;
+  z-index: 10;
+}
+.mk-hot .mk-label { font-weight: 700; color: #ffe9b0; }
+@keyframes mk-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(240,196,106,.45), 0 0 14px 4px rgba(240,196,106,.55), 0 2px 6px rgba(0,0,0,.6); }
+  50% { box-shadow: 0 0 0 7px rgba(240,196,106,.15), 0 0 22px 8px rgba(240,196,106,.35), 0 2px 6px rgba(0,0,0,.6); }
+}
 
 .mk-label {
   position: absolute;
