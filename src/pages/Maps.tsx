@@ -19,7 +19,6 @@ import type { TaskView } from '@/lib/tasks'
 import { Chip, Eyebrow, Segmented } from '@/components/ui'
 import { PositionPanel } from '@/components/PositionPanel'
 import { useLauncher } from '@/lib/pywebview'
-import { SquadPanel } from '@/components/SquadPanel'
 import { publishSquadMap, publishSquadMark, ROOM_RE } from '@/lib/squad'
 import { floorForPosition, visibleOnFloor } from '@/lib/floors'
 import { ItemCell } from '@/components/ItemCell'
@@ -997,8 +996,6 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
                 floorName={meta?.layers[floor] ? floorName(meta.layers[floor].name) : null}
               />
               <div className="text-[11px] text-ink-4">Правый клик по карте — своя метка, клик по метке — убрать.</div>
-
-              <SquadPanel currentMap={gmap?.normalizedName ?? ''} mapNames={Object.fromEntries(Object.values(data.maps).map((m) => [m.normalizedName, m.name]))} />
             </>
           )}
 
