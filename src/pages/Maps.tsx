@@ -103,7 +103,7 @@ function MapPicker({ maps, value, onPick }: { maps: { id: string; name: string }
         <ChevronDown size={13} className={`text-ink-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-[600] panel glass shadow-lg p-1 max-h-[60vh] overflow-y-auto flex flex-col gap-px">
+        <div className="absolute left-0 right-0 top-full mt-1 z-[600] panel shadow-lg p-1 max-h-[60vh] overflow-y-auto flex flex-col gap-px">
           {maps.map((m) => (
             <button key={m.id} type="button" onClick={() => { onPick(m.id); setOpen(false) }}
               className={`layer-row h-7 ${m.id === value ? 'layer-on' : ''}`} style={m.id === value ? { borderColor: 'var(--color-brass)' } : undefined}>
