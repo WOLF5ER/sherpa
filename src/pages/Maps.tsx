@@ -83,6 +83,39 @@ const LAYER_SECTIONS: { title: string; rows: { key: ToggleKey; label: string; co
   ] },
 ]
 
+/** выбор карты: кнопка с текущей картой, по клику — выпадающий список (а не все чипы разом) */
+function MapPicker({ maps, value, onPick }: { maps: { id: string; name: string }[]; value: string; onPick: (id: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown); document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [open])
+  const current = maps.find((m) => m.id === value)
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className={`input ${open ? 'input-focus' : ''} w-full h-8 flex items-center gap-2 text-[13px] hover:border-ink-4`}>
+        <span className="flex-1 text-left truncate uppercase tracking-[.06em]">{current?.name ?? 'Выбрать карту'}</span>
+        <ChevronDown size={13} className={`text-ink-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-[600] panel glass shadow-lg p-1 max-h-[60vh] overflow-y-auto flex flex-col gap-px">
+          {maps.map((m) => (
+            <button key={m.id} type="button" onClick={() => { onPick(m.id); setOpen(false) }}
+              className={`layer-row h-7 ${m.id === value ? 'layer-on' : ''}`} style={m.id === value ? { borderColor: 'var(--color-brass)' } : undefined}>
+              <span className="truncate flex-1 text-left">{m.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const LEGEND: { label: string; color: string }[] = [
   { label: 'ЧВК', color: COLORS.pmc }, { label: 'Дикие', color: COLORS.scav }, { label: 'Общий', color: COLORS.shared },
   { label: 'Переход', color: COLORS.transit }, { label: 'Квест', color: COLORS.quest }, { label: 'Сезон', color: COLORS.season },
@@ -873,11 +906,8 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
         <aside className={`absolute right-0 top-0 bottom-0 z-[500] overflow-y-auto border-l border-line glass flex flex-col gap-4 p-3 ${overlay ? 'w-[220px]' : 'w-[280px]'}`}>
           <div>
             <Eyebrow>Карта</Eyebrow>
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {mapsWithMeta.map((m) => (
-                <button key={m.id} type="button" onClick={() => pickMap(m.id)}
-                  className={`chip ${m.id === mapId ? 'chip-on' : 'hover:text-ink hover:border-ink-4'}`}>{m.name}</button>
-              ))}
+            <div className="mt-1.5">
+              <MapPicker maps={mapsWithMeta} value={mapId} onPick={pickMap} />
             </div>
             {gmap && (
               <div className="mt-2 text-[12px] text-ink-3 num">
