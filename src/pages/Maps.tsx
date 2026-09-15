@@ -615,12 +615,15 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
         group.addLayer(m)
       }
     }
-    if (toggles.quests || taskParam) {
+    // отслеживаемые квесты рисуем даже при выключенном слое «Мои квесты» — так можно погасить всё и оставить только их
+    if (toggles.quests || taskParam || tracked.size) {
       const zoneBounds: L.LatLngExpression[] = []
       const questZones: { v: TaskView; o: Objective; z: Zone }[] = []
       for (const v of views.values()) {
-        // отслеживаемые квесты показываем даже вне «доступных»
-        if (taskParam ? v.task.id !== taskParam : (v.status === 'done' || (questScope === 'available' && v.status !== 'available' && !tracked.has(v.task.id)))) continue
+        const isTracked = tracked.has(v.task.id)
+        if (taskParam ? v.task.id !== taskParam
+          : !toggles.quests ? !isTracked
+          : (v.status === 'done' || (questScope === 'available' && v.status !== 'available' && !isTracked))) continue
         // выполненные пункты прячем; в режиме «показать задание» оставляем их бледными, чтобы можно было вернуть
         for (const o of v.task.objectives) for (const z of o.zones ?? []) if (z.map === gmap.id && (taskParam || !objectivesDone[o.id])) questZones.push({ v, o, z })
       }
@@ -963,6 +966,64 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
           )}
 
           <div>
+              <Eyebrow>Квесты на карте</Eyebrow>
+              <div className="mt-1.5"><Segmented value={questScope} onChange={setQuestScope} options={[{ value: 'available', label: 'Доступные' }, { value: 'all', label: 'Все' }]} /></div>
+              {questsHere.length > 0 && (
+                <div className="mt-2">
+                  {questsHere.length > 8 && (
+                    <input value={questFilter} onChange={(e) => setQuestFilter(e.target.value)} placeholder="Найти квест…" className="input focus:input-focus h-7 text-[12px] w-full mb-1" />
+                  )}
+                  <ul className="flex flex-col gap-px">
+                    {questsHere.filter(({ v }) => !questFilter || v.task.name.toLowerCase().includes(questFilter.toLowerCase())).map(({ v, points }) => {
+                      const on = tracked.has(v.task.id)
+                      const trader = data.traders[v.task.trader]
+                      const qc = v.task.seasonal ? COLORS.season : COLORS.quest
+                      return (
+                        <li key={v.task.id} className={`layer-row h-7 pr-1 ${on ? 'layer-on' : ''}`} style={on ? { borderColor: qc } : undefined}>
+                          <button type="button" onClick={() => toggleTracked(v.task.id)} title={on ? 'Не отслеживать' : 'Отслеживать на карте'}
+                            className={`shrink-0 w-3.5 h-3.5 rounded-sm border grid place-items-center ${on ? 'border-brass bg-brass text-bg' : 'border-line-2 hover:border-brass'}`}>
+                            {on && <Check size={10} strokeWidth={3} />}
+                          </button>
+                          {trader?.imageLink && <img src={trader.imageLink} alt="" title={trader.name} className="w-4 h-4 rounded-sm shrink-0 object-cover" />}
+                          <button type="button" onClick={() => toggleTracked(v.task.id)} className={`truncate flex-1 text-left text-[12px] ${on ? 'text-ink' : ''}`}>{v.task.name.replace(' [KORD BREACH]', '')}</button>
+                          <span className="num text-[11px]">{points.length}</span>
+                          <button type="button" onClick={() => focusQuest(points)} title="Показать на карте" className="shrink-0 text-ink-4 hover:text-brass"><Crosshair size={12} /></button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {trackedTasks.length > 0 && (
+                    <button type="button" onClick={clearTracked} className="mt-1 text-[11px] text-ink-3 hover:text-ink">Сбросить выбор ({trackedTasks.length})</button>
+                  )}
+                  <div className="mt-1 text-[11px] text-ink-4">Отметь квест — его точки загорятся на карте, остальные приглушатся; они видны и при выключенном слое «Мои квесты». Прицел — навести карту.</div>
+                </div>
+              )}
+              {toggles.quests && questsNoPoint.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-[11px] text-ink-4 mb-1">Без точки на карте — где искать, словами:</div>
+                  <ul className="flex flex-col gap-1.5">
+                    {questsNoPoint.map(({ v, objectives }) => (
+                      <li key={v.task.id} className="text-[12px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: v.task.seasonal ? COLORS.season : COLORS.quest }} />
+                          <span className={`truncate ${v.task.seasonal ? 'text-season' : 'text-ink'}`}>{v.task.name.replace(' [KORD BREACH]', '')}</span>
+                        </div>
+                        <ul className="ml-3.5 mt-0.5 flex flex-col gap-0.5">
+                          {objectives.map((o) => (
+                            <li key={o.id} className="flex items-start gap-1.5 text-ink-3">
+                              <button type="button" title="Пункт выполнен" onClick={() => toggleObjective(o.id, true)} className="shrink-0 mt-[3px] w-3 h-3 rounded-sm border border-line-2 hover:border-brass" />
+                              <span>{o.description}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+          </div>
+
+          <div>
             <div className="flex items-center justify-between">
               <Eyebrow>Слои</Eyebrow>
               <div className="flex gap-2 text-[11px]">
@@ -1068,66 +1129,6 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
               />
               <div className="text-[11px] text-ink-4">Правый клик по карте — своя метка, клик по метке — убрать.</div>
             </>
-          )}
-
-          {toggles.quests && (
-            <div>
-              <Eyebrow>Квесты на карте</Eyebrow>
-              <div className="mt-1.5"><Segmented value={questScope} onChange={setQuestScope} options={[{ value: 'available', label: 'Доступные' }, { value: 'all', label: 'Все' }]} /></div>
-              {questsHere.length > 0 && (
-                <div className="mt-2">
-                  {questsHere.length > 8 && (
-                    <input value={questFilter} onChange={(e) => setQuestFilter(e.target.value)} placeholder="Найти квест…" className="input focus:input-focus h-7 text-[12px] w-full mb-1" />
-                  )}
-                  <ul className="flex flex-col gap-px">
-                    {questsHere.filter(({ v }) => !questFilter || v.task.name.toLowerCase().includes(questFilter.toLowerCase())).map(({ v, points }) => {
-                      const on = tracked.has(v.task.id)
-                      const trader = data.traders[v.task.trader]
-                      const qc = v.task.seasonal ? COLORS.season : COLORS.quest
-                      return (
-                        <li key={v.task.id} className={`layer-row h-7 pr-1 ${on ? 'layer-on' : ''}`} style={on ? { borderColor: qc } : undefined}>
-                          <button type="button" onClick={() => toggleTracked(v.task.id)} title={on ? 'Не отслеживать' : 'Отслеживать на карте'}
-                            className={`shrink-0 w-3.5 h-3.5 rounded-sm border grid place-items-center ${on ? 'border-brass bg-brass text-bg' : 'border-line-2 hover:border-brass'}`}>
-                            {on && <Check size={10} strokeWidth={3} />}
-                          </button>
-                          {trader?.imageLink && <img src={trader.imageLink} alt="" title={trader.name} className="w-4 h-4 rounded-sm shrink-0 object-cover" />}
-                          <button type="button" onClick={() => toggleTracked(v.task.id)} className={`truncate flex-1 text-left text-[12px] ${on ? 'text-ink' : ''}`}>{v.task.name.replace(' [KORD BREACH]', '')}</button>
-                          <span className="num text-[11px]">{points.length}</span>
-                          <button type="button" onClick={() => focusQuest(points)} title="Показать на карте" className="shrink-0 text-ink-4 hover:text-brass"><Crosshair size={12} /></button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  {trackedTasks.length > 0 && (
-                    <button type="button" onClick={clearTracked} className="mt-1 text-[11px] text-ink-3 hover:text-ink">Сбросить выбор ({trackedTasks.length})</button>
-                  )}
-                  <div className="mt-1 text-[11px] text-ink-4">Отметь квест — его точки загорятся на карте, остальные приглушатся. Прицел — навести карту.</div>
-                </div>
-              )}
-              {questsNoPoint.length > 0 && (
-                <div className="mt-2">
-                  <div className="text-[11px] text-ink-4 mb-1">Без точки на карте — где искать, словами:</div>
-                  <ul className="flex flex-col gap-1.5">
-                    {questsNoPoint.map(({ v, objectives }) => (
-                      <li key={v.task.id} className="text-[12px]">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: v.task.seasonal ? COLORS.season : COLORS.quest }} />
-                          <span className={`truncate ${v.task.seasonal ? 'text-season' : 'text-ink'}`}>{v.task.name.replace(' [KORD BREACH]', '')}</span>
-                        </div>
-                        <ul className="ml-3.5 mt-0.5 flex flex-col gap-0.5">
-                          {objectives.map((o) => (
-                            <li key={o.id} className="flex items-start gap-1.5 text-ink-3">
-                              <button type="button" title="Пункт выполнен" onClick={() => toggleObjective(o.id, true)} className="shrink-0 mt-[3px] w-3 h-3 rounded-sm border border-line-2 hover:border-brass" />
-                              <span>{o.description}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
           )}
 
           {gmap && gmap.bosses.length > 0 && (
