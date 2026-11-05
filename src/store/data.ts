@@ -78,6 +78,7 @@ export const useData = create<DataState>()((set, get) => ({
     const ctrl = new AbortController()
     inflight = ctrl
     const hadData = !!get().data
+    const prevMode = get().mode
     // при смене режима с готовыми данными не мигаем экраном загрузки — сначала пробуем кэш
     if (!hadData) set({ status: 'loading', progress: 'Проверяю кэш…', error: null, mode })
     else set({ mode, error: null })
@@ -85,7 +86,8 @@ export const useData = create<DataState>()((set, get) => ({
     if (ctrl.signal.aborted) return
     if (cached) {
       set({ status: 'ready', data: cached })
-      if (Date.now() - cached.fetchedAt > PRICE_TTL_MS) void get().refresh()
+      // после смены режима цены другой барахолки могли быть собраны давно — обновляем сразу, не ждём TTL
+      if (Date.now() - cached.fetchedAt > PRICE_TTL_MS || (prevMode && prevMode !== mode)) void get().refresh()
       return
     }
     set({ status: 'loading', progress: 'Загружаю справочник…' })

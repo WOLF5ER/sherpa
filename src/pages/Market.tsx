@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Search, ArrowDown, ArrowUp, Star } from 'lucide-react'
 import { useWatch } from '@/store/watch'
-import { useGame } from '@/store/data'
+import { useGame, useData } from '@/store/data'
+import { MODE_LABEL } from '@/data/loader'
 import { usePriceCtx } from '@/lib/useCtx'
 import { bestSell, bestTraderSell, fleaPrice, fleaSell, isFleaAllowed, perSlot, type SellOption } from '@/lib/flea'
 import { search } from '@/lib/search'
@@ -45,6 +46,9 @@ interface Row {
 
 export function MarketPage() {
   const data = useGame()
+  const mode = useData((s) => s.mode ?? 'regular')
+  const refreshing = useData((s) => s.refreshing)
+  const dataTime = new Date(data.fetchedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
   const ctx = usePriceCtx()
   const [q, setQ] = useState('')
   const [type, setType] = useState<string | null>(null)
@@ -136,7 +140,8 @@ export function MarketPage() {
         <div>
           <h1 className="display text-[34px] text-ink">Барахолка</h1>
           <div className="mt-1 text-[13px] text-ink-3">
-            Цены — средние за 24 ч. «На руки» — уже за вычетом комиссии{ctx.intelDiscount ? ' (разведцентр −30%)' : ''}; если торговец даёт больше, он и показан.
+            <span className={`display text-[11px] uppercase tracking-[.1em] rounded-[3px] border px-1.5 py-[1px] mr-1.5 ${mode === 'pve' ? 'text-info border-info/50' : mode === 'pvp-season' ? 'text-season border-season/50' : 'text-brass-2 border-brass-3'}`}>{MODE_LABEL[mode]}</span>
+            цены этой барахолки на {dataTime}{refreshing ? ' · обновляю…' : ''} · «На руки» — уже за вычетом комиссии{ctx.intelDiscount ? ' (разведцентр −30%)' : ''}; если торговец даёт больше, он и показан.
           </div>
         </div>
         <Segmented
