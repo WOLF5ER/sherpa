@@ -53,9 +53,13 @@ export async function fetchTarkovTracker(token: string): Promise<{ data: TTProgr
 export function mapProgress(data: GameData, p: TTProgress, gameMode: string): TTResult {
   const completed: Record<string, true> = {}
   let unknownTasks = 0
+  // у заданий, которых нет в tarkov.dev (ивенты), свой id в TarkovTracker — сопоставляем по ttId
+  const byTtId = new Map<string, string>()
+  for (const t of Object.values(data.tasks)) if (t.ttId) byTtId.set(t.ttId, t.id)
   for (const t of p.tasksProgress ?? []) {
     if (!t.complete || t.failed || t.invalid) continue
-    if (data.tasks[t.id]) completed[t.id] = true
+    const id = data.tasks[t.id] ? t.id : byTtId.get(t.id)
+    if (id) completed[id] = true
     else unknownTasks++
   }
   const objectivesDone: Record<string, true> = {}

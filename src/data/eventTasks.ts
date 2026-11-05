@@ -29,6 +29,17 @@ const T = {
   therapist: '54cb57776803fa99248b456e',
 }
 
+/**
+ * id этих же заданий в TarkovTracker: прогресс оттуда приходит по их id, а у нас id синтетические.
+ * Блок заполняется скриптом `npm run event:tt` (scripts/refresh-event-tt.mjs) по совпадению названий —
+ * TT добавляет ивентовые квесты постепенно, скрипт дописывает новые.
+ */
+const TT_IDS: Record<string, string> = {
+  /* tt-ids:start */
+  'hw-sluhi': '6aba40a15ef26da1360746b8',
+  /* tt-ids:end */
+}
+
 interface Obj {
   type: ObjectiveType
   d: string
@@ -363,6 +374,7 @@ export function eventTasks(): Task[] {
       rewardItems: [],
       rewardStanding: [],
       event: EVENT_ID,
+      ttId: TT_IDS[d.id],
       note: [
         d.locations.length ? `Карты: ${d.locations.join(', ')}.` : '',
         d.hint ?? '',
@@ -385,4 +397,20 @@ export function mergeEventTasks(data: GameData): GameData {
   applyRewards(added, data)
   for (const t of added) tasks[t.id] = t
   return { ...data, tasks }
+}
+
+/**
+ * Перенос отметок, когда tarkov.dev начнёт отдавать эти квесты: наша версия (`hw-…`) не подмешивается,
+ * и галочки надо перекинуть на настоящий id по названию — иначе они «пропадут».
+ */
+export function eventProgressMigration(data: GameData, completed: Record<string, true>): { from: string; to: string }[] {
+  const byName = new Map<string, string>()
+  for (const t of Object.values(data.tasks)) if (!t.event) byName.set(normName(t.nameEn), t.id)
+  const out: { from: string; to: string }[] = []
+  for (const d of DEFS) {
+    if (!completed[d.id]) continue
+    const real = byName.get(normName(d.nameEn))
+    if (real && real !== d.id) out.push({ from: d.id, to: real })
+  }
+  return out
 }

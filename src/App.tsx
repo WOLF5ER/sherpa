@@ -29,6 +29,7 @@ import type { PlayerPos, UpdateInfo } from '@/lib/pywebview'
 import { fetchTarkovTracker, mapProgress } from '@/lib/tarkovtracker'
 import { canPickFolder, folderPermission, savedFolder, watchFolder } from '@/lib/screenshots'
 import { publishSquad, subscribeSquad, ROOM_RE } from '@/lib/squad'
+import { eventProgressMigration } from '@/data/eventTasks'
 
 export function App() {
   const status = useData((s) => s.status)
@@ -37,6 +38,16 @@ export function App() {
   const mode = useProfile((s) => s.gameMode)
 
   useEffect(() => { void load(mode) }, [load, mode])
+
+  // когда tarkov.dev начнёт отдавать ивентовые квесты, наши hw-* исчезнут — переносим на них отметки
+  useEffect(() => {
+    if (!data) return
+    const p = useProfile.getState()
+    const pairs = eventProgressMigration(data, p.completed)
+    if (!pairs.length) return
+    p.uncompleteMany(pairs.map((x) => x.from))
+    p.completeMany(pairs.map((x) => x.to))
+  }, [data])
 
   const launcher = useLauncher()
   // мини-карта и окно карты живут в отдельных окнах: синхронизации, сквад, запись рейдов и слежение за папкой — только в главном
