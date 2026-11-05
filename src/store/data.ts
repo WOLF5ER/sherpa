@@ -46,19 +46,20 @@ function getWorker(): Worker | null {
 }
 
 async function fetchAllAsync(mode: GameMode, onProgress?: (m: string) => void, signal?: AbortSignal): Promise<GameData> {
+  const base = typeof document !== 'undefined' ? document.baseURI : undefined
   const w = getWorker()
-  if (!w) return fetchAll(mode, onProgress, signal)
+  if (!w) return fetchAll(mode, onProgress, signal, base)
   const id = ++reqId
   try {
     return await new Promise<GameData>((resolve, reject) => {
       pending.set(id, { resolve, reject, onProgress })
-      w.postMessage({ id, mode } satisfies WorkerRequest)
+      w.postMessage({ id, mode, base } satisfies WorkerRequest)
       signal?.addEventListener('abort', () => { pending.delete(id); reject(new DOMException('aborted', 'AbortError')) }, { once: true })
     })
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') throw e
     // на всякий случай — основной поток
-    return fetchAll(mode, onProgress, signal)
+    return fetchAll(mode, onProgress, signal, base)
   }
 }
 

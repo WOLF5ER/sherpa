@@ -1,13 +1,14 @@
 {
   "name": "sherpa",
   "private": true,
-  "version": "0.1.48",
+  "version": "0.1.49",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "overlay:refresh": "node scripts/refresh-overlay.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",

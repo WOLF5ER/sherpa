@@ -148,7 +148,8 @@ function ItemDetail({ id, onClose }: { id: string; onClose: () => void }) {
               {usage.tasks.map((u) => {
                 const v = views.get(u.task)
                 const t = data.tasks[u.task]
-                if (!t) return null
+                // нет во views — квест другой фракции (или скрыт режимом): не показываем
+                if (!t || !v) return null
                 const done = v?.status === 'done'
                 return (
                   <li key={u.task} className={`py-2 flex items-center gap-2 text-[13px] ${done ? 'opacity-40' : ''}`}>
@@ -233,7 +234,7 @@ function ItemDetail({ id, onClose }: { id: string; onClose: () => void }) {
           <section>
             <Eyebrow>Награда за квест</Eyebrow>
             <div className="mt-2 flex flex-col gap-1 text-[13px]">
-              {usage.rewardOf.map((t) => data.tasks[t] && (
+              {usage.rewardOf.map((t) => data.tasks[t] && views.get(t) && (
                 <div key={t} className="flex items-center gap-2"><TraderMark id={data.tasks[t].trader} size={16} />{data.tasks[t].name}</div>
               ))}
             </div>

@@ -1,0 +1,2804 @@
+{
+ "$meta": {
+  "version": "1.173",
+  "generated": "2026-11-02T06:58:13.723Z",
+  "snapshot": "2026-11-05",
+  "source": "tarkovtracker tasks-core (overlay) vs json.tarkov.dev — scripts/refresh-overlay.mjs",
+  "note": "локальный снимок на случай недоступности CDN; обновляется скриптом"
+ },
+ "tasks": {
+  "5936d90786f7742b1420ba5b": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5936d90786f7742b1420ba5b.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "5936da9e86f7742d65037edf": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5936da9e86f7742d65037edf.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "59674cd986f7744ab26e32f2": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.59674cd986f7744ab26e32f2.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "59674eb386f774539f14813a": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.59674eb386f774539f14813a.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "5967530a86f77462ba22226b": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5967530a86f77462ba22226b.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "59675ea386f77414b32bded2": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.59675ea386f77414b32bded2.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "5967725e86f774601a446662": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5967725e86f774601a446662.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "5967733e86f774602332fc84": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5967733e86f774602332fc84.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "59689ee586f7740d1570bbd5": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.59689ee586f7740d1570bbd5.54cb57776803fa99248b456e.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 2
+    }
+   ]
+  },
+  "59689fbd86f7740d137ebfc4": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c81d6e82b7593afaa638e0",
+      "name": "Talk to Therapist"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.59689fbd86f7740d137ebfc4.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "5968eb3186f7741dde183a4d": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5968eb3186f7741dde183a4d.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "5969f9e986f7741dde183a50": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5969f9e986f7741dde183a50.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "596a0e1686f7741ddf17dbee": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c81d6e82b7593afaa638e0",
+      "name": "Talk to Therapist"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.596a0e1686f7741ddf17dbee.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "596a101f86f7741ddb481582": {
+   "disabled": true
+  },
+  "596a1e6c86f7741ddc2d3206": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.596a1e6c86f7741ddc2d3206.54cb57776803fa99248b456e.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 2
+    }
+   ]
+  },
+  "596a204686f774576d4c95de": {
+   "disabled": true
+  },
+  "596a218586f77420d232807c": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.596a218586f77420d232807c.54cb57776803fa99248b456e.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 3
+    }
+   ]
+  },
+  "596b36c586f77450d6045ad2": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c2c0907a45d1fc06b150a2",
+      "name": "Talk to Skier"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.596b36c586f77450d6045ad2.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "596b43fb86f77457ca186186": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.596b43fb86f77457ca186186.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "596b455186f77457cb50eccb": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.596b455186f77457cb50eccb.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "5979ed3886f77431307dc512": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5979ed3886f77431307dc512.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "5979eee086f774311955e614": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5979eee086f774311955e614.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "5979f8bb86f7743ec214c7a6": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5979f8bb86f7743ec214c7a6.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "59c124d686f774189b3c843f": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.59c124d686f774189b3c843f.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "59c93e8e86f7742a406989c4": {
+   "disabled": true
+  },
+  "59ca1a6286f774509a270942": {
+   "factionName": "USEC",
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.59ca1a6286f774509a270942.54cb50c76803fa8b248b4571.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 3
+    }
+   ]
+  },
+  "5a03153686f77442d90e2171": {
+   "objectives": {
+    "5c9a17c686f7747dbe2da3c1": {
+     "count": 15,
+     "description": "Eliminate 15 targets with headshots while using an AUG on Factory",
+     "maps": [
+      {
+       "id": "55f2d3fd4bdc2d5f408b4567",
+       "name": "Factory"
+      }
+     ],
+     "usingWeapon": [
+      {
+       "id": "62e7c4fba689e8c9c50dfc38",
+       "name": "Steyr AUG A1 5.56x45 assault rifle",
+       "shortName": "AUG A1"
+      }
+     ]
+    }
+   }
+  },
+  "5a03173786f77451cb427172": {
+   "disabled": true
+  },
+  "5a03296886f774569778596a": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a03296886f774569778596a.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  },
+  "5a0449d586f77474e66227b7": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a0449d586f77474e66227b7.5935c25fb3acc3127c3d8cd9.level.>=.1",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 1
+    }
+   ]
+  },
+  "5a27b7a786f774579c3eb376": {
+   "factionName": "USEC",
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a27b7a786f774579c3eb376.5935c25fb3acc3127c3d8cd9.level.>=.1",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 1
+    }
+   ]
+  },
+  "5a27b7d686f77460d847e6a6": {
+   "factionName": "BEAR",
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a27b7d686f77460d847e6a6.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  },
+  "5a27b80086f774429a5d7e20": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a27b80086f774429a5d7e20.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  },
+  "5a27b87686f77460de0252a8": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a27b87686f77460de0252a8.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  },
+  "5a27ba1c86f77461ea5a3c56": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a27ba1c86f77461ea5a3c56.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  },
+  "5a27ba9586f7741b543d8e85": {
+   "disabled": true
+  },
+  "5a27bb1e86f7741f27621b7e": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a27bb1e86f7741f27621b7e.5935c25fb3acc3127c3d8cd9.level.>=.3",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 3
+    }
+   ]
+  },
+  "5a27bb5986f7741dfb660900": {
+   "disabled": true
+  },
+  "5a27c99a86f7747d2c6bdd8e": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5a27c99a86f7747d2c6bdd8e.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "5a27d2af86f7744e1115b323": {
+   "disabled": true
+  },
+  "5ac23c6186f7741247042bad": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c41dde2ddd4581cfc7531c",
+      "name": "Talk to Mechanic"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac23c6186f7741247042bad.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "5ac2426c86f774138762edfe": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac2426c86f774138762edfe.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "5ac2428686f77412450b42bf": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac2428686f77412450b42bf.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "5ac345dc86f774288030817f": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac345dc86f774288030817f.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "5ac3460c86f7742880308185": {
+   "disabled": true
+  },
+  "5ac3462b86f7741d6118b983": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac3462b86f7741d6118b983.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "5ac3464c86f7741d651d6877": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac3464c86f7741d651d6877.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "5ac3467986f7741d6224abc2": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac3467986f7741d6224abc2.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "5ac346cf86f7741d63233a02": {
+   "disabled": true
+  },
+  "5ac346e886f7741d6118b99b": {
+   "disabled": true
+  },
+  "5ac3475486f7741d6224abd3": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac3475486f7741d6224abd3.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "5ac3477486f7741d651d6885": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ac3477486f7741d651d6885.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "5ac3479086f7742880308199": {
+   "disabled": true
+  },
+  "5ae3267986f7742a413592fe": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae3267986f7742a413592fe.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "5ae3277186f7745973054106": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae3277186f7745973054106.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "5ae327c886f7745c7b3f2f3f": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae327c886f7745c7b3f2f3f.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "5ae3280386f7742a41359364": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae3280386f7742a41359364.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "5ae448a386f7744d3730fff0": {
+   "disabled": true
+  },
+  "5ae448bf86f7744d733e55ee": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c15e129c0090b717977bd4",
+      "name": "Talk to Ragman"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae448bf86f7744d733e55ee.5ac3b934156ae10c4430e83c.level.>=.1",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 1
+    }
+   ]
+  },
+  "5ae448e586f7744dcf0c2a67": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae448e586f7744dcf0c2a67.5ac3b934156ae10c4430e83c.level.>=.2",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 2
+    }
+   ]
+  },
+  "5ae448f286f77448d73c0131": {
+   "objectives": {
+    "5ae452de86f77450595c4333": {
+     "zones": [
+      {
+       "map": {
+        "id": "5714dbc024597771384a510d",
+        "name": "Interchange"
+       },
+       "outline": [
+        {
+         "x": 425.018925,
+         "y": 28.55,
+         "z": 130.950611
+        },
+        {
+         "x": 428.681993,
+         "y": 28.55,
+         "z": 119.523366
+        },
+        {
+         "x": 432.491075,
+         "y": 28.55,
+         "z": 120.744389
+        },
+        {
+         "x": 428.828007,
+         "y": 28.55,
+         "z": 132.171634
+        }
+       ],
+       "position": {
+        "x": 428.755,
+        "y": 28.55,
+        "z": 125.8475
+       }
+      }
+     ]
+    }
+   },
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c15e129c0090b717977bd4",
+      "name": "Talk to Ragman"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae448f286f77448d73c0131.5ac3b934156ae10c4430e83c.level.>=.1",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 1
+    }
+   ]
+  },
+  "5ae4490786f7744ca822adcc": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae4490786f7744ca822adcc.5ac3b934156ae10c4430e83c.level.>=.1",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 1
+    }
+   ]
+  },
+  "5ae4493486f7744efa289417": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae4493486f7744efa289417.5ac3b934156ae10c4430e83c.level.>=.1",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 1
+    }
+   ]
+  },
+  "5ae4493d86f7744b8e15aa8f": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae4493d86f7744b8e15aa8f.5ac3b934156ae10c4430e83c.level.>=.1",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 1
+    }
+   ]
+  },
+  "5ae4495086f77443c122bc40": {
+   "minPlayerLevel": 25
+  },
+  "5ae4498786f7744bde357695": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae4498786f7744bde357695.5ac3b934156ae10c4430e83c.level.>=.2",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 2
+    }
+   ]
+  },
+  "5ae4499a86f77449783815db": {
+   "disabled": true
+  },
+  "5ae449a586f7744bde357696": {
+   "disabled": true
+  },
+  "5ae449b386f77446d8741719": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae449b386f77446d8741719.5ac3b934156ae10c4430e83c.level.>=.1",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 1
+    }
+   ]
+  },
+  "5ae449c386f7744bde357697": {
+   "objectives": {
+    "5bb60cbc88a45011a8235cc5": {
+     "description": "Survive and extract on Interchange 7 times"
+    }
+   },
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c15e129c0090b717977bd4",
+      "name": "Talk to Ragman"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ]
+  },
+  "5ae449d986f774453a54a7e1": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5ae449d986f774453a54a7e1.5ac3b934156ae10c4430e83c.level.>=.2",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 2
+    }
+   ]
+  },
+  "5b47799d86f7746c5d6a5fd8": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5b47799d86f7746c5d6a5fd8.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "5b47876e86f7744d1c353205": {
+   "disabled": true
+  },
+  "5b47891f86f7744d1b23c571": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5b47891f86f7744d1b23c571.5ac3b934156ae10c4430e83c.level.>=.3",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 3
+    }
+   ]
+  },
+  "5b478b1886f7744d1b23c57d": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5b478b1886f7744d1b23c57d.5ac3b934156ae10c4430e83c.level.>=.2",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 2
+    }
+   ]
+  },
+  "5b478d0f86f7744d190d91b5": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5b478d0f86f7744d190d91b5.5ac3b934156ae10c4430e83c.level.>=.2",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 2
+    }
+   ]
+  },
+  "5b478eca86f7744642012254": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5b478eca86f7744642012254.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "5b478ff486f7744d184ecbbf": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5b478ff486f7744d184ecbbf.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "5b47926a86f7747ccc057c15": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5b47926a86f7747ccc057c15.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "5b4794cb86f774598100d5d4": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5b4794cb86f774598100d5d4.5935c25fb3acc3127c3d8cd9.level.>=.1",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 1
+    }
+   ]
+  },
+  "5bc4826c86f774106d22d88b": {
+   "disabled": true
+  },
+  "5c0bd01e86f7747cdd799e56": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c0bd01e86f7747cdd799e56.5935c25fb3acc3127c3d8cd9.level.>=.4",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 4
+    }
+   ]
+  },
+  "5c0bd94186f7747a727f09b2": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c0bd94186f7747a727f09b2.54cb50c76803fa8b248b4571.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 3
+    }
+   ]
+  },
+  "5c0bdb5286f774166e38eed4": {
+   "disabled": true
+  },
+  "5c0bde0986f77479cf22c2f8": {
+   "experience": 65000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c0bde0986f77479cf22c2f8.5a7c2eca46aef81a7ca2145d.level.>=.4",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 4
+    }
+   ]
+  },
+  "5c0be5fc86f774467a116593": {
+   "disabled": true
+  },
+  "5c0d0d5086f774363760aef2": {
+   "disabled": true
+  },
+  "5c0d0f1886f77457b8210226": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c0d0f1886f77457b8210226.58330581ace78e27b8b10cee.level.>=.3",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 3
+    }
+   ]
+  },
+  "5c0d1c4cd0928202a02a6f5c": {
+   "experience": 65000
+  },
+  "5c0d4c12d09282029f539173": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c0d4c12d09282029f539173.5935c25fb3acc3127c3d8cd9.level.>=.4",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 4
+    }
+   ]
+  },
+  "5c0d4e61d09282029f53920e": {
+   "minPlayerLevel": 0,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c0d4e61d09282029f53920e.5935c25fb3acc3127c3d8cd9.level.>=.4",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 4
+    }
+   ]
+  },
+  "5c10f94386f774227172c572": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c10f94386f774227172c572.5ac3b934156ae10c4430e83c.level.>=.1",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 1
+    }
+   ]
+  },
+  "5c1128e386f7746565181106": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c1128e386f7746565181106.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "5c112d7e86f7740d6f647486": {
+   "experience": 28000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c112d7e86f7740d6f647486.5ac3b934156ae10c4430e83c.level.>=.3",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 3
+    }
+   ]
+  },
+  "5c1234c286f77406fa13baeb": {
+   "objectives": {
+    "5c1fa9c986f7740de474cb3d": {
+     "wearing": [
+      [
+       {
+        "id": "572b7adb24597762ae139821",
+        "name": "Scav Vest",
+        "shortName": "Scav Vest"
+       },
+       {
+        "id": "59e7708286f7742cbd762753",
+        "name": "Ushanka ear flap hat",
+        "shortName": "Ushanka"
+       }
+      ],
+      [
+       {
+        "id": "572b7adb24597762ae139821",
+        "name": "Scav Vest",
+        "shortName": "Scav Vest"
+       },
+       {
+        "id": "6937f02dfd6488bb27024839",
+        "name": "Domontovich ushanka hat",
+        "shortName": "Domont"
+       }
+      ],
+      [
+       {
+        "id": "572b7adb24597762ae139821",
+        "name": "Scav Vest",
+        "shortName": "Scav Vest"
+       },
+       {
+        "id": "6937efd50543dcc2560a2c81",
+        "name": "New Year ushanka hat",
+        "shortName": "Ushanka"
+       }
+      ],
+      [
+       {
+        "id": "693fd1200ec97e98040bd3f9",
+        "name": "Tac-Kek JayPC plate carrier (Black)",
+        "shortName": "JayPC"
+       },
+       {
+        "id": "59e7708286f7742cbd762753",
+        "name": "Ushanka ear flap hat",
+        "shortName": "Ushanka"
+       }
+      ],
+      [
+       {
+        "id": "693fd1200ec97e98040bd3f9",
+        "name": "Tac-Kek JayPC plate carrier (Black)",
+        "shortName": "JayPC"
+       },
+       {
+        "id": "6937f02dfd6488bb27024839",
+        "name": "Domontovich ushanka hat",
+        "shortName": "Domont"
+       }
+      ],
+      [
+       {
+        "id": "693fd1200ec97e98040bd3f9",
+        "name": "Tac-Kek JayPC plate carrier (Black)",
+        "shortName": "JayPC"
+       },
+       {
+        "id": "6937efd50543dcc2560a2c81",
+        "name": "New Year ushanka hat",
+        "shortName": "Ushanka"
+       }
+      ],
+      [
+       {
+        "id": "693fd13aa490096a05028cc8",
+        "name": "Tac-Kek JayPC plate carrier (OD Green)",
+        "shortName": "JayPC"
+       },
+       {
+        "id": "59e7708286f7742cbd762753",
+        "name": "Ushanka ear flap hat",
+        "shortName": "Ushanka"
+       }
+      ],
+      [
+       {
+        "id": "693fd13aa490096a05028cc8",
+        "name": "Tac-Kek JayPC plate carrier (OD Green)",
+        "shortName": "JayPC"
+       },
+       {
+        "id": "6937f02dfd6488bb27024839",
+        "name": "Domontovich ushanka hat",
+        "shortName": "Domont"
+       }
+      ],
+      [
+       {
+        "id": "693fd13aa490096a05028cc8",
+        "name": "Tac-Kek JayPC plate carrier (OD Green)",
+        "shortName": "JayPC"
+       },
+       {
+        "id": "6937efd50543dcc2560a2c81",
+        "name": "New Year ushanka hat",
+        "shortName": "Ushanka"
+       }
+      ]
+     ]
+    }
+   },
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c1234c286f77406fa13baeb.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "5c12452c86f7744b83469073": {
+   "disabled": true
+  },
+  "5c139eb686f7747878361a6f": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5c139eb686f7747878361a6f.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "5d2495a886f77425cd51e403": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c41dde2ddd4581cfc7531c",
+      "name": "Talk to Mechanic"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ]
+  },
+  "5d25e2a986f77409dd5cdf2a": {
+   "disabled": true
+  },
+  "5d25e2b486f77409de05bba0": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e2b486f77409de05bba0.5c0647fdd443bc2504c2d371.level.>=.3",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 3
+    }
+   ]
+  },
+  "5d25e2c386f77443e7549029": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e2c386f77443e7549029.5c0647fdd443bc2504c2d371.level.>=.1",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 1
+    }
+   ]
+  },
+  "5d25e2cc86f77443e47ae019": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e2cc86f77443e47ae019.5c0647fdd443bc2504c2d371.level.>=.3",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 3
+    }
+   ]
+  },
+  "5d25e2e286f77444001e2e48": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e2e286f77444001e2e48.5c0647fdd443bc2504c2d371.level.>=.2",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 2
+    }
+   ]
+  },
+  "5d25e2ee86f77443e35162ea": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e2ee86f77443e35162ea.5c0647fdd443bc2504c2d371.level.>=.1",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 1
+    }
+   ]
+  },
+  "5d25e43786f7740a212217fa": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e43786f7740a212217fa.5c0647fdd443bc2504c2d371.level.>=.1",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 1
+    }
+   ]
+  },
+  "5d25e44386f77409453bce7b": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e44386f77409453bce7b.5c0647fdd443bc2504c2d371.level.>=.1",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 1
+    }
+   ]
+  },
+  "5d25e44f86f77443e625e385": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e44f86f77443e625e385.5c0647fdd443bc2504c2d371.level.>=.3",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 3
+    }
+   ]
+  },
+  "5d25e45e86f77408251c4bfa": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e45e86f77408251c4bfa.5c0647fdd443bc2504c2d371.level.>=.3",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 3
+    }
+   ]
+  },
+  "5d25e48186f77443e625e386": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e48186f77443e625e386.5c0647fdd443bc2504c2d371.level.>=.2",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 2
+    }
+   ]
+  },
+  "5d25e48d86f77408251c4bfb": {
+   "disabled": true
+  },
+  "5d25e4ad86f77443e625e387": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e4ad86f77443e625e387.5c0647fdd443bc2504c2d371.level.>=.2",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 2
+    }
+   ]
+  },
+  "5d25e4ca86f77409dd5cdf2c": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5d25e4ca86f77409dd5cdf2c.5c0647fdd443bc2504c2d371.level.>=.4",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 4
+    }
+   ]
+  },
+  "5d6fb2c086f77449da599c24": {
+   "disabled": true
+  },
+  "5d6fbc2886f77449d825f9d3": {
+   "disabled": true
+  },
+  "5eda19f0edce541157209cee": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5eda19f0edce541157209cee.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "5edab4b1218d181e29451435": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5edab4b1218d181e29451435.5c0647fdd443bc2504c2d371.level.>=.4",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 4
+    }
+   ]
+  },
+  "5edaba7c0c502106f869bc02": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5edaba7c0c502106f869bc02.54cb57776803fa99248b456e.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 3
+    }
+   ]
+  },
+  "5edabd13218d181e29451442": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5edabd13218d181e29451442.58330581ace78e27b8b10cee.level.>=.3",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 3
+    }
+   ]
+  },
+  "5edac34d0bb72a50635c2bfa": {
+   "experience": 65000
+  },
+  "5edac63b930f5454f51e128b": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5edac63b930f5454f51e128b.5935c25fb3acc3127c3d8cd9.level.>=.4",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 4
+    }
+   ]
+  },
+  "5ede567cfa6dc072ce15d6e3": {
+   "disabled": true
+  },
+  "5f04886a3937dc337a6b8238": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.5f04886a3937dc337a6b8238.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "60896b7bfa70fc097863b8f5": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60896b7bfa70fc097863b8f5.54cb50c76803fa8b248b4571.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 3
+    }
+   ]
+  },
+  "60896e28e4a85c72ef3fa301": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60896e28e4a85c72ef3fa301.54cb57776803fa99248b456e.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 3
+    }
+   ]
+  },
+  "6089743983426423753cd58a": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6089743983426423753cd58a.58330581ace78e27b8b10cee.level.>=.3",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 3
+    }
+   ]
+  },
+  "608974af4b05530f55550c21": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.608974af4b05530f55550c21.5ac3b934156ae10c4430e83c.level.>=.3",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 3
+    }
+   ]
+  },
+  "608a768d82e40b3c727fd17d": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.608a768d82e40b3c727fd17d.5c0647fdd443bc2504c2d371.level.>=.3",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 3
+    }
+   ]
+  },
+  "60c0c018f7afb4354815096a": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60c0c018f7afb4354815096a.5c0647fdd443bc2504c2d371.level.>=.2",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 2
+    }
+   ]
+  },
+  "60e71b62a0beca400d69efc4": {
+   "experience": 65000,
+   "minPlayerLevel": 36,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71b62a0beca400d69efc4.54cb50c76803fa8b248b4571.level.>=.4",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 4
+    }
+   ]
+  },
+  "60e71b9bbd90872cb85440f3": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71b9bbd90872cb85440f3.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "60e71bb4e456d449cd47ca75": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71bb4e456d449cd47ca75.54cb50c76803fa8b248b4571.level.>=.4",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 4
+    }
+   ]
+  },
+  "60e71c11d54b755a3b53eb65": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71c11d54b755a3b53eb65.58330581ace78e27b8b10cee.level.>=.4",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 4
+    }
+   ]
+  },
+  "60e71c48c1bfa3050473b8e5": {
+   "experience": 65000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71c48c1bfa3050473b8e5.54cb57776803fa99248b456e.level.>=.4",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 4
+    }
+   ]
+  },
+  "60e71c9ad54b755a3b53eb66": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71c9ad54b755a3b53eb66.5935c25fb3acc3127c3d8cd9.level.>=.3",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 3
+    }
+   ]
+  },
+  "60e71ccb5688f6424c7bfec4": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71ccb5688f6424c7bfec4.5935c25fb3acc3127c3d8cd9.level.>=.4",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 4
+    }
+   ]
+  },
+  "60e71ce009d7c801eb0c0ec6": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71ce009d7c801eb0c0ec6.5935c25fb3acc3127c3d8cd9.level.>=.4",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 4
+    }
+   ]
+  },
+  "60e71d6d7fcf9c556f325055": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71d6d7fcf9c556f325055.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "60e71dc0a94be721b065bbfc": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71dc0a94be721b065bbfc.5ac3b934156ae10c4430e83c.level.>=.1",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 1
+    }
+   ]
+  },
+  "60e71e8ed54b755a3b53eb67": {
+   "minPlayerLevel": 0,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e71e8ed54b755a3b53eb67.5c0647fdd443bc2504c2d371.level.>=.4",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 4
+    }
+   ]
+  },
+  "60e729cf5698ee7b05057439": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.60e729cf5698ee7b05057439.5c0647fdd443bc2504c2d371.level.>=.1",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 1
+    }
+   ]
+  },
+  "6179acbdc760af5ad2053585": {
+   "disabled": true
+  },
+  "6179ad0a6e9dd54ac275e3f2": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6179ad0a6e9dd54ac275e3f2.5c0647fdd443bc2504c2d371.level.>=.3",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 3
+    }
+   ]
+  },
+  "6179ad56c760af5ad2053587": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6179ad56c760af5ad2053587.54cb57776803fa99248b456e.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 3
+    }
+   ]
+  },
+  "6179aff8f57fb279792c60a1": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6179aff8f57fb279792c60a1.5935c25fb3acc3127c3d8cd9.level.>=.3",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 3
+    }
+   ]
+  },
+  "6179b3a12153c15e937d52bc": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6179b3a12153c15e937d52bc.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "6179b3bdc7560e13d23eeb8d": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6179b3bdc7560e13d23eeb8d.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "6179b5b06e9dd54ac275e409": {
+   "objectives": {
+    "6194fbf785a6d62c481a7aee": {
+     "foundInRaid": true
+    }
+   },
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6179b5b06e9dd54ac275e409.54cb50c76803fa8b248b4571.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 3
+    }
+   ]
+  },
+  "6179b5eabca27a099552e052": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6179b5eabca27a099552e052.5935c25fb3acc3127c3d8cd9.level.>=.4",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 4
+    }
+   ]
+  },
+  "61904daa7d0d857927447b9c": {
+   "taskRequirements": []
+  },
+  "6193850f60b34236ee0483de": {
+   "objectives": {
+    "6193dabd5f6468204470571f": {
+     "count": 7
+    }
+   },
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6193850f60b34236ee0483de.58330581ace78e27b8b10cee.level.>=.3",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 3
+    }
+   ]
+  },
+  "61958c366726521dd96828ec": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.61958c366726521dd96828ec.5935c25fb3acc3127c3d8cd9.level.>=.3",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 3
+    }
+   ]
+  },
+  "626bd75b05f287031503c7f6": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.626bd75b05f287031503c7f6.54cb57776803fa99248b456e.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 3
+    }
+   ]
+  },
+  "626bd75c71bd851e971b82a5": {
+   "experience": 28000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.626bd75c71bd851e971b82a5.54cb50c76803fa8b248b4571.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 3
+    }
+   ]
+  },
+  "626bd75d5bef5d7d590bd415": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.626bd75d5bef5d7d590bd415.58330581ace78e27b8b10cee.level.>=.3",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 3
+    }
+   ]
+  },
+  "639135534b15ca31f76bc317": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639135534b15ca31f76bc317.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  },
+  "6391359b9444fb141f4e6ee6": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6391359b9444fb141f4e6ee6.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "639135a7e705511c8a4a1b78": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639135a7e705511c8a4a1b78.5ac3b934156ae10c4430e83c.level.>=.2",
+     "requirementType": "level",
+     "trader": "5ac3b934156ae10c4430e83c",
+     "value": 2
+    }
+   ]
+  },
+  "639135b04ed9512be67647d7": {
+   "disabled": true
+  },
+  "639135c3744e452011470807": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639135c3744e452011470807.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "639135cd8ba6894d155e77cb": {
+   "disabled": true
+  },
+  "639135e0fa894f0a866afde6": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639135e0fa894f0a866afde6.54cb57776803fa99248b456e.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 2
+    }
+   ]
+  },
+  "639135e8c115f907b14700aa": {
+   "experience": 10000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639135e8c115f907b14700aa.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "639135f286e646067c176a87": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639135f286e646067c176a87.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  },
+  "639136f086e646067c176a8b": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639136f086e646067c176a8b.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "639282134ed9512be67647ed": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639282134ed9512be67647ed.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  },
+  "639872f9decada40426d3447": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639872f9decada40426d3447.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "639872fa9b4fb827b200d8e5": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639872fa9b4fb827b200d8e5.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "639872fc93ae507d5858c3a6": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639872fc93ae507d5858c3a6.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "639dbaf17c898a131e1cffff": {
+   "experience": 10000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.639dbaf17c898a131e1cffff.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "63a5cf262964a7488f5243ce": {
+   "objectives": {
+    "63a5cf262964a7488f5243d1": {
+     "count": 20,
+     "description": "Eliminate PMC operatives while using an MP5SD on Streets of Tarkov, Ground Zero or Interchange",
+     "maps": [
+      {
+       "id": "5714dc692459777137212e12",
+       "name": "Streets of Tarkov"
+      },
+      {
+       "id": "653e6760052c01c1c805532f",
+       "name": "Ground Zero"
+      },
+      {
+       "id": "5714dbc024597771384a510d",
+       "name": "Interchange"
+      }
+     ],
+     "usingWeapon": [
+      {
+       "id": "59411abb86f77478f702b5d2",
+       "name": "HK MP5 9x19 submachine gun (Navy 3 Round Burst) SD",
+       "shortName": "MP5 SD"
+      }
+     ]
+    }
+   },
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.63a5cf262964a7488f5243ce.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "63a88045abf76d719f42d715": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.63a88045abf76d719f42d715.5c0647fdd443bc2504c2d371.level.>=.2",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 2
+    }
+   ]
+  },
+  "63a9ae24009ffc6a551631a5": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.63a9ae24009ffc6a551631a5.54cb50c76803fa8b248b4571.level.>=.4",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 4
+    }
+   ]
+  },
+  "63ab180c87413d64ae0ac20a": {
+   "disabled": true
+  },
+  "64e7b971f9d6fa49d6769b44": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.64e7b971f9d6fa49d6769b44.5c0647fdd443bc2504c2d371.level.>=.2",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 2
+    }
+   ]
+  },
+  "64e7b99017ab941a6f7bf9d7": {
+   "disabled": true
+  },
+  "64e7b9a4aac4cd0a726562cb": {
+   "disabled": true
+  },
+  "64e7b9bffd30422ed03dad38": {
+   "experience": 10000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.64e7b9bffd30422ed03dad38.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "64ee9df4496db64f9b7a4432": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.64ee9df4496db64f9b7a4432.5a7c2eca46aef81a7ca2145d.level.>=.3",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 3
+    }
+   ]
+  },
+  "64f3176921045e77405d63b5": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.64f3176921045e77405d63b5.54cb57776803fa99248b456e.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 2
+    }
+   ]
+  },
+  "64f5deac39e45b527a7c4232": {
+   "experience": 10000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.64f5deac39e45b527a7c4232.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "64f6aafd67e11a7c6206e0d0": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.64f6aafd67e11a7c6206e0d0.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "6572e876dc0d635f633a5714": {
+   "experience": 28000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6572e876dc0d635f633a5714.58330581ace78e27b8b10cee.level.>=.3",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 3
+    }
+   ]
+  },
+  "657315ddab5a49b71f098853": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c81d6e82b7593afaa638e0",
+      "name": "Talk to Therapist"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.657315ddab5a49b71f098853.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "657315e1dccd301f1301416a": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.657315e1dccd301f1301416a.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "657315e270bb0b8dba00cc48": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c2c0907a45d1fc06b150a2",
+      "name": "Talk to Skier"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.657315e270bb0b8dba00cc48.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "657315e4a6af4ab4b50f3459": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c41dde2ddd4581cfc7531c",
+      "name": "Talk to Mechanic"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.657315e4a6af4ab4b50f3459.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "6573382e557ff128bf3da536": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6573382e557ff128bf3da536.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "6573387d0b26ed4fde798de3": {
+   "disabled": true
+  },
+  "6573397ef3f8344c4575cd87": {
+   "experience": 10000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6573397ef3f8344c4575cd87.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "65734c186dc1e402c80dc19e": {
+   "experience": 10000
+  },
+  "6578eb36e5020875d64645cd": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6578eb36e5020875d64645cd.5c0647fdd443bc2504c2d371.level.>=.2",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 2
+    }
+   ]
+  },
+  "6578ec473dbd035d04531a8d": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6578ec473dbd035d04531a8d.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "658027799634223183395339": {
+   "experience": 3000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.658027799634223183395339.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "66058cc5bb83da7ba474aba9": {
+   "objectives": {
+    "662ba61d3ed61b6b78187b71": {
+     "count": 2
+    }
+   }
+  },
+  "66058cc9ae4719735349b9ea": {
+   "objectives": {
+    "662ba87106e44407b79e9ab2": {
+     "description": "Win a match claiming at least 2nd place in the team in TeamFight, BlastGang, or CheckPoint mode in Arena"
+    }
+   }
+  },
+  "6663148ca9290f9e0806cca1": {
+   "wikiLink": "https://escapefromtarkov.fandom.com/wiki/Immunity_(quest)"
+  },
+  "66631493312343839d032d22": {
+   "objectives": {
+    "666733e565831d5bafa18bbb": {
+     "description": "Stash a Cultist knife at the sawmill marked circle on Woods"
+    },
+    "666733e7430c8972d6a5f438": {
+     "description": "Stash a Cultist knife at the river village marked circle on Woods"
+    }
+   }
+  },
+  "666314b0acf8442f8b0531a1": {
+   "experience": 3000
+  },
+  "669fa38fad7f1eac2607ed46": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.669fa38fad7f1eac2607ed46.5935c25fb3acc3127c3d8cd9.level.>=.1",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 1
+    }
+   ]
+  },
+  "669fa3979b0ce3feae01a130": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.669fa3979b0ce3feae01a130.5c0647fdd443bc2504c2d371.level.>=.2",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 2
+    }
+   ]
+  },
+  "669fa399033a3ce9870338a8": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.669fa399033a3ce9870338a8.54cb50c76803fa8b248b4571.level.>=.2",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 2
+    }
+   ]
+  },
+  "669fa39c64ea11e84c0642a6": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.669fa39c64ea11e84c0642a6.58330581ace78e27b8b10cee.level.>=.2",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 2
+    }
+   ]
+  },
+  "669fa3a40c828825de06d6a1": {
+   "objectives": {
+    "66a0f5a7f9eae6761253114c": {
+     "count": 50,
+     "description": "Eliminate any targets while using an SR-2M with suppressor and KP-SR2 sight on Factory",
+     "maps": [
+      {
+       "id": "55f2d3fd4bdc2d5f408b4567",
+       "name": "Factory"
+      }
+     ]
+    }
+   },
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.669fa3a40c828825de06d6a1.54cb50c76803fa8b248b4571.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 3
+    }
+   ]
+  },
+  "66aa58245ab22944110db6e9": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.66aa58245ab22944110db6e9.5935c25fb3acc3127c3d8cd9.level.>=.1",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 1
+    }
+   ]
+  },
+  "66aa74571e5e199ecd094f18": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.66aa74571e5e199ecd094f18.5a7c2eca46aef81a7ca2145d.level.>=.2",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 2
+    }
+   ]
+  },
+  "66ab970848ddbe9d4a0c49a8": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.66ab970848ddbe9d4a0c49a8.54cb50c76803fa8b248b4571.level.>=.3",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 3
+    }
+   ]
+  },
+  "66ab9da7eb102b9bcd08591c": {
+   "objectives": {
+    "66ab9da7eb102b9bcd08591d": {
+     "description": "Eliminate 5 Scavs on Lighthouse (In one raid)",
+     "zoneNames": []
+    },
+    "66ab9da7eb102b9bcd085922": {
+     "description": "Eliminate 5 Scavs on Shoreline (In one raid)",
+     "zoneNames": []
+    }
+   },
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.66ab9da7eb102b9bcd08591c.5c0647fdd443bc2504c2d371.level.>=.3",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 3
+    }
+   ]
+  },
+  "66aba85403e0ee3101042877": {
+   "experience": 65000
+  },
+  "673f4e956f1b89c7bc0f56ef": {
+   "taskRequirements": [
+    {
+     "status": [
+      "complete"
+     ],
+     "task": "6752f6d83038f7df520c83e8"
+    }
+   ]
+  },
+  "6752f6d83038f7df520c83e8": {
+   "minPlayerLevel": 20
+  },
+  "675c03d1f7da9792a405549a": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.675c03d1f7da9792a405549a.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "675c047fa46173572a0bd878": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.675c047fa46173572a0bd878.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "675c04f4db8807b75d0f38e8": {
+   "disabled": true
+  },
+  "675c1570526ff496850895d9": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "68c41dde2ddd4581cfc7531c",
+      "name": "Talk to Mechanic"
+     },
+     "storyChapter": {
+      "id": "tour",
+      "name": "Tour"
+     },
+     "type": "storyObjective"
+    }
+   ],
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.675c1570526ff496850895d9.5a7c2eca46aef81a7ca2145d.level.>=.1",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 1
+    }
+   ]
+  },
+  "675c1cf4a757ddd00404f0a3": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.675c1cf4a757ddd00404f0a3.5c0647fdd443bc2504c2d371.level.>=.1",
+     "requirementType": "level",
+     "trader": "5c0647fdd443bc2504c2d371",
+     "value": 1
+    }
+   ]
+  },
+  "675c1ec7a46173572a0bf20a": {
+   "disabled": true
+  },
+  "675c1ff1a757ddd00404f0aa": {
+   "experience": 65000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.675c1ff1a757ddd00404f0aa.54cb50c76803fa8b248b4571.level.>=.4",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 4
+    }
+   ]
+  },
+  "675c3507a06634b5110e3c18": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.675c3507a06634b5110e3c18.54cb50c76803fa8b248b4571.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 1
+    }
+   ]
+  },
+  "675c3582f6ddc329a90f9c6d": {
+   "experience": 3000,
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.675c3582f6ddc329a90f9c6d.58330581ace78e27b8b10cee.level.>=.1",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 1
+    }
+   ]
+  },
+  "6764174c86addd02bc033d68": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6764174c86addd02bc033d68.58330581ace78e27b8b10cee.level.>=.4",
+     "requirementType": "level",
+     "trader": "58330581ace78e27b8b10cee",
+     "value": 4
+    }
+   ]
+  },
+  "67a096577e86e067eb045733": {
+   "objectives": {
+    "67dbdd819d8208bb2082480e": {
+     "maps": [
+      {
+       "id": "5704e554d2720bac5b8b456e",
+       "name": "Shoreline"
+      }
+     ]
+    }
+   }
+  },
+  "67af4c1405c58dc6f7056667": {
+   "factionName": "USEC"
+  },
+  "67af4c169d95ad16e004fd86": {
+   "factionName": "BEAR"
+  },
+  "67af4c17f4f1fb58a907f8f6": {
+   "factionName": "USEC"
+  },
+  "67af4c1991ee75c6d7060a16": {
+   "factionName": "USEC"
+  },
+  "67af4c1a6c3ebfd8e6034916": {
+   "factionName": "BEAR"
+  },
+  "67af4c1cc0e59d55e2010b97": {
+   "factionName": "BEAR"
+  },
+  "67d03be712fb5f8fd2096332": {
+   "objectives": {
+    "67d03be712fb5f8fd2096334": {
+     "count": 24,
+     "description": "Eliminate PMC operatives inside The Labyrinth"
+    }
+   }
+  },
+  "68342265a8d674b5740b31f0": {
+   "objectives": {
+    "68342265a8d674b5740b31f3": {
+     "description": "Win a match claiming at least 2nd place in the team in TeamFight, BlastGang, or CheckPoint mode in Arena"
+    }
+   }
+  },
+  "6848100b00afffa81f09e365": {
+   "objectives": {
+    "6848116061809d65b8503617": {
+     "exitStatus": [
+      "Survived"
+     ]
+    }
+   }
+  },
+  "68db9c7557bc51a8c804c14b": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.68db9c7557bc51a8c804c14b.5a7c2eca46aef81a7ca2145d.level.>=.4",
+     "requirementType": "level",
+     "trader": "5a7c2eca46aef81a7ca2145d",
+     "value": 4
+    }
+   ]
+  },
+  "68ee1c18b4e5bc9a68018cd7": {
+   "objectives": {
+    "68ee1cc7e8b13097f525e6f2": {
+     "count": 1
+    }
+   },
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.68ee1c18b4e5bc9a68018cd7.54cb50c76803fa8b248b4571.level.>=.4",
+     "requirementType": "level",
+     "trader": "54cb50c76803fa8b248b4571",
+     "value": 4
+    }
+   ]
+  },
+  "69ce1cfb298a6529b30d712b": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "69bc0b6069651f9af0993d2c",
+      "name": "Ask Mechanic for help decoding the hard drives from the icebreaker"
+     },
+     "storyChapter": {
+      "id": "boreas",
+      "name": "Boreas"
+     },
+     "type": "storyObjective"
+    }
+   ]
+  },
+  "69ce1de03e15cd80bd06f6c9": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "69bc0b6069651f9af0993d2c",
+      "name": "Ask Mechanic for help decoding the hard drives from the icebreaker"
+     },
+     "storyChapter": {
+      "id": "boreas",
+      "name": "Boreas"
+     },
+     "type": "storyObjective"
+    }
+   ]
+  },
+  "69ce204c8702b378f9091e4b": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "69bc0b6069651f9af0993d2c",
+      "name": "Ask Mechanic for help decoding the hard drives from the icebreaker"
+     },
+     "storyChapter": {
+      "id": "boreas",
+      "name": "Boreas"
+     },
+     "type": "storyObjective"
+    }
+   ]
+  },
+  "69ce21e990144e437802b1e0": {
+   "otherRequirements": [
+    {
+     "objective": {
+      "id": "69bc0b6069651f9af0993d2c",
+      "name": "Ask Mechanic for help decoding the hard drives from the icebreaker"
+     },
+     "storyChapter": {
+      "id": "boreas",
+      "name": "Boreas"
+     },
+     "type": "storyObjective"
+    }
+   ]
+  },
+  "6a5424ae135497b9df0c68be": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6a5424ae135497b9df0c68be.54cb57776803fa99248b456e.level.>=.1",
+     "requirementType": "level",
+     "trader": "54cb57776803fa99248b456e",
+     "value": 1
+    }
+   ]
+  },
+  "6a5c1578f2689567c30eb0f3": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6a5c1578f2689567c30eb0f3.5935c25fb3acc3127c3d8cd9.level.>=.1",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 1
+    }
+   ]
+  },
+  "6a5ccda873f06065630d61b0": {
+   "traderRequirements": [
+    {
+     "compareMethod": ">=",
+     "id": "overlay.6a5ccda873f06065630d61b0.5935c25fb3acc3127c3d8cd9.level.>=.2",
+     "requirementType": "level",
+     "trader": "5935c25fb3acc3127c3d8cd9",
+     "value": 2
+    }
+   ]
+  }
+ },
+ "modes": {
+  "pve": {
+   "tasks": {
+    "597a0e5786f77426d66c0636": {
+     "taskRequirements": [
+      {
+       "status": [
+        "active",
+        "complete"
+       ],
+       "task": "597a0b2986f77426d66c0633"
+      }
+     ]
+    },
+    "5bc480a686f7741af0342e29": {
+     "taskRequirements": [
+      {
+       "status": [
+        "active",
+        "complete"
+       ],
+       "task": "5bc47dbf86f7741ee74e93b9"
+      }
+     ]
+    },
+    "5c51aac186f77432ea65c552": {
+     "taskRequirements": [
+      {
+       "status": [
+        "complete",
+        "failed"
+       ],
+       "task": "597a0f5686f774273b74f676"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5c0bde0986f77479cf22c2f8"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5bc480a686f7741af0342e29"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5ae4497b86f7744cf402ed00"
+      }
+     ]
+    },
+    "666314b2a9290f9e0806cca3": {
+     "experience": 28000,
+     "taskRequirements": [
+      {
+       "status": [
+        "active",
+        "complete"
+       ],
+       "task": "666314b0acf8442f8b0531a1"
+      }
+     ]
+    },
+    "673f629c5b555b53460cf827": {
+     "taskRequirements": [
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "6752f6d83038f7df520c83e8"
+      }
+     ]
+    },
+    "6745fae369a58fceba10343d": {
+     "taskRequirements": [
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "6752f6d83038f7df520c83e8"
+      }
+     ]
+    },
+    "67a0970744893b9f3f0d9b68": {
+     "taskRequirements": []
+    }
+   }
+  },
+  "pvp-season": {
+   "tasks": {
+    "5c51aac186f77432ea65c552": {
+     "taskRequirements": [
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "597a0e5786f77426d66c0636"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5c0bde0986f77479cf22c2f8"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5bc480a686f7741af0342e29"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5ae4497b86f7744cf402ed00"
+      }
+     ]
+    },
+    "666314b2a9290f9e0806cca3": {
+     "experience": 28000
+    },
+    "6761f28a022f60bb320f3e95": {
+     "disabled": true
+    }
+   }
+  },
+  "regular": {
+   "tasks": {
+    "5c51aac186f77432ea65c552": {
+     "taskRequirements": [
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "597a0e5786f77426d66c0636"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5c0bde0986f77479cf22c2f8"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5bc480a686f7741af0342e29"
+      },
+      {
+       "status": [
+        "complete"
+       ],
+       "task": "5ae4497b86f7744cf402ed00"
+      }
+     ]
+    },
+    "666314b2a9290f9e0806cca3": {
+     "experience": 28000
+    },
+    "675c15fbf7da9792a4059871": {
+     "taskRequirements": []
+    }
+   }
+  }
+ }
+}

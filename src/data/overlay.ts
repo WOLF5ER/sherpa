@@ -3,7 +3,11 @@
  * Поправки к данным tarkov.dev из проекта tarkov-data-overlay (TarkovTracker):
  * фракция квеста, уровень лояльности торговца, убранные из игры квесты, недостающие цепочки, координаты зон.
  * https://github.com/tarkovtracker-org/tarkov-data-overlay — каждая правка там подтверждена ссылкой на вики.
- * Применяется к сырым задачам до normalize; при недоступности CDN работаем без поправок.
+ * Применяется к сырым задачам до normalize.
+ *
+ * Источники по порядку: CDN → локальный снимок `public/overlay.json` → чистые данные tarkov.dev.
+ * Снимок в репозитории — страховка: репозиторий оверлея уже однажды пропадал (404 на обоих CDN),
+ * и без него молча терялись уровни лояльности, вырезанные квесты и часть фракционных меток.
  */
 import type { GameMode } from './loader'
 
@@ -12,24 +16,52 @@ const URLS = [
   'https://raw.githubusercontent.com/tarkovtracker-org/tarkov-data-overlay/main/dist/overlay.json',
 ]
 
+/** Локальный снимок из public/ (в сборке — рядом с index.html). */
+const LOCAL_FILE = 'overlay.json'
+
 export interface Overlay {
   tasks?: Record<string, any>
   modes?: Record<string, { tasks?: Record<string, any> }>
-  $meta?: { version?: string; generated?: string }
+  $meta?: { version?: string; generated?: string; snapshot?: string; source?: string }
 }
 
-export async function fetchOverlay(signal?: AbortSignal): Promise<Overlay | null> {
+/** Откуда в итоге взяли поправки — для диагностики в консоли и профиле. */
+export type OverlaySource = 'cdn' | 'local' | 'none'
+
+async function load(url: string, signal?: AbortSignal): Promise<Overlay | null> {
+  const res = await fetch(url, { signal, cache: 'no-cache' })
+  if (!res.ok) return null
+  const o = (await res.json()) as Overlay
+  return o && typeof o === 'object' && o.tasks ? o : null
+}
+
+/**
+ * @param base адрес страницы (document.baseURI) — от него считается путь к локальному снимку;
+ *             в воркере своего document нет, поэтому базу передаёт основной поток.
+ */
+export async function fetchOverlay(signal?: AbortSignal, base?: string): Promise<Overlay | null> {
   for (const url of URLS) {
     try {
-      const res = await fetch(url, { signal, cache: 'no-cache' })
-      if (!res.ok) continue
-      const o = (await res.json()) as Overlay
-      if (o && typeof o === 'object' && o.tasks) return o
+      const o = await load(url, signal)
+      if (o) return o
     } catch (e) {
       if (signal?.aborted) throw e
     }
   }
-  console.warn('[overlay] не загрузился — работаем на чистых данных tarkov.dev')
+  // CDN молчит — берём снимок, который лежит рядом со сборкой
+  try {
+    const url = base ? new URL(LOCAL_FILE, base).href : LOCAL_FILE
+    const o = await load(url, signal)
+    if (o) {
+      const v = o.$meta?.version ?? '?'
+      const at = o.$meta?.snapshot ?? o.$meta?.generated?.slice(0, 10) ?? '?'
+      console.info(`[overlay] CDN недоступен — локальный снимок v${v} от ${at}`)
+      return o
+    }
+  } catch (e) {
+    if (signal?.aborted) throw e
+  }
+  console.warn('[overlay] ни CDN, ни локальный снимок не загрузились — работаем на чистых данных tarkov.dev')
   return null
 }
 

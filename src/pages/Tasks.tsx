@@ -4,7 +4,7 @@ import { Check, ChevronDown, ExternalLink, KeyRound, Lock, MapPin, Search } from
 import { useGame } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
-import { dependents, objectiveLabel, prerequisites, type TaskStatus, type TaskView } from '@/lib/tasks'
+import { dependents, objectiveLabel, prerequisites, visibleForFaction, type TaskStatus, type TaskView } from '@/lib/tasks'
 import { search } from '@/lib/search'
 import { rub } from '@/lib/format'
 import { ItemCell } from '@/components/ItemCell'
@@ -41,6 +41,12 @@ export function TasksPage() {
   }, [params, setParams, data])
 
   const all = useMemo(() => [...views.values()], [views])
+  const faction = useProfile((s) => s.faction)
+  // сколько квестов скрыто из-за фракции — видно, что фильтр работает, и понятно, куда делись квесты
+  const hiddenByFaction = useMemo(
+    () => Object.values(data.tasks).filter((t) => !visibleForFaction(t, faction)).length,
+    [data, faction],
+  )
   const counts = useMemo(() => {
     const c = { done: 0, available: 0, locked: 0 }
     for (const v of all) c[v.status]++
@@ -72,6 +78,14 @@ export function TasksPage() {
           <h1 className="display text-[34px] text-ink">Задачи</h1>
           <div className="mt-1 text-[13px] text-ink-3 num">
             <span className="text-fir">{counts.available}</span> доступно · {counts.locked} впереди · {counts.done} выполнено
+            {hiddenByFaction > 0 && (
+              <span
+                className="text-ink-4"
+                title={`Квесты ${faction === 'USEC' ? 'BEAR' : 'USEC'} в списке не показываются — фракция выбирается в профиле`}
+              >
+                {' '}· {hiddenByFaction} чужой фракции скрыто
+              </span>
+            )}
           </div>
         </div>
         <Segmented

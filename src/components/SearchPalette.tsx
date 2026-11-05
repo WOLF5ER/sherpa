@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Map as MapIcon, ListChecks } from 'lucide-react'
 import { useGame } from '@/store/data'
+import { useProfile } from '@/store/profile'
 import { useUI } from '@/store/ui'
 import { search } from '@/lib/search'
+import { visibleForFaction } from '@/lib/tasks'
 import { fleaPrice } from '@/lib/flea'
 import { ItemCell } from './ItemCell'
 import { Price, TraderMark, Kbd } from './ui'
@@ -27,8 +29,10 @@ export function SearchPalette() {
     if (open) { setQ(''); setCursor(0); setTimeout(() => inputRef.current?.focus(), 0) }
   }, [open])
 
+  const faction = useProfile((s) => s.faction)
   const itemList = useMemo(() => Object.values(data.items).filter((i) => !i.types.includes('preset')), [data])
-  const taskList = useMemo(() => Object.values(data.tasks), [data])
+  // квесты другой фракции из поиска тоже убираем — иначе находишь то, чего у тебя нет
+  const taskList = useMemo(() => Object.values(data.tasks).filter((t) => visibleForFaction(t, faction)), [data, faction])
   const mapList = useMemo(() => Object.values(data.maps).filter((m) => m.extracts.length || m.spawns.length), [data])
 
   const rows = useMemo<Row[]>(() => {

@@ -2,6 +2,7 @@ import { get, set, del } from 'idb-keyval'
 import { mergeSeasonTasks } from './seasonTasks'
 import { normalize, type RawBundle } from './normalize'
 import { applyOverlay, fetchOverlay } from './overlay'
+import { applyFactionFixes } from './factionFixes'
 import type { GameData } from './types'
 
 export type GameMode = 'regular' | 'pve' | 'pvp-season'
@@ -21,7 +22,7 @@ async function getJson<T = unknown>(path: string, signal?: AbortSignal): Promise
   return res.json() as Promise<T>
 }
 
-export async function fetchAll(mode: GameMode, onProgress?: (msg: string) => void, signal?: AbortSignal): Promise<GameData> {
+export async function fetchAll(mode: GameMode, onProgress?: (msg: string) => void, signal?: AbortSignal, base?: string): Promise<GameData> {
   const m = mode
   onProgress?.('Загружаю предметы и цены…')
   // Переводы не зависят от режима — всегда из regular
@@ -39,12 +40,15 @@ export async function fetchAll(mode: GameMode, onProgress?: (msg: string) => voi
     getJson(`${m}/traders`, signal), getJson(`regular/traders_ru`, signal), getJson(`regular/traders_en`, signal),
     getJson(`${m}/hideout`, signal), getJson(`regular/hideout_ru`, signal), getJson(`regular/hideout_en`, signal),
     getJson(`${m}/crafts`, signal), getJson(`${m}/barters`, signal),
-    fetchOverlay(signal),
+    fetchOverlay(signal, base),
   ])
   onProgress?.('Собираю справочник…')
   // поправки TarkovTracker (фракции, уровни лояльности, удалённые квесты) — поверх сырых задач tarkov.dev
-  const patchedCount = applyOverlay((tasks as { data?: { tasks?: Record<string, unknown> } })?.data?.tasks ?? {}, overlay, m)
-  console.info(`[overlay] ${overlay ? `v${overlay.$meta?.version ?? '?'} от ${overlay.$meta?.generated?.slice(0, 10) ?? '?'}, поправлено задач: ${patchedCount}` : 'нет'}`)
+  const rawTasks = (tasks as { data?: { tasks?: Record<string, { factionName?: string }> } })?.data?.tasks ?? {}
+  const patchedCount = applyOverlay(rawTasks, overlay, m)
+  // затем — закреплённые вручную фракции: работают даже без оверлея и не дают чужим квестам всплыть
+  const factionCount = applyFactionFixes(rawTasks)
+  console.info(`[overlay] ${overlay ? `v${overlay.$meta?.version ?? '?'} от ${overlay.$meta?.generated?.slice(0, 10) ?? '?'}, поправлено задач: ${patchedCount}` : 'нет'}; фракций закреплено: ${factionCount}`)
   const pick = (x: unknown) => ((x as { data?: Record<string, string> })?.data ?? {}) as Record<string, string>
   const raw: RawBundle = {
     items, itemsRu: pick(itemsRu), itemsEn: pick(itemsEn),
