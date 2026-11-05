@@ -265,6 +265,69 @@ const DEFS: Def[] = [
   },
 ]
 
+/**
+ * Награды по заданиям (tarkovquestie.com): id → опыт и предметы.
+ * Названия английские — id предмета подставляется из справочника при слиянии (data.items).
+ * У парных заданий («Усиление карантина», «Новая вакцина») взят базовый вариант.
+ */
+const REWARDS: Record<string, { xp: number; items: [name: string, count: number][] }> = {
+  'hw-sluhi': { xp: 26000, items: [['MPS Auto Assault-12 Gen 2 12ga automatic shotgun', 1], ['AA-12 12ga 20-round drum magazine', 3], ['12/70 SuperFormance HP slug ammo pack (25 pcs)', 4]] },
+  'hw-luchshaya-zaschita': { xp: 36000, items: [['Norinco QBZ-191 5.8x42 assault rifle', 1], ['QBZ-191 5.8x42 30-round magazine', 3], ['5.8x42mm DBX95 ammo pack (30 pcs)', 4]] },
+  'hw-kontrolnaya-proverka': { xp: 40000, items: [['TerraGroup Labs access keycard', 2], ['Adrenaline injector', 2], ['Trimadol stimulant injector', 2]] },
+  'hw-neozhidannaya-pomosch': { xp: 38000, items: [['Ammunition case', 1]] },
+  'hw-pervichnaya-proverka': { xp: 38000, items: [['Document case', 1]] },
+  'hw-usilenie-karantina': { xp: 41000, items: [['Kalashnikov AK-12 5.45x39 assault rifle', 1], ['AK-12 5.45x39 early model 30-round magazine', 3], ['5.45x39mm 7N40 ammo pack (120 pcs)', 1]] },
+  'hw-novaya-vakcina': { xp: 48000, items: [['Mr. Holodilnick thermal bag', 1]] },
+  'hw-zona-riska': { xp: 44000, items: [['Weapon repair kit', 1], ['IOTV Gen4 body armor (Full Protection Kit, MultiCam)', 1], ['Infected tissue sample', 2]] },
+  'hw-sovpadenie': { xp: 42000, items: [['Kalashnikov PKM 7.62x54R machine gun', 1], ['PK 7.62x54R 100-round box', 2], ['7.62x54mm R BT gzh ammo pack (20 pcs)', 10]] },
+  'hw-prototipirovanie': { xp: 34000, items: [] },
+  'hw-vrag-moego-vraga': { xp: 24000, items: [['BNTI Gzhel-K body armor', 3]] },
+  'hw-vrag-moego-vraga-dogovor': { xp: 18000, items: [['RDA-78 vaccine', 1], ['TG-Vi-24 vaccine prototype', 2]] },
+  'hw-oslepit-protivnika': { xp: 60000, items: [['Weapon case', 1]] },
+  'hw-highrisk-highreward': { xp: 44000, items: [['Propital regenerative stimulant injector', 3], ['Zagustin hemostatic drug injector', 3], ['TG-Vi-24 vaccine prototype', 2]] },
+  'hw-pervye-rezultaty': { xp: 42000, items: [['Grizzly medical kit', 5], ['Model 8230 CS gas grenade (RDA-68), when you accept it', 3]] },
+  'hw-izuchenie-vraga': { xp: 34000, items: [] },
+  'hw-radi-obschey-celi': { xp: 24000, items: [['TerraGroup Labs access keycard', 4], ['Ibuprofen painkillers', 2], ['Augmentin antibiotic pills', 2]] },
+  'hw-radi-obschey-celi-dogovor': { xp: 18000, items: [['Infected tissue sample', 2]] },
+  'hw-posledniy-ryvok': { xp: 60000, items: [['Item case', 1], ['RDA-78 vaccine', 1], ['TG-Vi-24 vaccine prototype', 2], ['Model 8230 CS gas grenade (RDA-78), when you accept it', 1]] },
+}
+
+/** Привести название предмета к сравнимому виду: регистр, ё/е, дефисы-пробелы. */
+const normItem = (s: string) => s.toLowerCase().replace(/[’']/g, "'").replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+const compactItem = (s: string) => normItem(s).replace(/\s+/g, '')
+
+/**
+ * Проставить опыт и предметы из REWARDS. Предмет ищем по nameEn/name, затем по «сжатому» виду
+ * (без пробелов и знаков), затем по первым 24 символам — названия на tarkovquestie чуть отличаются
+ * от tarkov.dev («12ga» против «12/70»). Нераспознанное уходит в заметку задания.
+ */
+function applyRewards(tasks: Task[], data: GameData): void {
+  const byName = new Map<string, string>()
+  const byPrefix = new Map<string, string>()
+  for (const it of Object.values(data.items)) {
+    for (const n of [it.nameEn, it.name]) {
+      if (!n) continue
+      byName.set(normItem(n), it.id)
+      byName.set(compactItem(n), it.id)
+      byPrefix.set(compactItem(n).slice(0, 24), it.id)
+    }
+  }
+  for (const t of tasks) {
+    const r = REWARDS[t.id]
+    if (!r) continue
+    t.experience = r.xp
+    const items: { item: string; count: number }[] = []
+    const unknown: string[] = []
+    for (const [name, count] of r.items) {
+      const id = byName.get(normItem(name)) ?? byName.get(compactItem(name)) ?? byPrefix.get(compactItem(name).slice(0, 24))
+      if (id) items.push({ item: id, count })
+      else unknown.push(`${count}× ${name}`)
+    }
+    t.rewardItems = items
+    if (unknown.length) t.note = [t.note, `Награда (нет в справочнике): ${unknown.join(', ')}.`].filter(Boolean).join(' ')
+  }
+}
+
 /** Название ивента без префикса, для сверки с tarkov.dev: «Halloween: Rumors» → «rumors». */
 const normName = (s: string) => s.toLowerCase().replace(/^halloween:\s*/, '').replace(/[^\p{L}\p{N}]/gu, '')
 
@@ -318,6 +381,8 @@ export function mergeEventTasks(data: GameData): GameData {
   if (!eventActive()) return data
   const tasks = { ...data.tasks }
   const known = new Set(Object.values(data.tasks).map((t) => normName(t.nameEn)))
-  for (const t of eventTasks()) if (!tasks[t.id] && !known.has(normName(t.nameEn))) tasks[t.id] = t
+  const added = eventTasks().filter((t) => !tasks[t.id] && !known.has(normName(t.nameEn)))
+  applyRewards(added, data)
+  for (const t of added) tasks[t.id] = t
   return { ...data, tasks }
 }
