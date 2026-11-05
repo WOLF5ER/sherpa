@@ -11,6 +11,7 @@ import { ItemCell } from '@/components/ItemCell'
 import { WikiPics } from '@/components/WikiPics'
 import { Chip, Eyebrow, FirBadge, Segmented, TraderMark, Toggle, Empty } from '@/components/ui'
 import { ROUBLES } from '@/data/types'
+import { EVENT_LABEL, eventActive } from '@/data/eventTasks'
 import { CURRENCY } from '@/lib/needs'
 
 type Filter = 'all' | TaskStatus
@@ -30,6 +31,8 @@ export function TasksPage() {
   const [map, setMap] = useState<string | null>(null)
   const kappaOnly = useProfile((s) => s.kappaOnly)
   const setKappaOnly = useProfile((s) => s.setKappaOnly)
+  const showEvents = useProfile((s) => s.showEvents)
+  const setShowEvents = useProfile((s) => s.setShowEvents)
 
   // ?task=<id> — переход с карты: находим квест по имени, раскрываем и подсвечиваем строку
   const [focusId, setFocusId] = useState<string | null>(null)
@@ -42,6 +45,9 @@ export function TasksPage() {
 
   const all = useMemo(() => [...views.values()], [views])
   const faction = useProfile((s) => s.faction)
+  // ивент гаснет сам по дате окончания (EVENT_ENDS) и прячется тумблером «Событие»
+  const hasEvents = useMemo(() => all.some((v) => v.task.event), [all])
+  const eventsOn = showEvents && eventActive()
   // сколько квестов скрыто из-за фракции — видно, что фильтр работает, и понятно, куда делись квесты
   const hiddenByFaction = useMemo(
     () => Object.values(data.tasks).filter((t) => !visibleForFaction(t, faction)).length,
@@ -55,6 +61,7 @@ export function TasksPage() {
 
   const list = useMemo(() => {
     let l = all
+    if (!eventsOn) l = l.filter((v) => !v.task.event)
     if (filter !== 'all') l = l.filter((v) => v.status === filter)
     if (trader) l = l.filter((v) => v.task.trader === trader)
     if (map) l = l.filter((v) => v.task.map === map || v.task.objectives.some((o) => o.maps.includes(map)))
@@ -66,7 +73,7 @@ export function TasksPage() {
     const order: Record<TaskStatus, number> = { available: 0, locked: 1, done: 2 }
     return [...l].sort((a, b) =>
       order[a.status] - order[b.status] || a.task.minPlayerLevel - b.task.minPlayerLevel || a.task.name.localeCompare(b.task.name, 'ru'))
-  }, [all, filter, trader, map, kappaOnly, q])
+  }, [all, filter, trader, map, kappaOnly, q, eventsOn])
 
   const traders = useMemo(() => Object.values(data.traders).filter((t) => all.some((v) => v.task.trader === t.id)), [data, all])
   const maps = useMemo(() => Object.values(data.maps).filter((m) => all.some((v) => v.task.map === m.id)).sort((a, b) => a.name.localeCompare(b.name, 'ru')), [data, all])
@@ -123,6 +130,9 @@ export function TasksPage() {
           {maps.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <Chip on={kappaOnly} onClick={() => setKappaOnly(!kappaOnly)} title="Только квесты, нужные для контейнера Каппа">Каппа</Chip>
+        {hasEvents && (
+          <Chip on={showEvents} onClick={() => setShowEvents(!showEvents)} title={`Задания ивента «${EVENT_LABEL}» — собраны вручную, пока их нет в tarkov.dev`}>Событие</Chip>
+        )}
       </div>
 
       {list.length === 0 ? (
@@ -194,6 +204,7 @@ function TaskRow({ view, focus = false }: { view: TaskView; focus?: boolean }) {
             {t.kappaRequired && <span className="shrink-0 display text-[10px] text-brass border border-brass-3 rounded-[3px] px-1 leading-[14px]" title="Нужен для Каппы">К</span>}
             {t.lightkeeperRequired && <span className="shrink-0 display text-[10px] text-info border border-info/50 rounded-[3px] px-1 leading-[14px]" title="Нужен для Смотрителя">С</span>}
             {t.seasonal && <span className="shrink-0 display text-[10px] text-season border border-season/50 rounded-[3px] px-1 leading-[14px]" title="Сезонный квест — только для сезонного персонажа; данные собраны вручную, без точек на карте">СЕЗОН</span>}
+            {t.event && <span className="shrink-0 display text-[10px] text-danger border border-danger/50 rounded-[3px] px-1 leading-[14px]" title={`Задание ивента «${EVENT_LABEL}» — данных нет в tarkov.dev, собрано вручную`}>СОБЫТИЕ</span>}
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-3">
             {t.minPlayerLevel > 0 && <span className={`num ${view.levelLocked ? 'text-danger' : ''}`}>{t.minPlayerLevel} ур.</span>}

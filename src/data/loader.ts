@@ -1,5 +1,6 @@
 import { get, set, del } from 'idb-keyval'
 import { mergeSeasonTasks } from './seasonTasks'
+import { mergeEventTasks } from './eventTasks'
 import { normalize, type RawBundle } from './normalize'
 import { applyOverlay, fetchOverlay } from './overlay'
 import { applyFactionFixes } from './factionFixes'
@@ -58,7 +59,9 @@ export async function fetchAll(mode: GameMode, onProgress?: (msg: string) => voi
     hideout, hideoutRu: pick(hideoutRu), hideoutEn: pick(hideoutEn),
     crafts, barters,
   }
-  const data = mode === 'pvp-season' ? mergeSeasonTasks(normalize(raw)) : normalize(raw)
+  // ивент (Хэллоуин и т.п.) подмешивается во все режимы: в игре он идёт и в PvP, и в PvE, и в сезоне
+  const withSeason = mode === 'pvp-season' ? mergeSeasonTasks(normalize(raw)) : normalize(raw)
+  const data = mergeEventTasks(withSeason)
   onProgress?.('Сохраняю кэш…')
   try { await set(cacheKey(mode), data) } catch { /* кэш не критичен */ }
   return data

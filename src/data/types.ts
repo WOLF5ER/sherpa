@@ -212,6 +212,8 @@ export interface Task {
   unlocksTraders?: string[]
   /** сезонная цепочка (KORD BREACH), собранная вручную — в данных tarkov.dev её нет */
   seasonal?: boolean
+  /** ивент (например, halloween-2026): задания события, собранные вручную — см. data/eventTasks.ts */
+  event?: string
   /** заметка от составителя: условия выбора, подводные камни */
   note?: string
   /** поправка из tarkov-data-overlay: какие поля были исправлены относительно tarkov.dev */

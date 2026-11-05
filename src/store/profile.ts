@@ -39,6 +39,8 @@ export interface ProfileData {
 export interface ProfileState extends ProfileData {
   kappaOnly: boolean
   showLockedTasks: boolean
+  /** показывать задания ивента (Хэллоуин и т.п.) в списках — после ивента их можно погасить */
+  showEvents: boolean
   /** id активного персонажа; его данные лежат «плоско» в этом же состоянии */
   active: string
   /** остальные персонажи (снимки) */
@@ -61,6 +63,7 @@ export interface ProfileState extends ProfileData {
   setSkill: (id: string, level: number) => void
   setKappaOnly: (v: boolean) => void
   setShowLockedTasks: (v: boolean) => void
+  setShowEvents: (v: boolean) => void
   setTtToken: (t: string) => void
   applyImport: (patch: Partial<ProfileData>) => void
   switchProfile: (id: string) => void
@@ -92,6 +95,7 @@ export const useProfile = create<ProfileState>()(
       ...blankProfile('Основной'),
       kappaOnly: false,
       showLockedTasks: true,
+      showEvents: true,
       active: 'main',
       profiles: {},
 
@@ -154,6 +158,7 @@ export const useProfile = create<ProfileState>()(
       }),
       setKappaOnly: (kappaOnly) => set({ kappaOnly }),
       setShowLockedTasks: (showLockedTasks) => set({ showLockedTasks }),
+      setShowEvents: (showEvents) => set({ showEvents }),
       setTtToken: (ttToken) => set({ ttToken: ttToken.trim() }),
       applyImport: (patch) => set({ ...patch }),
 
