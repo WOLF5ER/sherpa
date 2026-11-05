@@ -4,6 +4,7 @@ import { Check, EyeOff, MapPin } from 'lucide-react'
 import { useGame } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
+import { BP_DOC_IDS } from '@/data/battlePassDocs'
 import { ProfileSwitcher } from '@/components/ProfileSwitcher'
 import { Eyebrow, Segmented, Toggle, TraderMark } from '@/components/ui'
 
@@ -42,6 +43,18 @@ export function SeasonPage() {
   const seasonTasks = useMemo(() => [...views.values()]
     .filter((v) => v.task.seasonal || v.task.objectives.some((o) => /black division/i.test(o.description)))
     .sort((a, b) => Number(!!b.task.seasonal) - Number(!!a.task.seasonal) || a.task.minPlayerLevel - b.task.minPlayerLevel), [views])
+
+  // документы боевого пропуска: по каждому типу — на каких картах лежит и сколько точек
+  const bpDocs = useMemo(() => BP_DOC_IDS
+    .map((id) => {
+      const item = data.items[id]
+      const maps = Object.values(data.maps)
+        .map((m) => ({ m, n: m.lootLoose.filter((l) => l.items.includes(id)).length }))
+        .filter((x) => x.n > 0)
+        .sort((a, b) => b.n - a.n)
+      return { id, item, maps, total: maps.reduce((n, x) => n + x.n, 0) }
+    })
+    .filter((d) => d.item && d.maps.length), [data])
 
   return (
     <div className="p-5 max-w-[1000px] mx-auto flex flex-col gap-8">
@@ -139,6 +152,35 @@ export function SeasonPage() {
           </ul>
         </div>
       </section>
+
+      {bpDocs.length > 0 && (
+        <section>
+          <Eyebrow>Документы боевого пропуска</Eyebrow>
+          <div className="mt-1 text-[12px] text-ink-3">
+            На все награды пропуска сезона нужно 60 документов. Точки спавна — из данных tarkov.dev; на карте — слой «Документы пропуска», клик по карте ведёт в карточку предмета.
+          </div>
+          <ul className="mt-2 flex flex-col gap-1">
+            {bpDocs.map(({ id, item, maps, total }) => (
+              <li key={id} className="panel px-3 py-2 flex items-start gap-3">
+                {item.iconLink && <img src={item.iconLink} alt="" className="w-9 h-9 object-contain rounded-[3px] ibg-default border border-line-2 shrink-0" loading="lazy" />}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <Link to={`/maps?item=${id}`} className="hover:text-brass truncate">{item.name}</Link>
+                    <span className="num text-[11px] text-ink-3 shrink-0">{total} точек</span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[12px]">
+                    {maps.map(({ m, n }) => (
+                      <Link key={m.id} to={`/maps?item=${id}&map=${m.normalizedName}`} className="text-ink-3 hover:text-brass">
+                        {m.name} <span className="num">{n}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }

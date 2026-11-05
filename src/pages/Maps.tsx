@@ -8,6 +8,7 @@ import { useProfile } from '@/store/profile'
 import { useRaids, type Raid } from '@/store/raids'
 import { useTaskViews } from '@/lib/useCtx'
 import { findMeta } from '@/data/mapMeta'
+import { BP_DOC_IDS, BP_DOC_SET } from '@/data/battlePassDocs'
 import { makeCRS, pos, boundsOf, scaledBounds, icon, dot, COLORS, svgBaseFor, applySvgFloor, containerIcon, MARKER_SVG, type IconKind } from '@/lib/leaflet'
 import { fleaPrice } from '@/lib/flea'
 import { computeNeeds, CURRENCY } from '@/lib/needs'
@@ -31,6 +32,7 @@ type ToggleKey =
   | 'quests'
   | 'spawnsPmc' | 'spawnsScav' | 'snipers' | 'spawnsSeason' | 'bosses'
   | 'locks' | 'keySpawns' | 'keycards' | 'ledx'
+  | 'bpDocs'
   | 'containers' | 'loose'
   | 'hazards' | 'switches' | 'weapons' | 'btr'
 type Toggles = Record<ToggleKey, boolean>
@@ -39,7 +41,7 @@ const DEFAULT_TOGGLES: Toggles = {
   exitsPmc: true, exitsScav: false, exitsShared: true, transits: true,
   quests: true,
   spawnsPmc: true, spawnsScav: false, snipers: false, spawnsSeason: true, bosses: true,
-  locks: true, keySpawns: false, keycards: false, ledx: false,
+  locks: true, keySpawns: false, keycards: false, ledx: false, bpDocs: false,
   containers: false, loose: false,
   hazards: true, switches: false, weapons: false, btr: true,
 }
@@ -72,6 +74,7 @@ const LAYER_SECTIONS: { title: string; rows: { key: ToggleKey; label: string; co
     { key: 'ledx', label: 'LEDX', color: '#5fd0d0', icon: 'ledx' },
   ] },
   { title: 'Лут', rows: [
+    { key: 'bpDocs', label: 'Документы пропуска', color: COLORS.season, icon: 'doc' },
     { key: 'containers', label: 'Контейнеры', color: COLORS.loot, icon: 'box' },
     { key: 'loose', label: 'Рассыпной лут', color: COLORS.item, icon: 'dot' },
   ] },
@@ -308,6 +311,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
   const [lootType, setLootType] = useState<string>('')
   const [looseCat, setLooseCat] = useState<string>('all')
   const [keycardSel, setKeycardSel] = useState<string>('')
+  const [bpDocSel, setBpDocSel] = useState<string>('')
   const stations = useProfile((s) => s.stations)
   const have = useProfile((s) => s.have)
   const kappaOnly = useProfile((s) => s.kappaOnly)
@@ -342,6 +346,14 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
   }, [cardPoints, data])
   const cardCounts = useMemo(() => Object.fromEntries(cardsHere.map((k) => [k.id, cardPoints.filter((l) => l.items.includes(k.id)).length])) as Record<string, number>, [cardsHere, cardPoints])
   const ledxPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.includes(LEDX)) : [], [gmap])
+  // документы боевого пропуска (сезон): точки спавна из тех же lootLoose
+  const bpDocPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.some((id) => BP_DOC_SET.has(id))) : [], [gmap])
+  // какие типы документов встречаются на этой карте — в порядке BP_DOC_IDS (как в игре)
+  const docsHere = useMemo(() => {
+    const ids = new Set<string>()
+    for (const l of bpDocPoints) for (const id of l.items) if (BP_DOC_SET.has(id)) ids.add(id)
+    return BP_DOC_IDS.filter((id) => ids.has(id))
+  }, [bpDocPoints])
   // счётчики для меню слоёв
   const layerCounts = useMemo((): Record<ToggleKey, number> => {
     const z = Object.fromEntries(Object.keys(DEFAULT_TOGGLES).map((k) => [k, 0])) as Record<ToggleKey, number>
@@ -363,6 +375,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
     z.keySpawns = loosePoints.keys?.length ?? 0
     z.keycards = cardPoints.length
     z.ledx = ledxPoints.length
+    z.bpDocs = bpDocPoints.length
     z.containers = gmap.lootContainers.length
     z.loose = gmap.lootLoose.length
     z.hazards = gmap.hazards.length
@@ -374,7 +387,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       for (const o of v.task.objectives) for (const zz of o.zones ?? []) if (zz.map === gmap.id && !objectivesDone[o.id]) z.quests++
     }
     return z
-  }, [gmap, data, gameMode, loosePoints, cardPoints, ledxPoints, views, questScope, objectivesDone, tracked])
+  }, [gmap, data, gameMode, loosePoints, cardPoints, ledxPoints, bpDocPoints, views, questScope, objectivesDone, tracked])
   const [panelOpen, setPanelOpen] = useState(!overlay && !live)
   const panelPadRef = useRef(0)
   panelPadRef.current = panelOpen ? (overlay ? 220 : 280) : 0
@@ -606,6 +619,17 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
         group.addLayer(m)
       }
     }
+    // документы боевого пропуска (сезон KORD BREACH) — спавны из данных tarkov.dev
+    if (toggles.bpDocs) {
+      for (const l of bpDocPoints) {
+        const here = docsHere.filter((id) => l.items.includes(id))
+        if (bpDocSel && !here.includes(bpDocSel)) continue
+        const m = L.marker(pos(l.position), { icon: icon('doc', COLORS.season, undefined, { size: 16, square: true, dim: !onLevel(l.position) }) })
+        tip(m, `<b>Документы пропуска</b><br>${here.map((id) => data.items[id]?.shortName ?? id).join('<br>')}`, { className: 'tip-wide' })
+        m.on('click', () => openItem(bpDocSel || here[0]))
+        group.addLayer(m)
+      }
+    }
     if (toggles.keySpawns && !(toggles.loose && looseCat === 'keys')) {
       const isKey = (id: string) => !!data.items[id]?.categories.includes(KEY_CATEGORY)
       for (const l of loosePoints.keys ?? []) {
@@ -722,7 +746,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       const pts = gmap.locks.filter((l) => l.key === keyParam).map((l) => pos(l.position))
       if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.8), { maxZoom: meta.maxZoom - 1 })
     }
-  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask, tracked, navigate])
+  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, bpDocPoints, docsHere, bpDocSel, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask, tracked, navigate])
 
   // ── авто-этаж: по высоте последней точки (при повторе рейда — по точке повтора) ──
   useEffect(() => {
@@ -1120,6 +1144,20 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
                                   <span className="layer-ic" style={{ color: k.color }}><span dangerouslySetInnerHTML={{ __html: MARKER_SVG.card }} /></span>
                                   <span className="truncate flex-1 text-left">{k.label}</span>
                                   <span className="num text-[11px]">{cardCounts[k.id]}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {key === 'bpDocs' && on && (
+                            <div className="ml-6 mt-1 mb-1 flex flex-col gap-px">
+                              <button type="button" onClick={() => setBpDocSel('')} className={`layer-row h-6 text-[12px] ${bpDocSel === '' ? 'layer-on' : ''}`} style={bpDocSel === '' ? { borderColor: color } : undefined}>
+                                <span className="truncate flex-1 text-left">Все документы</span>
+                                <span className="num text-[11px]">{bpDocPoints.length}</span>
+                              </button>
+                              {docsHere.map((id) => (
+                                <button key={id} type="button" onClick={() => setBpDocSel(id)} className={`layer-row h-6 text-[12px] ${bpDocSel === id ? 'layer-on' : ''}`} style={bpDocSel === id ? { borderColor: COLORS.season } : undefined}>
+                                  <span className="truncate flex-1 text-left">{data.items[id]?.shortName ?? id}</span>
+                                  <span className="num text-[11px]">{bpDocPoints.filter((l) => l.items.includes(id)).length}</span>
                                 </button>
                               ))}
                             </div>
