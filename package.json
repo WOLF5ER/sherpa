@@ -1,7 +1,7 @@
 {
   "name": "sherpa",
   "private": true,
-  "version": "0.1.54",
+  "version": "0.1.55",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "overlay:refresh": "node scripts/refresh-overlay.mjs",
-    "event:tt": "node scripts/refresh-event-tt.mjs"
+    "event:tt": "node scripts/refresh-event-tt.mjs",
+    "kord:refresh": "node scripts/refresh-kord-docs.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",

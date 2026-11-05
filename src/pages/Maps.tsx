@@ -8,6 +8,7 @@ import { useProfile } from '@/store/profile'
 import { useRaids, type Raid } from '@/store/raids'
 import { useTaskViews } from '@/lib/useCtx'
 import { findMeta } from '@/data/mapMeta'
+import { fetchKordDocs, type KordDocSpot, type KordDocs } from '@/data/kordDocs'
 import { BP_DOC_IDS, BP_DOC_SET } from '@/data/battlePassDocs'
 import { makeCRS, pos, boundsOf, scaledBounds, icon, dot, COLORS, svgBaseFor, applySvgFloor, containerIcon, MARKER_SVG, type IconKind } from '@/lib/leaflet'
 import { fleaPrice } from '@/lib/flea'
@@ -348,12 +349,43 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
   const ledxPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.includes(LEDX)) : [], [gmap])
   // документы боевого пропуска (сезон): точки спавна из тех же lootLoose
   const bpDocPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.some((id) => BP_DOC_SET.has(id))) : [], [gmap])
+  // фото и подписи спавнов из карты сообщества kord-map-mtdv.ru (снимок public/kord-docs.json)
+  const [kord, setKord] = useState<KordDocs | null>(null)
+  useEffect(() => { void fetchKordDocs().then((d) => { if (d) setKord(d) }) }, [])
+  const kordSpots = useMemo(() => (kord && gmap ? kord.spots.filter((s) => s.map === gmap.normalizedName) : []), [gmap, kord])
+  /** фото и подпись точки: ближайший спавн kord-map-mtdv того же типа в радиусе 30 м */
+  const spotPhotos = useMemo(() => (l: GameMap['lootLoose'][number]): { caption: string; images: string[] } | null => {
+    let best: { caption: string; images: string[] } | null = null
+    for (const id of l.items) {
+      if (!BP_DOC_SET.has(id)) continue
+      let near: KordDocSpot | null = null
+      let d2min = 900 // 30 м
+      for (const s of kordSpots) {
+        if (s.doc !== id) continue
+        const d2 = (s.position.x - l.position.x) ** 2 + (s.position.z - l.position.z) ** 2
+        if (d2 < d2min) { d2min = d2; near = s }
+      }
+      if (near?.image) {
+        best ??= { caption: '', images: [] }
+        if (!best.caption) best.caption = near.caption
+        if (!best.images.includes(near.image)) best.images.push(near.image)
+      }
+    }
+    return best
+  }, [kordSpots])
+  // спавны карты сообщества без пары среди lootLoose (у tarkov.dev их нет) — рисуем отдельно
+  const kordExtra = useMemo(() => {
+    if (!gmap) return [] as KordDocSpot[]
+    return kordSpots.filter((s) => !gmap.lootLoose.some((l) =>
+      l.items.includes(s.doc) && (s.position.x - l.position.x) ** 2 + (s.position.z - l.position.z) ** 2 < 900))
+  }, [gmap, kordSpots])
   // какие типы документов встречаются на этой карте — в порядке BP_DOC_IDS (как в игре)
   const docsHere = useMemo(() => {
     const ids = new Set<string>()
     for (const l of bpDocPoints) for (const id of l.items) if (BP_DOC_SET.has(id)) ids.add(id)
+    for (const s of kordExtra) ids.add(s.doc)
     return BP_DOC_IDS.filter((id) => ids.has(id))
-  }, [bpDocPoints])
+  }, [bpDocPoints, kordExtra])
   // счётчики для меню слоёв
   const layerCounts = useMemo((): Record<ToggleKey, number> => {
     const z = Object.fromEntries(Object.keys(DEFAULT_TOGGLES).map((k) => [k, 0])) as Record<ToggleKey, number>
@@ -375,7 +407,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
     z.keySpawns = loosePoints.keys?.length ?? 0
     z.keycards = cardPoints.length
     z.ledx = ledxPoints.length
-    z.bpDocs = bpDocPoints.length
+    z.bpDocs = bpDocPoints.length + kordExtra.length
     z.containers = gmap.lootContainers.length
     z.loose = gmap.lootLoose.length
     z.hazards = gmap.hazards.length
@@ -387,7 +419,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       for (const o of v.task.objectives) for (const zz of o.zones ?? []) if (zz.map === gmap.id && !objectivesDone[o.id]) z.quests++
     }
     return z
-  }, [gmap, data, gameMode, loosePoints, cardPoints, ledxPoints, bpDocPoints, views, questScope, objectivesDone, tracked])
+  }, [gmap, data, gameMode, loosePoints, cardPoints, ledxPoints, bpDocPoints, kordExtra, views, questScope, objectivesDone, tracked])
   const [panelOpen, setPanelOpen] = useState(!overlay && !live)
   const panelPadRef = useRef(0)
   panelPadRef.current = panelOpen ? (overlay ? 220 : 280) : 0
@@ -619,14 +651,59 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
         group.addLayer(m)
       }
     }
-    // документы боевого пропуска (сезон KORD BREACH) — спавны из данных tarkov.dev
+    // документы боевого пропуска (сезон KORD BREACH) — спавны tarkov.dev + фото из карты сообщества
+    const docPopup = (mainId: string, name: string, photos: { caption: string; images: string[] }) => {
+      const el = document.createElement('div')
+      el.className = 'kpop'
+      const title = document.createElement('a')
+      title.href = '#'
+      title.textContent = name
+      title.onclick = (e) => { e.preventDefault(); map.closePopup(); openItem(mainId) }
+      const head = document.createElement('div')
+      head.className = 'kpop-head'
+      head.appendChild(title)
+      el.appendChild(head)
+      if (photos.caption) { const c = document.createElement('div'); c.className = 'kpop-cap'; c.textContent = photos.caption; el.appendChild(c) }
+      for (const im of photos.images.slice(0, 4)) {
+        const img = document.createElement('img')
+        img.src = im
+        img.alt = ''
+        img.className = 'kpop-img'
+        el.appendChild(img)
+      }
+      const foot = document.createElement('div')
+      foot.className = 'kpop-foot'
+      foot.textContent = 'Фото: kord-map-mtdv.ru (сообщество)'
+      el.appendChild(foot)
+      return el
+    }
     if (toggles.bpDocs) {
       for (const l of bpDocPoints) {
         const here = docsHere.filter((id) => l.items.includes(id))
         if (bpDocSel && !here.includes(bpDocSel)) continue
         const m = L.marker(pos(l.position), { icon: icon('doc', COLORS.season, undefined, { size: 16, square: true, dim: !onLevel(l.position) }) })
-        tip(m, `<b>Документы пропуска</b><br>${here.map((id) => data.items[id]?.shortName ?? id).join('<br>')}`, { className: 'tip-wide' })
-        m.on('click', () => openItem(bpDocSel || here[0]))
+        const photos = spotPhotos(l)
+        const mainId = bpDocSel || here[0]
+        const mainName = data.items[mainId]?.name ?? 'Документы пропуска'
+        tip(m, `<b>Документы пропуска</b><br>${photos?.caption || here.map((id) => data.items[id]?.shortName ?? id).join(' · ')}`, { className: 'tip-wide' })
+        if (photos) {
+          m.bindPopup(() => docPopup(mainId, mainName, photos), { closeButton: true, offset: [0, -10], className: 'kpop-wrap', maxWidth: 300 })
+        } else {
+          m.on('click', () => openItem(mainId))
+        }
+        group.addLayer(m)
+      }
+      // спавны карты сообщества без пары среди lootLoose — свои маркеры
+      for (const s of kordExtra) {
+        if (bpDocSel && s.doc !== bpDocSel) continue
+        const m = L.marker(pos(s.position), { icon: icon('doc', COLORS.season, undefined, { size: 16, square: true, dim: !onLevel(s.position) }) })
+        const mainName = data.items[s.doc]?.name ?? 'Документы пропуска'
+        tip(m, `<b>${data.items[s.doc]?.shortName ?? 'Документ'}</b>${s.caption ? `<br>${s.caption}` : ''}`, { className: 'tip-wide' })
+        if (s.image) {
+          m.bindPopup(() => docPopup(s.doc, mainName, { caption: s.caption, images: [s.image] }), { closeButton: true, offset: [0, -10], className: 'kpop-wrap', maxWidth: 300 })
+        } else {
+          m.on('click', () => openItem(s.doc))
+        }
         group.addLayer(m)
       }
     }
@@ -746,7 +823,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       const pts = gmap.locks.filter((l) => l.key === keyParam).map((l) => pos(l.position))
       if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.8), { maxZoom: meta.maxZoom - 1 })
     }
-  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, bpDocPoints, docsHere, bpDocSel, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask, tracked, navigate])
+  }, [gmap, meta, floor, toggles, questScope, lootType, looseCat, loosePoints, cardPoints, cardsHere, keycardSel, ledxPoints, bpDocPoints, kordExtra, spotPhotos, docsHere, bpDocSel, neededIds, views, data, taskParam, keyParam, itemParam, itemSpots, openItem, gameMode, objectivesDone, toggleObjective, toggleTask, tracked, navigate])
 
   // ── авто-этаж: по высоте последней точки (при повторе рейда — по точке повтора) ──
   useEffect(() => {
@@ -1152,12 +1229,12 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
                             <div className="ml-6 mt-1 mb-1 flex flex-col gap-px">
                               <button type="button" onClick={() => setBpDocSel('')} className={`layer-row h-6 text-[12px] ${bpDocSel === '' ? 'layer-on' : ''}`} style={bpDocSel === '' ? { borderColor: color } : undefined}>
                                 <span className="truncate flex-1 text-left">Все документы</span>
-                                <span className="num text-[11px]">{bpDocPoints.length}</span>
+                                <span className="num text-[11px]">{bpDocPoints.length + kordExtra.length}</span>
                               </button>
                               {docsHere.map((id) => (
                                 <button key={id} type="button" onClick={() => setBpDocSel(id)} className={`layer-row h-6 text-[12px] ${bpDocSel === id ? 'layer-on' : ''}`} style={bpDocSel === id ? { borderColor: COLORS.season } : undefined}>
                                   <span className="truncate flex-1 text-left">{data.items[id]?.shortName ?? id}</span>
-                                  <span className="num text-[11px]">{bpDocPoints.filter((l) => l.items.includes(id)).length}</span>
+                                  <span className="num text-[11px]">{bpDocPoints.filter((l) => l.items.includes(id)).length + kordExtra.filter((s) => s.doc === id).length}</span>
                                 </button>
                               ))}
                             </div>

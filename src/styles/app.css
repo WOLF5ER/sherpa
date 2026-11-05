@@ -392,6 +392,27 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 .qpop-rew { margin-top: 3px; color: var(--color-ink-2); }
 .qpop-desc { margin-top: 3px; color: var(--color-ink-2); max-width: 280px; }
 .qpop-meta { margin-top: 4px; font-size: 11px; color: var(--color-ink-3); font-family: var(--font-mono); }
+
+/* всплывашка документа пропуска: игровой скриншот спавна из kord-map-mtdv.ru */
+.kpop-wrap .leaflet-popup-content-wrapper {
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-line-2);
+  color: var(--color-ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  padding: 0;
+}
+.kpop-wrap .leaflet-popup-content { margin: 10px 12px; font-family: var(--font-sans); font-size: 12px; line-height: 1.35; width: 276px; }
+.kpop-wrap .leaflet-popup-content.leaflet-popup-scrolled { border: 0; scrollbar-width: thin; scrollbar-color: var(--color-line-2) transparent; }
+.kpop-wrap .leaflet-popup-tip { background: var(--color-bg-2); border: 1px solid var(--color-line-2); border-top: 0; border-left: 0; }
+.kpop-wrap .leaflet-popup-close-button { color: var(--color-ink-3); font-size: 18px; padding: 6px 8px 0 0; }
+.kpop-wrap .leaflet-popup-close-button:hover { color: var(--color-ink); }
+.kpop-head { display: flex; align-items: center; gap: 8px; }
+.kpop-head a { font-family: var(--font-display); font-size: 14px; letter-spacing: .02em; color: var(--color-ink); text-decoration: none; }
+.kpop-head a:hover { color: var(--color-brass-2); text-decoration: underline; text-underline-offset: 3px; }
+.kpop-cap { margin-top: 4px; color: var(--color-ink-2); }
+.kpop-img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 3px; border: 1px solid var(--color-line-2); margin-top: 8px; background: var(--color-bg); }
+.kpop-foot { margin-top: 6px; font-size: 10px; color: var(--color-ink-4); }
 .qpop-actions a.chip { text-decoration: none; }
 .qpop-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
 .qpop-pics { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
