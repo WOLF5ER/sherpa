@@ -8,9 +8,12 @@ import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
 import { useLauncher } from '@/lib/pywebview'
 import { findMeta, type MapMeta } from '@/data/mapMeta'
-import { makeCRS, pos, boundsOf, icon, COLORS, svgBaseFor, applySvgFloor } from '@/lib/leaflet'
+import { makeCRS, pos, boundsOf, icon, dot, containerIcon, COLORS, svgBaseFor, applySvgFloor } from '@/lib/leaflet'
 import { extractsOf } from '@/lib/extracts'
 import { floorForPosition, visibleOnFloor, heading } from '@/lib/floors'
+import { readToggles, type Toggles, isKeycard, KEYCARDS, LEDX, KEY_CATEGORY } from '@/lib/mapLayers'
+import { fetchKordDocs, type KordDocSpot, type KordDocs } from '@/data/kordDocs'
+import { BP_DOC_SET } from '@/data/battlePassDocs'
 
 /**
  * Мини-карта: отдельное маленькое квадратное окно поверх игры. Карта по курсу (стрелка всегда вверх),
@@ -145,34 +148,125 @@ export function MiniPage() {
     if (svgElRef.current) applySvgFloor(svgElRef.current, meta, floor)
   }, [floor, meta, mapStyle])
 
-  // ── статичные слои: выходы, транзиты, зоны доступных квестов, метки ──
+  // ── статичные слои: те же тумблеры, что на большой карте (sherpa:mapToggles2) ──
+  const [toggles, setToggles] = useState<Toggles>(readToggles)
+  useEffect(() => {
+    const on = (e: StorageEvent) => { if (e.key === 'sherpa:mapToggles2') setToggles(readToggles()) }
+    window.addEventListener('storage', on)
+    return () => window.removeEventListener('storage', on)
+  }, [])
+  // фото спавнов документов сообщества (kord) — только чтобы дорисовать спавны без пары у tarkov.dev
+  const [kord, setKord] = useState<KordDocs | null>(null)
+  useEffect(() => { void fetchKordDocs().then((d) => { if (d) setKord(d) }) }, [])
+  const kordExtra = useMemo(() => {
+    if (!kord || !gmap) return [] as KordDocSpot[]
+    return kord.spots.filter((s) => s.map === gmap.normalizedName && !gmap.lootLoose.some((l) =>
+      l.items.includes(s.doc) && (s.position.x - l.position.x) ** 2 + (s.position.z - l.position.z) ** 2 < 900))
+  }, [kord, gmap])
+  const cardPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.some((id) => isKeycard(data.items[id]))) : [], [gmap, data])
+  const ledxPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.includes(LEDX)) : [], [gmap])
+  const bpDocPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.some((id) => BP_DOC_SET.has(id))) : [], [gmap])
+  const keySpawnPoints = useMemo(() => gmap ? gmap.lootLoose.filter((l) => l.items.some((id) => data.items[id]?.categories.includes(KEY_CATEGORY))) : [], [gmap, data])
+  const tracked = useUI((s) => s.trackedTasks)
+  const trackedSet = useMemo(() => new Set(tracked), [tracked])
+
   useEffect(() => {
     const group = staticRef.current
     if (!group || !gmap || !meta) return
     group.clearLayers()
+    const labels = prefs.labels
     // не на текущем этаже — приглушаем, как на большой карте
     const dim = (p: XYZ) => !visibleOnFloor(meta, floor, p)
-    for (const x of extractsOf(data, gmap, gameMode)) {
-      if (!x.extract || x.faction === 'scav') continue
-      const color = x.faction === 'pmc' ? COLORS.pmc : x.faction === 'shared' ? COLORS.shared : COLORS.btr
-      group.addLayer(L.marker(pos(x.extract.position), { icon: icon('exit', color, prefs.labels ? x.label : undefined, { size: 18, dim: dim(x.extract.position) }) }))
-    }
-    for (const t of gmap.transits) group.addLayer(L.marker(pos(t.position), { icon: icon('transit', COLORS.transit, undefined, { size: 16, dim: dim(t.position) }) }))
-    for (const v of views.values()) {
-      if (v.status !== 'available') continue
-      for (const o of v.task.objectives) for (const z of o.zones ?? []) {
-        if (z.map !== gmap.id || objectivesDone[o.id]) continue
-        const d = dim(z.position)
-        const qc = v.task.seasonal ? COLORS.season : COLORS.quest
-        if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: 1, fillOpacity: d ? 0.04 : 0.12, opacity: d ? 0.3 : 1, interactive: false }))
-        const fm = L.marker(pos(z.position), { icon: icon('flag', qc, prefs.labels ? v.task.name : undefined, { size: 16, dim: d }), zIndexOffset: 500 })
-        fm.on('click', (e) => { L.DomEvent.stopPropagation(e); setPick({ task: v.task.name, trader: v.task.trader, objId: o.id, desc: o.description, approx: !!o.approx }) })
-        group.addLayer(fm)
+    const dimOpts = (p: XYZ, o: { size?: number; square?: boolean } = {}) => ({ ...o, dim: dim(p) })
+
+    if (toggles.exitsPmc || toggles.exitsScav || toggles.exitsShared) {
+      for (const x of extractsOf(data, gmap, gameMode)) {
+        if (!x.extract) continue
+        if (!(x.faction === 'pmc' ? toggles.exitsPmc : x.faction === 'scav' ? toggles.exitsScav : toggles.exitsShared)) continue
+        const color = x.faction === 'pmc' ? COLORS.pmc : x.faction === 'scav' ? COLORS.scav : x.faction === 'shared' ? COLORS.shared : COLORS.btr
+        group.addLayer(L.marker(pos(x.extract.position), { icon: icon('exit', color, labels ? x.label : undefined, dimOpts(x.extract.position, { size: 18 })) }))
+        if (x.extract.outline?.length) group.addLayer(L.polygon(x.extract.outline.map(pos), { color, weight: 1, fillOpacity: dim(x.extract.position) ? 0.05 : 0.15, interactive: false }))
       }
     }
-    for (const mk of marks[gmap.id] ?? []) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#e06ba0', prefs.labels ? mk.name : undefined, { size: 16 }) }))
-    for (const mk of Object.values(squadMarks)) if (mk.map === gmap.normalizedName) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#5fd0d0', prefs.labels ? `${mk.label} · ${mk.by}` : undefined, { size: 16 }) }))
-  }, [gmap, meta, data, views, gameMode, marks, squadMarks, prefs.labels, objectivesDone, floor])
+    if (toggles.transits) {
+      for (const t of gmap.transits) {
+        group.addLayer(L.marker(pos(t.position), { icon: icon('transit', COLORS.transit, undefined, dimOpts(t.position, { size: 16 })) }))
+        if (t.outline?.length) group.addLayer(L.polygon(t.outline.map(pos), { color: COLORS.transit, weight: 1, fillOpacity: 0.12, interactive: false }))
+      }
+    }
+    if (toggles.spawnsPmc || toggles.spawnsScav || toggles.snipers || toggles.spawnsSeason) {
+      for (const s of gmap.spawns) {
+        if (s.categories.includes('boss')) continue
+        const season = s.categories.some((c) => /^season/i.test(c))
+        const sniper = s.categories.includes('sniper')
+        const scav = !sniper && s.sides.includes('scav') && !s.sides.includes('pmc') && !s.sides.includes('all')
+        if (season) { if (!toggles.spawnsSeason) continue } else if (sniper) { if (!toggles.snipers) continue } else if (scav) { if (!toggles.spawnsScav) continue } else if (!toggles.spawnsPmc) continue
+        const color = season ? COLORS.season : scav || sniper ? COLORS.scav : COLORS.pmc
+        group.addLayer(L.circleMarker(pos(s.position), dot(color, season ? 7 : sniper ? 6 : 5, { dim: dim(s.position) })))
+      }
+    }
+    if (toggles.bosses) {
+      for (const b of gmap.bosses) for (const p of b.positions) {
+        group.addLayer(L.marker(pos(p), { icon: icon('skull', COLORS.boss, undefined, dimOpts(p, { size: 20 })), zIndexOffset: 300 }))
+      }
+    }
+    if (toggles.locks) {
+      for (const l of gmap.locks) group.addLayer(L.marker(pos(l.position), { icon: icon('key', COLORS.key, undefined, dimOpts(l.position, { square: true, size: 18 })) }))
+    }
+    if (toggles.hazards) {
+      for (const h of gmap.hazards) {
+        group.addLayer(L.marker(pos(h.position), { icon: icon('warn', COLORS.hazard, undefined, dimOpts(h.position, { size: 18 })) }))
+        if (h.outline?.length) group.addLayer(L.polygon(h.outline.map(pos), { color: COLORS.hazard, weight: 1, dashArray: '4 3', fillOpacity: 0.12, interactive: false }))
+      }
+    }
+    if (toggles.switches) for (const s of gmap.switches) group.addLayer(L.marker(pos(s.position), { icon: icon('bolt', COLORS.switch, undefined, dimOpts(s.position, { size: 18 })) }))
+    if (toggles.btr) for (const b of gmap.btrStops) if (b.position) group.addLayer(L.marker(pos(b.position), { icon: icon('bus', COLORS.btr, undefined, { size: 20 }) }))
+    if (toggles.weapons) for (const w of gmap.stationaryWeapons) group.addLayer(L.marker(pos(w.position), { icon: icon('cross', COLORS.weapon, undefined, dimOpts(w.position, { size: 18 })) }))
+    if (toggles.containers) {
+      for (const c of gmap.lootContainers) {
+        const ci = containerIcon(data.lootContainerTypes[c.container] ?? '')
+        group.addLayer(L.marker(pos(c.position), { icon: icon(ci.kind, ci.color, undefined, dimOpts(c.position, { size: 16, square: true })) }))
+      }
+    }
+    if (toggles.loose) {
+      for (const l of gmap.lootLoose) group.addLayer(L.circleMarker(pos(l.position), dot(COLORS.item, 3, { dim: dim(l.position) })))
+    }
+    if (toggles.keycards) {
+      for (const l of cardPoints) {
+        const here = l.items.filter((id) => isKeycard(data.items[id]))
+        const main = here[0] ? KEYCARDS.find((k) => k.id === here[0]) : undefined
+        group.addLayer(L.marker(pos(l.position), { icon: icon('card', main?.color ?? '#9aa39c', undefined, dimOpts(l.position, { size: 16, square: true })) }))
+      }
+    }
+    if (toggles.ledx) {
+      for (const l of ledxPoints) group.addLayer(L.marker(pos(l.position), { icon: icon('ledx', '#5fd0d0', undefined, dimOpts(l.position, { size: 16, square: true })) }))
+    }
+    if (toggles.bpDocs) {
+      for (const l of bpDocPoints) group.addLayer(L.marker(pos(l.position), { icon: icon('doc', COLORS.season, undefined, dimOpts(l.position, { size: 16, square: true })) }))
+      for (const s of kordExtra) group.addLayer(L.marker(pos(s.position), { icon: icon('doc', COLORS.season, undefined, dimOpts(s.position, { size: 16, square: true })) }))
+    }
+    if (toggles.keySpawns) {
+      for (const l of keySpawnPoints) group.addLayer(L.circleMarker(pos(l.position), dot(COLORS.key, 4, { dim: dim(l.position) })))
+    }
+    // квесты: как на большой карте — доступные + отслеживаемые даже при выключенном слое
+    if (toggles.quests || trackedSet.size) {
+      for (const v of views.values()) {
+        const isTracked = trackedSet.has(v.task.id)
+        if (v.status === 'done' || (v.status !== 'available' && !isTracked)) continue
+        for (const o of v.task.objectives) for (const z of o.zones ?? []) {
+          if (z.map !== gmap.id || objectivesDone[o.id]) continue
+          const d = dim(z.position)
+          const qc = v.task.seasonal ? COLORS.season : COLORS.quest
+          if (z.outline?.length) group.addLayer(L.polygon(z.outline.map(pos), { color: qc, weight: 1, fillOpacity: d ? 0.04 : 0.12, interactive: false }))
+          const fm = L.marker(pos(z.position), { icon: icon('flag', qc, labels ? v.task.name : undefined, { size: 16, dim: d }), zIndexOffset: 500 })
+          fm.on('click', (e) => { L.DomEvent.stopPropagation(e); setPick({ task: v.task.name, trader: v.task.trader, objId: o.id, desc: o.description, approx: !!o.approx }) })
+          group.addLayer(fm)
+        }
+      }
+    }
+    for (const mk of marks[gmap.id] ?? []) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#e06ba0', labels ? mk.name : undefined, { size: 16 }) }))
+    for (const mk of Object.values(squadMarks)) if (mk.map === gmap.normalizedName) group.addLayer(L.marker([mk.z, mk.x], { icon: icon('flag', '#5fd0d0', labels ? `${mk.label} · ${mk.by}` : undefined, { size: 16 }) }))
+  }, [gmap, meta, data, views, gameMode, marks, squadMarks, prefs.labels, objectivesDone, floor, toggles, kordExtra, cardPoints, ledxPoints, bpDocPoints, keySpawnPoints, trackedSet])
 
   // ── живое: я, след, друзья; центрирование и поворот ──
   const hd = playerPos && meta ? mapHeading(meta, playerPos.rotation) : 0
