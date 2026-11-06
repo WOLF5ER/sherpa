@@ -25,7 +25,8 @@ import { SquadPage } from '@/pages/Squad'
 import { RaidsPage } from '@/pages/Raids'
 import { KeysPage } from '@/pages/Keys'
 import { SkillsPage } from '@/pages/Skills'
-import type { PlayerPos, UpdateInfo } from '@/lib/pywebview'
+import type { PlayerPos, UpdateInfo, GameInfo } from '@/lib/pywebview'
+import { locationToMapName } from '@/lib/pywebview'
 import { fetchTarkovTracker, mapProgress } from '@/lib/tarkovtracker'
 import { canPickFolder, folderPermission, savedFolder, watchFolder } from '@/lib/screenshots'
 import { publishSquad, subscribeSquad, ROOM_RE } from '@/lib/squad'
@@ -70,6 +71,8 @@ export function App() {
   useEffect(() => { launcher?.set_screenshot_watch(screenshotsWatch).catch(() => {}) }, [launcher, screenshotsWatch])
   useEffect(() => {
     const on = (e: Event) => useUI.getState().setPlayerPos((e as CustomEvent<PlayerPos>).detail)
+    // карта/стадия из логов игры — лаунчер шлёт во все окна; переключение карты ниже, только в главном
+    const onGame = (e: Event) => useUI.getState().setGameInfo((e as CustomEvent<GameInfo>).detail)
     // мини-карта и окно карты — отдельные окна со своим store: их отметки «пункт выполнен» приходят через localStorage,
     // а выбранная там карта нужна главному окну (история рейдов, сквад)
     const onStorage = (e: StorageEvent) => {
@@ -82,9 +85,21 @@ export function App() {
       }
     }
     window.addEventListener('sherpa:pos', on)
+    window.addEventListener('sherpa:game', onGame)
     window.addEventListener('storage', onStorage)
-    return () => { window.removeEventListener('sherpa:pos', on); window.removeEventListener('storage', onStorage) }
+    return () => { window.removeEventListener('sherpa:pos', on); window.removeEventListener('sherpa:game', onGame); window.removeEventListener('storage', onStorage) }
   }, [isMini])
+
+  // логи игры: рейд начался (loading/raid) — открываем его карту; в меню ничего не трогаем
+  const gameInfo = useUI((s) => s.gameInfo)
+  const autoMapSwitch = useUI((s) => s.autoMapSwitch)
+  useEffect(() => {
+    if (isMini || !autoMapSwitch || !data || !gameInfo || gameInfo.stage === 'menu') return
+    const norm = locationToMapName(gameInfo.location)
+    if (!norm) return
+    const target = Object.values(data.maps).find((m) => m.normalizedName === norm)
+    if (target && useUI.getState().currentMapId !== target.id) useUI.getState().setCurrentMapId(target.id)
+  }, [gameInfo, autoMapSwitch, data, isMini])
 
   // «карта на телефоне»: лаунчер отдаёт телефону текущую карту главного окна
   const liveMapId = useUI((s) => s.currentMapId)
@@ -171,7 +186,11 @@ export function App() {
       // dev-сервер отдаёт index.html на любой путь — подписываемся только на настоящий ответ лаунчера
       if (cancelled || !(r.status === 200 || r.status === 204) || !(r.headers.get('content-type') ?? '').includes('json')) return
       es = new EventSource('/api/pos/stream')
-      es.onmessage = (e) => { try { useUI.getState().setPlayerPos(JSON.parse(e.data)) } catch { /* ignore */ } }
+      es.onmessage = (e) => { try {
+        const d = JSON.parse(e.data) as PlayerPos & { type?: string; stage?: string }
+        if (d.type === 'game') useUI.getState().setGameInfo(d as unknown as GameInfo)
+        else useUI.getState().setPlayerPos(d)
+      } catch { /* ignore */ } }
     }).catch(() => {}) }, 1500)
     return () => { cancelled = true; clearTimeout(timer); es?.close() }
   }, [launcher])

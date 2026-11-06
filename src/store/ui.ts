@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { PlayerPos, UpdateInfo } from '@/lib/pywebview'
+import type { PlayerPos, UpdateInfo, GameInfo } from '@/lib/pywebview'
 import type { SquadMember, SquadMark } from '@/lib/squad'
 import { useRaids } from './raids'
 
@@ -25,6 +25,12 @@ interface UIState {
   setScreenshotsWatch: (v: boolean) => void
   playerPos: PlayerPos | null
   setPlayerPos: (p: PlayerPos | null) => void
+  /** состояние игры из логов (карта и стадия) — приходит от лаунчера или по SSE */
+  gameInfo: GameInfo | null
+  setGameInfo: (g: GameInfo | null) => void
+  /** при старте рейда автоматически открывать его карту */
+  autoMapSwitch: boolean
+  setAutoMapSwitch: (v: boolean) => void
   /** след пути за рейд (сессия) */
   trail: PlayerPos[]
   clearTrail: () => void
@@ -98,6 +104,10 @@ export const useUI = create<UIState>()(
       trail: [],
       // сброс следа заодно закрывает текущий рейд в истории — следующий скриншот начнёт новый
       clearTrail: () => { useRaids.getState().endCurrent(); set({ trail: [], playerPos: null }) },
+      gameInfo: null,
+      setGameInfo: (gameInfo) => set({ gameInfo }),
+      autoMapSwitch: true,
+      setAutoMapSwitch: (autoMapSwitch) => set({ autoMapSwitch }),
       followPlayer: true,
       setFollowPlayer: (followPlayer) => set({ followPlayer }),
       autoFloor: true,

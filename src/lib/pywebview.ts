@@ -78,6 +78,41 @@ export interface StateBackup { savedAt: number; keys: Record<string, string> }
 
 export interface PlayerPos { x: number; y: number; z: number; rotation: number; file: string; ts: number }
 
+/** Состояние игры из логов лаунчера (событие sherpa:game): где игрок и на какой стадии. */
+export interface GameInfo {
+  /** внутреннее имя локации из лога (laboratory_event, bigmap, …); в меню — undefined */
+  location?: string
+  /** как играет: deathmatch (ивент), regular, pve … */
+  gameMode?: string
+  shortId?: string
+  stage: 'menu' | 'loading' | 'raid'
+  ts: number
+}
+
+/** Локация из лога игры → normalizedName карты tarkov.dev (обычно совпадают). */
+export const LOC_TO_MAP: Record<string, string> = {
+  bigmap: 'bigmap',
+  factory4_day: 'factory',
+  factory4_night: 'factory',
+  interchange: 'interchange',
+  laboratory: 'laboratory',
+  lighthouse: 'lighthouse',
+  rezervbase: 'reserve',
+  shoreline: 'shoreline',
+  woods: 'woods',
+  town: 'streets',
+  sandbox: 'groundzero',
+  sandbox_high: 'groundzero',
+  terminal: 'terminal',
+}
+
+/** Локация (с суффиксом ивента или без) → normalizedName карты; null — не знаем такой карты. */
+export function locationToMapName(location?: string): string | null {
+  if (!location) return null
+  const base = location.replace(/_event$/, '')
+  return LOC_TO_MAP[base] ?? base
+}
+
 declare global {
   interface Window { pywebview?: { api?: LauncherApi } }
 }

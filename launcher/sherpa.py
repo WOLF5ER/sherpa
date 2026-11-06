@@ -66,6 +66,8 @@ DEFAULT_CONFIG = {
     # «Ты здесь»: следить за папкой скриншотов игры (в имени файла — координаты). Выключено по умолчанию.
     "screenshots_watch": False,
     "screenshots_path": "",
+    # логи игры (build/Logs) — находится по реестру автоматически; путь задают вручную, только если не нашёлся
+    "tarkov_logs": "",
     # автоочистка: оставлять в папке скриншотов только последние N файлов (0 — не трогать).
     # Нужна, если скриншот повешен «на отпускание W» — файлов будут сотни за рейд.
     "screenshots_keep": 0,
@@ -132,6 +134,7 @@ def squad_mark(room: str, mark: dict, remove: bool):
 
 # последняя позиция и подписчики SSE — общие для HTTP-обработчика и окна
 LAST_POS: dict | None = None
+LAST_GAME: dict | None = None  # последнее событие игры: карта и стадия (меню/загрузка/рейд)
 LAST_MAP: str = ""  # карта, открытая в главном окне (normalizedName) — телефон едет за ней
 DEBUG_API = None  # экземпляр Api для отладочного эндпоинта
 ACCOUNT_API = None  # экземпляр Api — колбэк входа через Discord (/api/auth/callback)
@@ -146,6 +149,17 @@ def publish_pos(pos: dict):
     for q in list(SSE_CLIENTS):
         try:
             q.put_nowait(pos)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def publish_game(g: dict):
+    """Карта/стадия из логов игры — в SSE (страницы без лаунчера отличают по type) и во все окна."""
+    global LAST_GAME
+    LAST_GAME = g
+    for q in list(SSE_CLIENTS):
+        try:
+            q.put_nowait({"type": "game", **g})
         except Exception:  # noqa: BLE001
             pass
 
@@ -281,7 +295,7 @@ class QuietHandler(SimpleHTTPRequestHandler):
             return None
         if self.path == "/api/live":
             # «карта на телефоне»: телефон опрашивает раз в 2 с — позиция и карта хоста (SSE через туннель не стримится)
-            return self._json({"pos": LAST_POS, "map": LAST_MAP, "ts": time.time()})
+            return self._json({"pos": LAST_POS, "map": LAST_MAP, "game": LAST_GAME, "ts": time.time()})
         if self.path.startswith("/api/debug/js") and os.environ.get("SHERPA_DEBUG") and DEBUG_API:
             # только для отладки: выполнить JS в окне лаунчера (SHERPA_DEBUG=1); /api/debug/js/mini?… и /api/debug/js/map?… — в мини-карте и окне карты
             from urllib.parse import unquote
@@ -627,6 +641,10 @@ class Api:
         self._on_top = True
         self._visible = True
         self._hwnd = None
+        # вотчер логов игры: текущий файл, позиция чтения и последнее состояние
+        self._game_file: Path | None = None
+        self._game_pos = 0
+        self._game: dict | None = None
 
     # ── служебное ──
     def _hwnd_get(self):
@@ -781,6 +799,68 @@ class Api:
             except Exception:  # noqa: BLE001
                 pass
             threading.Event().wait(1.0)
+
+    def _poll_game_logs(self):
+        """Читаем application-лог игры: определяем карту и стадию (меню/загрузка/рейд).
+        Только чтение текстовых логов — процесс игры не трогаем."""
+        while True:
+            try:
+                base = Path(self._cfg.get("tarkov_logs") or "") or default_tarkov_logs_path()
+                if base and base.is_dir():
+                    # имя папки log_2026.11.06_11-55-57_… сортируется само; ищем application-лог в свежих сессиях
+                    for session in sorted(base.glob("log_*"), key=lambda p: p.name, reverse=True):
+                        apps = sorted(session.glob("* application_*.log"), key=lambda p: p.name)
+                        if apps:
+                            self._game_tick(apps[-1])
+                            break
+            except Exception:  # noqa: BLE001
+                pass
+            threading.Event().wait(2.0)
+
+    def _game_tick(self, app: Path):
+        """Дочитываем новые строки лога; при смене файла (перезапуск игры, ротация) читаем его с начала."""
+        if app != self._game_file:
+            self._game_file = app
+            self._game_pos = 0
+            self._game = None  # новая сессия — прежнее состояние (например, «в рейде») недействительно
+        try:
+            with open(app, encoding="utf-8", errors="replace") as f:
+                f.seek(self._game_pos)
+                data = f.read()
+                self._game_pos = f.tell()
+        except OSError:
+            return
+        for line in data.splitlines():
+            self._game_line(line)
+
+    def _game_line(self, line: str):
+        if "TRACE-NetworkGameCreate profileStatus" in line:
+            m = _GAME_RE.search(line)
+            if m:
+                self._game_set({"location": m["loc"], "gameMode": m["mode"], "shortId": m["sid"], "stage": "loading"})
+        elif "GameRunned" in line or "GameSpawned" in line:
+            if self._game and self._game.get("stage") != "raid":
+                self._game_set({**self._game, "stage": "raid"})
+        elif "PrepareSelectedProfileLocally" in line or "Matching with group id" in line:
+            # профиль перечитывается при выходе в меню; матчмейкинг — то же, но уже с очередью
+            if self._game is None:
+                self._game_set({"stage": "menu"})
+            elif self._game.get("stage") != "menu":
+                self._game_set({**self._game, "stage": "menu"})
+
+    def _game_set(self, st: dict):
+        self._game = st
+        g = {**st, "ts": int(time.time() * 1000)}
+        publish_game(g)
+        detail = json.dumps(g)
+        for w in [self._window, self._mini, self._mapwin]:
+            if w is None:
+                continue
+            try:
+                w.evaluate_js(f"window.dispatchEvent(new CustomEvent('sherpa:game', {{detail: {detail}}}))")
+            except Exception:  # noqa: BLE001
+                pass
+        print(f"[sherpa] игра: {g.get('location') or '—'} · {g['stage']}")
 
     # ── обновления ──
     def update_info(self):
@@ -1424,6 +1504,37 @@ def parse_screenshot_name(name: str) -> dict | None:
     return {"x": x, "y": y, "z": z, "rotation": yaw, "file": name, "ts": int(time.time() * 1000)}
 
 
+def default_tarkov_logs_path() -> Path | None:
+    """Папка логов игры (<установка>\\build\\Logs) — место установки ищем в реестре (Steam/лаунчер)."""
+    try:
+        import winreg
+    except ImportError:  # не Windows — логов нет
+        return None
+    for view in (winreg.KEY_WOW64_32KEY, winreg.KEY_WOW64_64KEY):
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                                0, winreg.KEY_READ | view) as root:
+                for i in range(winreg.QueryInfoKey(root)[0]):
+                    try:
+                        with winreg.OpenKey(root, winreg.EnumKey(root, i), 0, winreg.KEY_READ | view) as k:
+                            name = winreg.QueryValueEx(k, "DisplayName")[0]
+                            if isinstance(name, str) and name.strip() == "Escape from Tarkov":
+                                loc = winreg.QueryValueEx(k, "InstallLocation")[0]
+                                p = Path(str(loc)) / "build" / "Logs"
+                                if p.is_dir():
+                                    return p
+                    except OSError:
+                        continue
+        except OSError:
+            continue
+    return None
+
+
+# TRACE-NetworkGameCreate profileStatus: '... RaidMode: Online, Ip: ..., Port: ..., Location: laboratory_event, Sid: ..., GameMode: deathmatch, shortId: G3NPF4'
+_GAME_RE = re.compile(r"Location: (?P<loc>[a-z_0-9]+), Sid: .*, GameMode: (?P<mode>[a-z]+), shortId: (?P<sid>\w+)")
+
+
 def install_dotnet_handlers():
     """Исключение .NET в UI-потоке WinForms по умолчанию закрывает приложение (или показывает диалог «Continue/Quit»).
     Ловим и пишем в лог — окно живёт дальше. Исключения в других потоках хотя бы попадут в лог перед смертью.
@@ -1620,6 +1731,9 @@ def main():
     print(f"[sherpa] папка скриншотов: {api._shots_path} ({'есть' if api._shots_path.exists() else 'не найдена — укажи в панели «Ты здесь»'})")
     api._shots_seen = time.time()  # старые скриншоты не считаем
     threading.Thread(target=api._poll_screenshots, daemon=True).start()
+    logs_path = Path(cfg.get("tarkov_logs") or "") or default_tarkov_logs_path()
+    print(f"[sherpa] логи игры: {logs_path or 'не найдены (путь можно задать в config.json: tarkov_logs)'}")
+    threading.Thread(target=api._poll_game_logs, daemon=True).start()
     if FROZEN:
         threading.Thread(target=api._update_loop, daemon=True).start()
     print(f"[sherpa] версия {APP_VERSION}")
