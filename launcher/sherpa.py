@@ -805,7 +805,9 @@ class Api:
         Только чтение текстовых логов — процесс игры не трогаем."""
         while True:
             try:
-                base = Path(self._cfg.get("tarkov_logs") or "") or default_tarkov_logs_path()
+                # Path("") — это Path(".") и он truthy: пустую строку из конфига надо отсечь до Path, иначе
+                # автопоиск по реестру не запускался и вотчер вечно читал текущую папку (фича молча не работала)
+                base = Path(cfg_logs) if (cfg_logs := self._cfg.get("tarkov_logs")) else default_tarkov_logs_path()
                 if base and base.is_dir():
                     # имя папки log_2026.11.06_11-55-57_… сортируется само; ищем application-лог в свежих сессиях
                     for session in sorted(base.glob("log_*"), key=lambda p: p.name, reverse=True):
@@ -1731,7 +1733,8 @@ def main():
     print(f"[sherpa] папка скриншотов: {api._shots_path} ({'есть' if api._shots_path.exists() else 'не найдена — укажи в панели «Ты здесь»'})")
     api._shots_seen = time.time()  # старые скриншоты не считаем
     threading.Thread(target=api._poll_screenshots, daemon=True).start()
-    logs_path = Path(cfg.get("tarkov_logs") or "") or default_tarkov_logs_path()
+    cfg_logs = cfg.get("tarkov_logs") or ""  # пустая строка = не задан: Path("") был бы truthy-точкой
+    logs_path = Path(cfg_logs) if cfg_logs else default_tarkov_logs_path()
     print(f"[sherpa] логи игры: {logs_path or 'не найдены (путь можно задать в config.json: tarkov_logs)'}")
     threading.Thread(target=api._poll_game_logs, daemon=True).start()
     if FROZEN:
