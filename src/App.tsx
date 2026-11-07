@@ -77,11 +77,10 @@ export function App() {
     // а выбранная там карта нужна главному окну (история рейдов, сквад)
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'sherpa:profile') void useProfile.persist.rehydrate()
-      if (e.key === 'sherpa:ui' && !isMini && e.newValue) {
-        try {
-          const st = (JSON.parse(e.newValue).state ?? {}) as { currentMapId?: string | null }
-          if (st.currentMapId && st.currentMapId !== useUI.getState().currentMapId) useUI.getState().setCurrentMapId(st.currentMapId)
-        } catch { /* ignore */ }
+      // выбор карты в окне карты/мини-карте — отдельный ключ (не sherpa:ui: тот пишут все окна, выходила петля)
+      if (e.key === 'sherpa:currentMap' && !isMini) {
+        const id = e.newValue
+        if (id && id !== useUI.getState().currentMapId) useUI.getState().setCurrentMapId(id)
       }
     }
     window.addEventListener('sherpa:pos', on)

@@ -13,7 +13,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string }) {
     console.error('[sherpa] render error', error, info.componentStack)
-    reportError('render', error?.message ?? String(error), `${error?.stack ?? ''}\n${(info.componentStack ?? '').split('\n').slice(0, 6).join('\n')}`)
+    reportError('render', error?.message ?? String(error), `${error?.stack ?? ''}\n${(info.componentStack ?? '').split('\n').slice(0, 25).join('\n')}`)
   }
 
   render() {

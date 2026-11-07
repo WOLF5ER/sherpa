@@ -2,7 +2,17 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { PlayerPos, UpdateInfo, GameInfo } from '@/lib/pywebview'
 import type { SquadMember, SquadMark } from '@/lib/squad'
+import { reportError } from '@/lib/crashlog'
 import { useRaids } from './raids'
+
+/** детектор петли: setCurrentMapId много раз в секунду = карта/сквад/события игры спорят о карте — пишем стек в лог, пока React не упал с #185 */
+let mapSetTimes: number[] = []
+function tripwireMapLoop(value: string | null) {
+  const now = Date.now()
+  mapSetTimes = mapSetTimes.filter((t) => now - t < 1000)
+  mapSetTimes.push(now)
+  if (mapSetTimes.length >= 10) reportError('loop', `setCurrentMapId x${mapSetTimes.length}/сек → ${value}`, new Error().stack)
+}
 
 interface UIState {
   /** открытая карточка предмета */
@@ -81,7 +91,7 @@ export interface MapMark { id: string; x: number; z: number; y?: number; name: s
 
 export const useUI = create<UIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       itemId: null,
       openItem: (itemId) => set({ itemId }),
       closeItem: () => set({ itemId: null }),
@@ -135,7 +145,13 @@ export const useUI = create<UIState>()(
       toggleTracked: (id) => set((s) => ({ trackedTasks: s.trackedTasks.includes(id) ? s.trackedTasks.filter((x) => x !== id) : [...s.trackedTasks, id] })),
       clearTracked: () => set({ trackedTasks: [] }),
       currentMapId: null,
-      setCurrentMapId: (currentMapId) => set({ currentMapId }),
+      // без проверки каждый вызов (даже с тем же значением) дёргал подписчиков и persist-запись в localStorage —
+      // эффекты карты/сквада/событий игры пишут часто, и петля синхронизации роняла страницу (React #185)
+      setCurrentMapId: (currentMapId) => {
+        if (get().currentMapId === currentMapId) return
+        tripwireMapLoop(currentMapId)
+        set({ currentMapId })
+      },
       updateInfo: null,
       setUpdateInfo: (updateInfo) => set({ updateInfo }),
     }),
@@ -152,6 +168,9 @@ export const useUI = create<UIState>()(
         const p = (persisted ?? {}) as Partial<UIState>
         return { ...current, ...p, squad: { ...current.squad, ...(p.squad ?? {}) } }
       },
-      partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, mapStyle: s.mapStyle, marks: s.marks, squad: s.squad, theme: s.theme, currentMapId: s.currentMapId, trackedTasks: s.trackedTasks }) },
+      // currentMapId не персистим: у каждого окна (главное, F7, мини-карта) своя карта, и общая запись в
+      // sherpa:ui устраивала пинг-понг storage-событий между окнами — React падал с #185.
+      // Выбор карты синхронизируется отдельным ключом sherpa:currentMap (см. Maps.tsx и App.tsx)
+      partialize: (s) => ({ overlay: s.overlay, opacity: s.opacity, scavReadyAt: s.scavReadyAt, screenshotsWatch: s.screenshotsWatch, followPlayer: s.followPlayer, autoFloor: s.autoFloor, mapStyle: s.mapStyle, marks: s.marks, squad: s.squad, theme: s.theme, trackedTasks: s.trackedTasks }) },
   ),
 )

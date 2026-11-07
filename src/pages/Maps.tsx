@@ -25,6 +25,7 @@ import { publishSquadMap, publishSquadMark, ROOM_RE } from '@/lib/squad'
 import { floorForPosition, visibleOnFloor } from '@/lib/floors'
 import { ItemCell } from '@/components/ItemCell'
 import { renderWikiPics } from '@/components/WikiPics'
+import { reportError } from '@/lib/crashlog'
 
 const MAP_ORDER = ['customs', 'factory', 'woods', 'shoreline', 'interchange', 'reserve', 'lighthouse', 'streets-of-tarkov', 'ground-zero', 'the-lab', 'the-labyrinth', 'terminal', 'icebreaker', 'night-factory', 'ground-zero-21', 'the-lab-dark']
 
@@ -212,36 +213,54 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
     }
     return mapsWithMeta[0]?.id
   })
+  // диагностика петли карт: каждое место смены mapId помечено, при >8 сменах/сек в лог уходит виновник
+  const mapIdLog = useRef<number[]>([])
+  const setMapIdWhy = (id: string, why: string) => {
+    const now = Date.now()
+    mapIdLog.current = mapIdLog.current.filter((t) => now - t < 1000)
+    mapIdLog.current.push(now)
+    if (mapIdLog.current.length >= 8) reportError('mapid', `setMapId x${mapIdLog.current.length}/сек ${why} → ${id}`, new Error().stack)
+    setMapId(id)
+  }
   useEffect(() => {
-    if (itemSpots?.length && !paramMap) setMapId(itemSpots[0].map.id)
+    if (itemSpots?.length && !paramMap) setMapIdWhy(itemSpots[0].map.id, 'itemSpots')
   }, [itemSpots, paramMap])
   useEffect(() => {
-    if (replay?.mapId && data.maps[replay.mapId] && findMeta(data.maps[replay.mapId].normalizedName)) setMapId(replay.mapId)
+    if (replay?.mapId && data.maps[replay.mapId] && findMeta(data.maps[replay.mapId].normalizedName)) setMapIdWhy(replay.mapId, 'replay')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replay])
   // телефон: едем за картой хоста
   useEffect(() => {
     if (!live?.hostMap) return
     const m = mapsWithMeta.find((x) => x.normalizedName === live.hostMap)
-    if (m && m.id !== mapId) setMapId(m.id)
+    if (m && m.id !== mapId) setMapIdWhy(m.id, 'live-hostMap')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live?.hostMap])
   useEffect(() => {
     const byParam = paramMap && mapsWithMeta.find((m) => m.normalizedName === paramMap)
-    if (byParam && byParam.id !== mapId) setMapId(byParam.id)
+    if (byParam && byParam.id !== mapId) setMapIdWhy(byParam.id, 'paramMap')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramMap])
 
   const gmap = data.maps[mapId]
   const meta = gmap ? findMeta(gmap.normalizedName) : undefined
-  useEffect(() => { setCurrentMapId(mapId ?? null) }, [mapId, setCurrentMapId])
-  // сквад переключил общую карту — идём за ним
+  // своя карта — в отдельный ключ sherpa:currentMap: через persist (sherpa:ui) окна перезаписывали
+  // значение друг друга в петле storage-событий; здесь пишем только при реальной смене
   useEffect(() => {
-    if (squadActive && squad.followMap && currentMapId && currentMapId !== mapId && data.maps[currentMapId]) { setMapId(currentMapId); if (paramMap) clearParams() }
+    setCurrentMapId(mapId ?? null)
+    try { if (localStorage.getItem('sherpa:currentMap') !== (mapId ?? '')) localStorage.setItem('sherpa:currentMap', mapId ?? '') } catch { /* ignore */ }
+  }, [mapId, setCurrentMapId])
+  // сквад переключил общую карту — идём за ним.
+  // fresh из getState(), а не w из рендера: наш же эффект выше только что записал mapId в store,
+  // и сравнение со «старым» w устраивало вечное эхо mapId↔store — React падал с #185
+  useEffect(() => {
+    if (!squadActive || !squad.followMap) return
+    const fresh = useUI.getState().currentMapId
+    if (fresh && fresh !== mapId && data.maps[fresh]) { setMapIdWhy(fresh, 'squad-follow'); if (paramMap) clearParams() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMapId])
   const pickMap = (id: string) => {
-    setMapId(id)
+    setMapIdWhy(id, 'pickMap')
     if (paramMap) clearParams()
     if (squadActive && squad.followMap && data.maps[id]) void publishSquadMap(squad.url, squad.room, squad.name, data.maps[id].normalizedName)
   }
@@ -966,7 +985,7 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
                 {itemSpots && itemSpots.length > 0 ? (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {itemSpots.map((s) => (
-                      <button key={s.map.id} type="button" onClick={() => setMapId(s.map.id)} className={`chip ${s.map.id === mapId ? 'chip-on' : ''}`}>{s.map.name} <span className="num opacity-70">{s.points.length}</span></button>
+                      <button key={s.map.id} type="button" onClick={() => setMapIdWhy(s.map.id, 'item-chip')} className={`chip ${s.map.id === mapId ? 'chip-on' : ''}`}>{s.map.name} <span className="num opacity-70">{s.points.length}</span></button>
                     ))}
                   </div>
                 ) : <div className="text-ink-3 text-[12px]">Точек россыпного лута нет — ищи в контейнерах или у торговцев</div>}

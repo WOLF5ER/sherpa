@@ -15,7 +15,7 @@ export function reportError(kind: string, message: string, stack?: string, where
     sent++
     // через туннель (https) страница гостя — лог ему не нужен, а у хоста /api/log есть только по http
     if (location.protocol === 'https:') return
-    const body = JSON.stringify({ kind, message: String(message).slice(0, 600), stack: String(stack ?? '').slice(0, 1200), where: `${location.hash} ${where ?? ''}`.trim() })
+    const body = JSON.stringify({ kind, message: String(message).slice(0, 600), stack: String(stack ?? '').slice(0, 3000), where: `${location.hash} ${where ?? ''}`.trim() })
     // keepalive — чтобы ошибка перед перезагрузкой страницы всё-таки дошла
     void fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {})
   } catch { /* лог — не повод падать ещё раз */ }

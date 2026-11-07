@@ -61,12 +61,15 @@ export function MiniPage() {
   // карта: своя в настройках мини-карты, иначе — та, что открыта в главном окне / брифинге
   const mapsWithMeta = useMemo(() => Object.values(data.maps).filter((m) => findMeta(m.normalizedName)), [data])
   const readMainUI = (raw: string | null) => { try { return (JSON.parse(raw ?? '{}').state ?? {}) as { currentMapId?: string | null; mapStyle?: MapStyle } } catch { return {} } }
-  const [mainMapId, setMainMapId] = useState<string | null>(() => readMainUI(localStorage.getItem('sherpa:ui')).currentMapId ?? localStorage.getItem('sherpa:raidMap'))
+  const [mainMapId, setMainMapId] = useState<string | null>(() => localStorage.getItem('sherpa:currentMap') || localStorage.getItem('sherpa:raidMap'))
   const [mapStyle, setMapStyle] = useState<MapStyle>(() => readMainUI(localStorage.getItem('sherpa:ui')).mapStyle ?? 'scheme')
   useEffect(() => {
-    // главное окно сменило карту или подложку — подхватываем через событие storage
+    // главное окно сменило карту или подложку — подхватываем через событие storage.
+    // rehydrate здесь нельзя: persist пишет состояние обратно в sherpa:ui со своим currentMapId,
+    // и между окнами разгонялся пинг-понг записей — страница падала с React #185
     const on = (e: StorageEvent) => {
-      if (e.key === 'sherpa:ui') { const u = readMainUI(e.newValue); setMainMapId(u.currentMapId ?? null); setMapStyle(u.mapStyle ?? 'scheme'); void useUI.persist.rehydrate() }
+      if (e.key === 'sherpa:currentMap') setMainMapId(e.newValue)
+      if (e.key === 'sherpa:ui') setMapStyle(readMainUI(e.newValue).mapStyle ?? 'scheme')
       if (e.key === 'sherpa:raidMap') setMainMapId(e.newValue)
       // отметили квест / сменили профиль в главном окне — свой store мини-карты перечитываем из localStorage
       if (e.key === 'sherpa:profile') void useProfile.persist.rehydrate()
