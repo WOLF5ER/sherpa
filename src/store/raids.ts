@@ -54,6 +54,10 @@ interface RaidsState {
   setOutcome: (id: string, outcome: Outcome | null) => void
   setNote: (id: string, note: string) => void
   setMap: (id: string, mapId: string) => void
+  /** рейд начался по логам игры (без скриншотов): текущим, чтобы точки «ты здесь» попадали в него */
+  beginLogRaid: (info: { sid: string; mapId?: string; start: number }) => void
+  /** рейд из логов закрылся: исход и длительность — в текущий (или уже известный) рейд */
+  endLogRaid: (info: { sid: string; mapId?: string; start: number; end: number; outcome: 'died' | 'survived' | null }) => void
   remove: (id: string) => void
   removeMany: (ids: string[]) => void
   /** кто-то хочет знать об изменениях (облачная синхронизация); ставится снаружи */
@@ -160,6 +164,58 @@ export const useRaids = create<RaidsState>()((set, get) => ({
   setOutcome: (id, outcome) => { void patch(id, (r) => { r.outcome = outcome }, get, set) },
   setNote: (id, note) => { void patch(id, (r) => { r.note = note }, get, set) },
   setMap: (id, mapId) => { void patch(id, (r) => { r.mapId = mapId }, get, set) },
+
+  beginLogRaid: (info) => {
+    const s = get()
+    if (!s.loaded) return
+    // уже знаем про этот рейд (скриншоты начали раньше или повтор события) — только уточняем карту
+    const cur = s.current
+    if (cur && Math.abs(cur.start - info.start) < 120_000) {
+      if (info.mapId && !cur.mapId) {
+        const upd = { ...cur, mapId: info.mapId }
+        saveCurrentSoon(upd)
+        const list = s.list.map((x) => (x.id === upd.id ? summary(upd) : x))
+        saveIndex(list)
+        set({ current: upd, list })
+      }
+      return
+    }
+    if (cur) get().endCurrent()
+    const fresh: Raid = { id: `r${info.start.toString(36)}${Math.random().toString(36).slice(2, 5)}`, mapId: info.mapId ?? '', start: info.start, end: info.start, n: 0, dist: 0, outcome: null, note: '', points: [] }
+    saveCurrentSoon(fresh)
+    const list = [summary(fresh), ...s.list]
+    saveIndex(list)
+    set({ current: fresh, list })
+  },
+
+  endLogRaid: (info) => {
+    const s = get()
+    if (!s.loaded) return
+    // рейд из логов должен совпасть с известным: текущим (идёт) или в списке по времени старта
+    const same = (r: { start: number; end: number }) => Math.abs(r.start - info.start) < 120_000
+    if (s.current && same(s.current)) {
+      const cur = { ...s.current, end: info.end || s.current.end, outcome: s.current.outcome ?? info.outcome, u: Date.now() }
+      saveCurrentSoon(cur)
+      const list = s.list.map((x) => (x.id === cur.id ? summary(cur) : x))
+      saveIndex(list)
+      set({ current: cur, list })
+      s.onChanged?.()
+      return
+    }
+    const inList = s.list.find((x) => same(x))
+    if (inList) {
+      if ((info.outcome && !inList.outcome) || (info.end && (!inList.end || info.end > inList.end))) {
+        void patch(inList.id, (r) => { r.end = info.end || r.end; r.outcome = r.outcome ?? info.outcome }, get, set)
+      }
+      return
+    }
+    // рейд целиком из логов (скриншотов не было): заводим запись сами
+    const cur: Raid = { id: `r${info.start.toString(36)}${Math.random().toString(36).slice(2, 5)}`, mapId: info.mapId ?? '', start: info.start, end: info.end || info.start, n: 0, dist: 0, outcome: info.outcome, note: '', points: [], u: Date.now() }
+    const list = [summary(cur), ...s.list]
+    saveIndex(list)
+    set({ list })
+    s.onChanged?.()
+  },
 
   remove: (id) => {
     const s = get()

@@ -37,6 +37,8 @@ export interface LauncherApi {
   /** диалог «Сохранить как» + запись файла; null — отмена */
   save_file?: (name: string, text: string) => Promise<string | null>
   get_state: () => Promise<LauncherState>
+  /** рейды из логов игры за текущую сессию (вкладка «Рейды») */
+  get_game_raids?: () => Promise<GameRaidLog[]>
   /** резервная копия прогресса (localStorage sherpa:*) в AppData — переживает смену порта и обновления */
   state_get?: () => Promise<StateBackup | null>
   state_put?: (text: string) => Promise<boolean>
@@ -87,6 +89,17 @@ export interface GameInfo {
   shortId?: string
   stage: 'menu' | 'loading' | 'raid'
   ts: number
+}
+
+/** рейд, собранный вотчером из логов игры */
+export interface GameRaidLog {
+  location: string
+  mode: string
+  sid: string
+  start: number
+  end: number
+  outcome: 'died' | 'survived'
+  deaths: number
 }
 
 /** Локация из лога игры → normalizedName карты tarkov.dev (обычно совпадают). */

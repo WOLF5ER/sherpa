@@ -25,7 +25,7 @@ import { SquadPage } from '@/pages/Squad'
 import { RaidsPage } from '@/pages/Raids'
 import { KeysPage } from '@/pages/Keys'
 import { SkillsPage } from '@/pages/Skills'
-import type { PlayerPos, UpdateInfo, GameInfo } from '@/lib/pywebview'
+import type { PlayerPos, UpdateInfo, GameInfo, GameRaidLog } from '@/lib/pywebview'
 import { locationToMapName } from '@/lib/pywebview'
 import { fetchTarkovTracker, mapProgress } from '@/lib/tarkovtracker'
 import { canPickFolder, folderPermission, savedFolder, watchFolder } from '@/lib/screenshots'
@@ -99,6 +99,28 @@ export function App() {
     const target = Object.values(data.maps).find((m) => m.normalizedName === norm)
     if (target && useUI.getState().currentMapId !== target.id) useUI.getState().setCurrentMapId(target.id)
   }, [gameInfo, autoMapSwitch, data, isMini])
+
+  // рейды из логов игры: начался — текущим (и сразу карта известна), закрылся — исход (умер/выжил) сам
+  useEffect(() => {
+    if (isMini || !data) return
+    const mapIdOf = (loc?: string) => {
+      const norm = locationToMapName(loc)
+      return norm ? Object.values(data.maps).find((m) => m.normalizedName === norm)?.id : undefined
+    }
+    const onRaid = (e: Event) => {
+      const d = (e as CustomEvent<{ stage: string; raid: GameRaidLog }>).detail
+      if (!d?.raid) return
+      const r = d.raid
+      if (d.stage === 'end') useRaids.getState().endLogRaid({ sid: r.sid, mapId: mapIdOf(r.location), start: r.start, end: r.end, outcome: r.outcome })
+      else useRaids.getState().beginLogRaid({ sid: r.sid, mapId: mapIdOf(r.location), start: r.start })
+    }
+    window.addEventListener('sherpa:raid', onRaid)
+    // история рейдов сессии, накопившаяся до загрузки страницы
+    launcher?.get_game_raids?.().then((list) => {
+      for (const r of list ?? []) useRaids.getState().endLogRaid({ sid: r.sid, mapId: mapIdOf(r.location), start: r.start, end: r.end, outcome: r.outcome })
+    }).catch(() => {})
+    return () => window.removeEventListener('sherpa:raid', onRaid)
+  }, [isMini, data, launcher])
 
   // «карта на телефоне»: лаунчер отдаёт телефону текущую карту главного окна
   const liveMapId = useUI((s) => s.currentMapId)
@@ -188,6 +210,7 @@ export function App() {
       es.onmessage = (e) => { try {
         const d = JSON.parse(e.data) as PlayerPos & { type?: string; stage?: string }
         if (d.type === 'game') useUI.getState().setGameInfo(d as unknown as GameInfo)
+        else if (d.type === 'raid') { /* телефон историю рейдов не показывает — только не считаем это позицией */ }
         else useUI.getState().setPlayerPos(d)
       } catch { /* ignore */ } }
     }).catch(() => {}) }, 1500)

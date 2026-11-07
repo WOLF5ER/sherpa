@@ -645,6 +645,78 @@ class Api:
         self._game_file: Path | None = None
         self._game_pos = 0
         self._game: dict | None = None
+        # output-лог (смерти: DeathScreen_Shown) — свой файл, позиция и время последней штампованной строки
+        self._outfile: Path | None = None
+        self._out_pos = 0
+        self._out_ts = 0
+        # рейды из логов: открытый рейд, закрывающийся (ждём маркер смерти), список завершённых и смерти
+        self._raid_open: dict | None = None
+        self._raid_closing: tuple[dict, int, float] | None = None
+        self._raids: list[dict] = []
+        self._deaths: list[int] = []
+
+    # ── рейды из логов игры ──
+    @staticmethod
+    def _log_ts(line: str) -> int:
+        """Момент события из timestamp строки лога, epoch мс (локальное время)."""
+        try:
+            import datetime
+            dt = datetime.datetime.strptime(line[:23], "%Y-%m-%d %H:%M:%S.%f")
+            return int(dt.timestamp() * 1000)
+        except ValueError:
+            return int(time.time() * 1000)
+
+    def _raid_publish(self, stage: str, raid: dict):
+        detail = json.dumps({"stage": stage, "raid": raid})
+        for w in [self._window, self._mini, self._mapwin]:
+            if w is None:
+                continue
+            try:
+                w.evaluate_js(f"window.dispatchEvent(new CustomEvent('sherpa:raid', {{detail: {detail}}}))")
+            except Exception:  # noqa: BLE001
+                pass
+        for q in list(SSE_CLIENTS):
+            try:
+                q.put_nowait({"type": "raid", "stage": stage, "raid": raid})
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _raid_open_new(self, location: str, mode: str, sid: str, ts: int):
+        self._raid_maybe_finalize()
+        if self._raid_closing:  # прошлый рейд ещё ждёт маркер смерти — закрываем принудительно
+            self._raid_closing = (self._raid_closing[0], self._raid_closing[1], 0)
+            self._raid_maybe_finalize()
+        if self._raid_open:
+            self._raid_close(ts, reason="next")
+        self._raid_open = {"location": location, "mode": mode, "sid": sid, "start": ts, "runned": 0, "deaths": 0, "last_death": 0}
+        # «начат» — пусть вкладка «Рейды» видит рейд сразу, ещё в загрузке
+        self._raid_publish("begin", {**self._raid_open, "end": ts, "outcome": "survived", "deaths": 0})
+
+    def _raid_close(self, ts: int, reason: str = "menu"):
+        """Рейд закрылся, но исход откладываем на ~75 с: экран смерти печатается в лог позже строки меню."""
+        if not self._raid_open:
+            return
+        if not self._raid_open.get("runned"):
+            self._raid_open = None
+            return
+        self._raid_closing = (self._raid_open, ts, time.time() + 75)
+        self._raid_open = None
+
+    def _raid_maybe_finalize(self):
+        pending = self._raid_closing
+        if not pending or time.time() < pending[2]:
+            return
+        self._raid_closing = None
+        r, ts, _ = pending
+        deaths = [t for t in self._deaths if r["start"] <= t <= ts + 120_000]
+        last = max(deaths) if deaths else 0
+        died = bool(last) and last + 180_000 >= ts  # смерть в конце рейда или сразу после выхода в меню
+        rec = {"location": r["location"], "mode": r["mode"], "sid": r["sid"], "start": r["start"], "end": ts,
+               "outcome": "died" if died else "survived", "deaths": len(deaths)}
+        self._raids.insert(0, rec)
+        del self._raids[50:]
+        self._raid_publish("end", rec)
+        print(f"[sherpa] рейд: {r['location']} · {rec['outcome']} · смертей {len(deaths)} ({(ts - r['start']) // 60000} мин)")
 
     # ── служебное ──
     def _hwnd_get(self):
@@ -711,6 +783,11 @@ class Api:
     _update: dict | None = None            # найденная новая версия (см. fetch_latest_release)
     _update_state: dict = {"stage": "idle"}  # idle | checking | downloading | extracting | restarting | error
     _update_checked: float = 0.0
+
+    @timed
+    def get_game_raids(self):
+        """Рейды из логов игры за текущую сессию (вкладка «Рейды» догружает историю при старте)."""
+        return list(self._raids)
 
     @timed
     def get_state(self):
@@ -802,6 +879,7 @@ class Api:
 
     def _poll_game_logs(self):
         """Читаем application-лог игры: определяем карту и стадию (меню/загрузка/рейд).
+        Там же собираем рейды (начало/конец/исход); смерти читаем из output-лога (DeathScreen_Shown).
         Только чтение текстовых логов — процесс игры не трогаем."""
         while True:
             try:
@@ -809,11 +887,15 @@ class Api:
                 # автопоиск по реестру не запускался и вотчер вечно читал текущую папку (фича молча не работала)
                 base = Path(cfg_logs) if (cfg_logs := self._cfg.get("tarkov_logs")) else default_tarkov_logs_path()
                 if base and base.is_dir():
+                    self._raid_maybe_finalize()
                     # имя папки log_2026.11.06_11-55-57_… сортируется само; ищем application-лог в свежих сессиях
                     for session in sorted(base.glob("log_*"), key=lambda p: p.name, reverse=True):
                         apps = sorted(session.glob("* application_*.log"), key=lambda p: p.name)
                         if apps:
                             self._game_tick(apps[-1])
+                            outs = sorted(session.glob("* output_*.log"), key=lambda p: p.name)
+                            if outs:
+                                self._out_tick(outs[-1])
                             break
             except Exception:  # noqa: BLE001
                 pass
@@ -825,6 +907,9 @@ class Api:
             self._game_file = app
             self._game_pos = 0
             self._game = None  # новая сессия — прежнее состояние (например, «в рейде») недействительно
+            self._raid_open = None  # и открытый рейд тоже
+            self._raid_closing = None
+            self._deaths.clear()
         try:
             with open(app, encoding="utf-8", errors="replace") as f:
                 f.seek(self._game_pos)
@@ -835,16 +920,46 @@ class Api:
         for line in data.splitlines():
             self._game_line(line)
 
+    def _out_tick(self, out: Path):
+        """Output-лог: DeathScreen_Shown = смерть игрока. Строки смерти без timestamp — берём
+        время последней штампованной строки; копим отдельно от рейда (тик читает application раньше output)."""
+        if out != self._outfile:
+            self._outfile = out
+            self._out_pos = 0
+        try:
+            with open(out, encoding="utf-8", errors="replace") as f:
+                f.seek(self._out_pos)
+                data = f.read()
+                self._out_pos = f.tell()
+        except OSError:
+            return
+        for line in data.splitlines():
+            if "DeathScreen_Shown" in line:
+                if self._out_ts and (not self._deaths or self._out_ts - self._deaths[-1] > 3000):
+                    self._deaths.append(self._out_ts)  # маркер дублируется двумя строками — дедуп по времени
+            else:
+                try:
+                    import datetime
+                    self._out_ts = int(datetime.datetime.strptime(line[:23], "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1000)
+                except ValueError:
+                    pass
+        del self._deaths[:-20]
+
     def _game_line(self, line: str):
         if "TRACE-NetworkGameCreate profileStatus" in line:
             m = _GAME_RE.search(line)
             if m:
+                ts = self._log_ts(line)
+                self._raid_open_new(m["loc"], m["mode"], m["sid"], ts)
                 self._game_set({"location": m["loc"], "gameMode": m["mode"], "shortId": m["sid"], "stage": "loading"})
         elif "GameRunned" in line or "GameSpawned" in line:
+            if self._raid_open:
+                self._raid_open["runned"] = self._log_ts(line)
             if self._game and self._game.get("stage") != "raid":
                 self._game_set({**self._game, "stage": "raid"})
         elif "PrepareSelectedProfileLocally" in line or "Matching with group id" in line:
             # профиль перечитывается при выходе в меню; матчмейкинг — то же, но уже с очередью
+            self._raid_close(self._log_ts(line))
             if self._game is None:
                 self._game_set({"stage": "menu"})
             elif self._game.get("stage") != "menu":
