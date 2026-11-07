@@ -1506,30 +1506,55 @@ def parse_screenshot_name(name: str) -> dict | None:
     return {"x": x, "y": y, "z": z, "rotation": yaw, "file": name, "ts": int(time.time() * 1000)}
 
 
+def _tarkov_logs_from_bsg_launcher() -> Path | None:
+    """Установка через лаунчер BSG (не Steam): в %APPDATA%\\Battlestate Games\\BsgLauncher\\settings
+    лежит gamesRootDir — корень, куда лаунчер ставит игру (<корень>\\Escape from Tarkov)."""
+    try:
+        import os
+        settings = Path(os.environ["APPDATA"]) / "Battlestate Games" / "BsgLauncher" / "settings"
+        root = json.loads(settings.read_text(encoding="utf-8-sig")).get("gamesRootDir") or ""
+        if root:
+            p = Path(root) / "Escape from Tarkov" / "build" / "Logs"
+            if p.is_dir():
+                return p
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def default_tarkov_logs_path() -> Path | None:
-    """Папка логов игры (<установка>\\build\\Logs) — место установки ищем в реестре (Steam/лаунчер)."""
+    """Папка логов игры (<установка>\\build\\Logs) — место установки ищем в реестре (Steam/лаунчер),
+    затем в настройках лаунчера BSG (gamesRootDir), затем типовые папки."""
     try:
         import winreg
     except ImportError:  # не Windows — логов нет
         return None
-    for view in (winreg.KEY_WOW64_32KEY, winreg.KEY_WOW64_64KEY):
-        try:
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
-                                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-                                0, winreg.KEY_READ | view) as root:
-                for i in range(winreg.QueryInfoKey(root)[0]):
-                    try:
-                        with winreg.OpenKey(root, winreg.EnumKey(root, i), 0, winreg.KEY_READ | view) as k:
-                            name = winreg.QueryValueEx(k, "DisplayName")[0]
-                            if isinstance(name, str) and name.strip() == "Escape from Tarkov":
-                                loc = winreg.QueryValueEx(k, "InstallLocation")[0]
-                                p = Path(str(loc)) / "build" / "Logs"
-                                if p.is_dir():
-                                    return p
-                    except OSError:
-                        continue
-        except OSError:
-            continue
+    for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        for view in (winreg.KEY_WOW64_32KEY, winreg.KEY_WOW64_64KEY):
+            try:
+                with winreg.OpenKey(hive,
+                                    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                                    0, winreg.KEY_READ | view) as root:
+                    for i in range(winreg.QueryInfoKey(root)[0]):
+                        try:
+                            with winreg.OpenKey(root, winreg.EnumKey(root, i), 0, winreg.KEY_READ | view) as k:
+                                name = winreg.QueryValueEx(k, "DisplayName")[0]
+                                if isinstance(name, str) and name.strip() == "Escape from Tarkov":
+                                    loc = winreg.QueryValueEx(k, "InstallLocation")[0]
+                                    p = Path(str(loc)) / "build" / "Logs"
+                                    if p.is_dir():
+                                        return p
+                        except OSError:
+                            continue
+            except OSError:
+                continue
+    p = _tarkov_logs_from_bsg_launcher()
+    if p:
+        return p
+    # типовые диски/папки — последний шанс
+    for cand in (Path(r"C:\Battlestate Games\Escape from Tarkov\build\Logs"), Path(r"D:\Battlestate Games\Escape from Tarkov\build\Logs")):
+        if cand.is_dir():
+            return cand
     return None
 
 
