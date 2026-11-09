@@ -7,3 +7,5 @@ release
 build-pyi
 launcher/bin/
 .running
+Sherpa-*.zip
+build/

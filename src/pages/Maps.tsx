@@ -211,6 +211,10 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
       if (z) return z.map
       if (t?.map && findMeta(data.maps[t.map]?.normalizedName ?? '')) return t.map
     }
+    // карта из store: лаунчер уже определил карту рейда из логов (App.tsx кладёт её в currentMapId),
+    // и открытая позже вкладка карт должна показать её, а не первую в списке
+    const fromStore = useUI.getState().currentMapId
+    if (fromStore && data.maps[fromStore] && findMeta(data.maps[fromStore].normalizedName)) return fromStore
     return mapsWithMeta[0]?.id
   })
   // диагностика петли карт: каждое место смены mapId помечено, при >8 сменах/сек в лог уходит виновник
@@ -257,6 +261,21 @@ export function MapsPage({ standalone = false, live }: { standalone?: boolean; l
     if (!squadActive || !squad.followMap) return
     const fresh = useUI.getState().currentMapId
     if (fresh && fresh !== mapId && data.maps[fresh]) { setMapIdWhy(fresh, 'squad-follow'); if (paramMap) clearParams() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMapId])
+  // карта сменилась вне этой вкладки (логи игры: загрузка в рейд, окно карты, мини-карта) — идём за store.
+  // fresh из getState() — тот же приём, что у сквад-следования: наш эффект выше только что записал
+  // mapId в store, и сравнение с «старым» w устраивало вечное эхо mapId↔store (#185)
+  // первый запуск пропускаем: на монтировании мы сами только что записали mapId в store,
+  // и следование за ним перебило бы карту из URL-параметров
+  const storeFollowFirst = useRef(true)
+  useEffect(() => {
+    if (storeFollowFirst.current) { storeFollowFirst.current = false; return }
+    const fresh = useUI.getState().currentMapId
+    if (fresh && fresh !== mapId && data.maps[fresh] && findMeta(data.maps[fresh].normalizedName)) {
+      setMapIdWhy(fresh, 'store-follow')
+      if (paramMap) clearParams()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMapId])
   const pickMap = (id: string) => {
