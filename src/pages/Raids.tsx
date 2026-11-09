@@ -60,10 +60,11 @@ export function RaidsPage() {
   const now = Date.now()
   const live = current && now - current.end < GAP_MS ? current.id : null
 
-  const singles = useMemo(() => list.filter((r) => r.n < 2 && r.id !== live), [list, live])
+  const singles = useMemo(() => list.filter((r) => r.n < 2 && r.id !== live && !r.outcome), [list, live])
   const shown = useMemo(() => {
     let l = list
-    if (hideSingles) l = l.filter((r) => r.n >= 2 || r.id === live)
+    // «из одного скриншота» прячем, но рейды из логов игры (исход проставлен) — показываем всегда
+    if (hideSingles) l = l.filter((r) => r.n >= 2 || r.id === live || !!r.outcome)
     if (mapFilter) l = l.filter((r) => r.mapId === mapFilter)
     if (outcomeFilter !== 'all') l = l.filter((r) => r.outcome === outcomeFilter)
     return l

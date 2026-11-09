@@ -103,6 +103,8 @@ export function Shell() {
             {!overlay && <Kbd>Ctrl K</Kbd>}
           </button>
           <div className="flex-1" />
+          {/* версия сборки — всегда видна, чтобы понимать, что запущено */}
+          <span className="num text-[11px] text-ink-4 whitespace-nowrap" title="Версия сборки Sherpa">v{__APP_VERSION__}</span>
           <ModeSwitch />
           <UpdateButton />
           <ScavTimer />

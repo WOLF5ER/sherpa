@@ -654,6 +654,8 @@ class Api:
         self._raid_closing: tuple[dict, int, float] | None = None
         self._raids: list[dict] = []
         self._deaths: list[int] = []
+        # имя последней обработанной сессии игры (log_2026.11.08_…) — новые сессии обрабатываем по порядку
+        self._sess_done: str = ""
 
     # ── рейды из логов игры ──
     @staticmethod
@@ -880,7 +882,9 @@ class Api:
     def _poll_game_logs(self):
         """Читаем application-лог игры: определяем карту и стадию (меню/загрузка/рейд).
         Там же собираем рейды (начало/конец/исход); смерти читаем из output-лога (DeathScreen_Shown).
-        Только чтение текстовых логов — процесс игры не трогаем."""
+        При старте проходим сессии за последние 12 ч по порядку — рейды, случившиеся, пока Sherpa не работала,
+        тоже попадут в историю. Только чтение текстовых логов — процесс игры не трогаем."""
+        first = True
         while True:
             try:
                 # Path("") — это Path(".") и он truthy: пустую строку из конфига надо отсечь до Path, иначе
@@ -888,15 +892,24 @@ class Api:
                 base = Path(cfg_logs) if (cfg_logs := self._cfg.get("tarkov_logs")) else default_tarkov_logs_path()
                 if base and base.is_dir():
                     self._raid_maybe_finalize()
-                    # имя папки log_2026.11.06_11-55-57_… сортируется само; ищем application-лог в свежих сессиях
-                    for session in sorted(base.glob("log_*"), key=lambda p: p.name, reverse=True):
+                    sessions = sorted(base.glob("log_*"), key=lambda p: p.name)
+                    if first:
+                        # историю берём не всю: сессии, менявшиеся за последние 12 часов, в хронологическом порядке
+                        cutoff = time.time() - 12 * 3600
+                        todo = [s for s in sessions if s.stat().st_mtime >= cutoff]
+                        first = False
+                    else:
+                        # дальше — только сессии новее обработанной (перезапуск игры создаёт новую папку)
+                        todo = [s for s in sessions if s.name > (self._sess_done or "")]
+                    for session in todo:
                         apps = sorted(session.glob("* application_*.log"), key=lambda p: p.name)
-                        if apps:
-                            self._game_tick(apps[-1])
-                            outs = sorted(session.glob("* output_*.log"), key=lambda p: p.name)
-                            if outs:
-                                self._out_tick(outs[-1])
-                            break
+                        if not apps:
+                            continue
+                        self._game_tick(apps[-1])
+                        outs = sorted(session.glob("* output_*.log"), key=lambda p: p.name)
+                        if outs:
+                            self._out_tick(outs[-1])
+                        self._sess_done = session.name
             except Exception:  # noqa: BLE001
                 pass
             threading.Event().wait(2.0)
@@ -904,6 +917,10 @@ class Api:
     def _game_tick(self, app: Path):
         """Дочитываем новые строки лога; при смене файла (перезапуск игры, ротация) читаем его с начала."""
         if app != self._game_file:
+            # отложенный рейд закрываем сразу, пока не стёрли времена смертей этой сессии
+            if self._raid_closing:
+                self._raid_closing = (self._raid_closing[0], self._raid_closing[1], 0)
+                self._raid_maybe_finalize()
             self._game_file = app
             self._game_pos = 0
             self._game = None  # новая сессия — прежнее состояние (например, «в рейде») недействительно
@@ -950,8 +967,8 @@ class Api:
             m = _GAME_RE.search(line)
             if m:
                 ts = self._log_ts(line)
-                self._raid_open_new(m["loc"], m["mode"], m["sid"], ts)
-                self._game_set({"location": m["loc"], "gameMode": m["mode"], "shortId": m["sid"], "stage": "loading"})
+                self._raid_open_new(m["loc"], m["mode"], m["sid2"], ts)
+                self._game_set({"location": m["loc"], "gameMode": m["mode"], "shortId": m["sid2"], "stage": "loading"})
         elif "GameRunned" in line or "GameSpawned" in line:
             if self._raid_open:
                 self._raid_open["runned"] = self._log_ts(line)
@@ -1673,8 +1690,9 @@ def default_tarkov_logs_path() -> Path | None:
     return None
 
 
-# TRACE-NetworkGameCreate profileStatus: '... RaidMode: Online, Ip: ..., Port: ..., Location: laboratory_event, Sid: ..., GameMode: deathmatch, shortId: G3NPF4'
-_GAME_RE = re.compile(r"Location: (?P<loc>[a-z_0-9]+), Sid: .*, GameMode: (?P<mode>[a-z]+), shortId: (?P<sid>\w+)")
+# TRACE-NetworkGameCreate profileStatus: '... Location: laboratory_event, Sid: ..., GameMode: deathmatch, shortId: G3NPF4'
+# локации бывают и с заглавной (Shoreline, RezervBase) — не только lowercase-ивентовые
+_GAME_RE = re.compile(r"Location: (?P<loc>[A-Za-z_0-9]+), Sid: (?P<sid>[^,']+), GameMode: (?P<mode>[A-Za-z]+), shortId: (?P<sid2>\w+)")
 
 
 def install_dotnet_handlers():
