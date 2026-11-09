@@ -104,25 +104,25 @@ export interface GameRaidLog {
 
 /** Локация из лога игры → normalizedName карты tarkov.dev (обычно совпадают). */
 export const LOC_TO_MAP: Record<string, string> = {
-  bigmap: 'bigmap',
+  bigmap: 'customs',
   factory4_day: 'factory',
   factory4_night: 'factory',
   interchange: 'interchange',
-  laboratory: 'laboratory',
+  laboratory: 'the-lab',
   lighthouse: 'lighthouse',
   rezervbase: 'reserve',
   shoreline: 'shoreline',
   woods: 'woods',
-  town: 'streets',
-  sandbox: 'groundzero',
-  sandbox_high: 'groundzero',
+  town: 'streets-of-tarkov',
+  sandbox: 'ground-zero',
+  sandbox_high: 'ground-zero',
   terminal: 'terminal',
 }
 
 /** Локация (с суффиксом ивента или без) → normalizedName карты; null — не знаем такой карты. */
 export function locationToMapName(location?: string): string | null {
   if (!location) return null
-  const base = location.replace(/_event$/, '')
+  const base = location.replace(/_event$/, '').toLowerCase() // лог бывает с заглавной: Shoreline, RezervBase
   return LOC_TO_MAP[base] ?? base
 }
 
