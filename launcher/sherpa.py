@@ -217,10 +217,21 @@ def version_tuple(v: str) -> tuple[int, ...]:
 
 
 def fetch_latest_release() -> dict | None:
-    """Тег, заметки и zip-архив последнего релиза; None — релизов нет или у него нет архива."""
-    req = urllib.request.Request(UPDATE_API, headers={"User-Agent": TT_UA, "Accept": "application/vnd.github+json"})
-    with urllib.request.urlopen(req, timeout=15) as r:
-        j = json.loads(r.read().decode("utf-8"))
+    """Тег, заметки и zip-архив последнего релиза; None — релизов нет или у него нет архива.
+    Две попытки: api.github.com тоже бывает недоступен, но обычно отвечает на повторе."""
+    last_err: Exception | None = None
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(UPDATE_API, headers={"User-Agent": TT_UA, "Accept": "application/vnd.github+json"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                j = json.loads(r.read().decode("utf-8"))
+            break
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            if attempt == 0:
+                time.sleep(3)
+    else:
+        raise last_err  # type: ignore[misc]
     tag = str(j.get("tag_name") or "").strip().lstrip("vV")
     asset = next((a for a in j.get("assets", []) if str(a.get("name", "")).lower().endswith(".zip")), None)
     if not tag or not asset:
@@ -1061,19 +1072,34 @@ class Api:
             base.mkdir(parents=True, exist_ok=True)
             zip_path = base / f"Sherpa-{upd['version']}.zip"
             self._set_update_state(stage="downloading", done=0, total=upd["size"])
-            req = urllib.request.Request(upd["url"], headers={"User-Agent": TT_UA})
-            with urllib.request.urlopen(req, timeout=60) as r, open(zip_path, "wb") as f:
-                total = int(r.headers.get("Content-Length") or upd["size"] or 0)
-                done, last = 0, 0.0
-                while True:
-                    chunk = r.read(256 * 1024)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    done += len(chunk)
-                    if time.time() - last > 0.3:
-                        self._set_update_state(stage="downloading", done=done, total=total)
-                        last = time.time()
+            # CDN GitHub (objects.githubusercontent.com) нередко отдаёт 504 Gateway Time-out:
+            # одна попытка ломала обновление на весь день — пробуем три раза с паузой
+            last_err: Exception | None = None
+            for attempt in range(1, 4):
+                try:
+                    req = urllib.request.Request(upd["url"], headers={"User-Agent": TT_UA})
+                    with urllib.request.urlopen(req, timeout=60) as r, open(zip_path, "wb") as f:
+                        total = int(r.headers.get("Content-Length") or upd["size"] or 0)
+                        done, last = 0, 0.0
+                        while True:
+                            chunk = r.read(256 * 1024)
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                            done += len(chunk)
+                            if time.time() - last > 0.3:
+                                self._set_update_state(stage="downloading", done=done, total=total)
+                                last = time.time()
+                    last_err = None
+                    break
+                except Exception as e:  # noqa: BLE001
+                    last_err = e
+                    print(f"[sherpa] попытка {attempt}/3 скачать обновление не удалась: {e}")
+                    if attempt < 3:
+                        self._set_update_state(stage="downloading", done=0, total=upd["size"], error=f"попытка {attempt} не удалась ({e}), пробую ещё")
+                        time.sleep(5)
+            if last_err is not None:
+                raise last_err
             self._set_update_state(stage="extracting")
             import zipfile
             new_dir = base / "new"
