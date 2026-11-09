@@ -15,7 +15,7 @@
   "map_height": 680,
   "screenshots_watch": false,
   "screenshots_path": "",
-  "screenshots_keep": 0,
+  "screenshots_keep": 30,
   "lan": false,
   "squad_tunnel": false,
   "opacity": 1.0

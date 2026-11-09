@@ -8,6 +8,8 @@ export interface LauncherState {
   screenshots: boolean
   screenshots_path: string
   screenshots_path_exists?: boolean
+  /** сколько скриншотов оставлять в папке (0 — не чистить) */
+  screenshots_keep?: number
   lan_url: string | null
   tunnel_url?: string | null
   tunnel_state?: string
@@ -21,6 +23,7 @@ export interface LauncherApi {
   set_on_top: (v: boolean) => Promise<boolean>
   set_screenshot_watch: (v: boolean) => Promise<LauncherState>
   set_screenshots_path?: (path: string) => Promise<LauncherState>
+  set_screenshots_keep?: (keep: number) => Promise<LauncherState>
   enable_lan?: (on: boolean) => Promise<LauncherState>
   enable_tunnel?: (on: boolean) => Promise<LauncherState>
   open_minimap?: () => Promise<void>

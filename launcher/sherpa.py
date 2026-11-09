@@ -70,7 +70,7 @@ DEFAULT_CONFIG = {
     "tarkov_logs": "",
     # автоочистка: оставлять в папке скриншотов только последние N файлов (0 — не трогать).
     # Нужна, если скриншот повешен «на отпускание W» — файлов будут сотни за рейд.
-    "screenshots_keep": 0,
+    "screenshots_keep": 30,
     # доступ по локальной сети (телефон, второй монитор-планшет): слушать 0.0.0.0 вместо 127.0.0.1
     "lan": False,
     # сквад: поднять публичный адрес через cloudflared (winget install Cloudflare.cloudflared)
@@ -817,6 +817,7 @@ class Api:
             "on_top": self._on_top, "visible": self._visible,
             "screenshots": self._shots_enabled, "screenshots_path": str(self._shots_path or ""),
             "screenshots_path_exists": bool(self._shots_path and self._shots_path.exists()),
+            "screenshots_keep": int(self._cfg.get("screenshots_keep", 30) or 0),
             "lan_url": self._lan_url,
             "tunnel_url": self._tunnel_url, "tunnel_state": self._tunnel_state,
             "minimap_opacity": float(self._cfg.get("minimap_opacity", 1.0) or 1.0),
@@ -834,6 +835,19 @@ class Api:
         self._shots_enabled = bool(value)
         if self._shots_enabled and not self._shots_path:
             self._shots_path = default_screenshots_path()
+        if self._shots_enabled:
+            self._cleanup_screenshots()  # подрезать то, что накопилось до включения
+        return self.get_state()
+
+    @timed
+    def set_screenshots_keep(self, keep: int = 30):
+        """Скриншотов оставлять в папке (0 — не чистить). Сохраняется в config.json; чистка сразу."""
+        try:
+            keep = max(0, int(keep))
+        except (TypeError, ValueError):
+            keep = 30
+        self._save_cfg(screenshots_keep=keep)
+        self._cleanup_screenshots()
         return self.get_state()
 
     @timed
@@ -848,7 +862,7 @@ class Api:
 
     def _cleanup_screenshots(self):
         """Удаляем старые скриншоты Sherpa-формата, оставляя последние screenshots_keep. Только .png с координатами в имени."""
-        keep = int(self._cfg.get("screenshots_keep", 0) or 0)
+        keep = int(self._cfg.get("screenshots_keep", 30) or 0)
         if keep <= 0 or not self._shots_path:
             return
         try:
@@ -1924,6 +1938,7 @@ def main():
     api._shots_path = Path(cfg["screenshots_path"]) if cfg.get("screenshots_path") else default_screenshots_path()
     print(f"[sherpa] папка скриншотов: {api._shots_path} ({'есть' if api._shots_path.exists() else 'не найдена — укажи в панели «Ты здесь»'})")
     api._shots_seen = time.time()  # старые скриншоты не считаем
+    api._cleanup_screenshots()  # при старте подрезаем накопившееся до screenshots_keep
     threading.Thread(target=api._poll_screenshots, daemon=True).start()
     cfg_logs = cfg.get("tarkov_logs") or ""  # пустая строка = не задан: Path("") был бы truthy-точкой
     logs_path = Path(cfg_logs) if cfg_logs else default_tarkov_logs_path()

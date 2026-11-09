@@ -33,6 +33,7 @@ export function PositionPanel({ cardinalRotation, floorName }: { cardinalRotatio
   const [err, setErr] = useState<string | null>(null)
   const [lstate, setLstate] = useState<LauncherState | null>(null)
   const [pathEdit, setPathEdit] = useState<string | null>(null)
+  const [keepEdit, setKeepEdit] = useState<string | null>(null)
 
   // у лаунчера спрашиваем, за какой папкой он следит и нашлась ли она
   useEffect(() => {
@@ -46,6 +47,12 @@ export function PositionPanel({ cardinalRotation, floorName }: { cardinalRotatio
     if (!launcher?.set_screenshots_path || pathEdit == null) return
     try { setLstate(await launcher.set_screenshots_path(pathEdit.trim())) } catch { /* ignore */ }
     setPathEdit(null)
+  }
+  const saveKeep = async () => {
+    if (!launcher?.set_screenshots_keep || keepEdit == null) return
+    const n = Math.max(0, Math.min(1000, parseInt(keepEdit, 10)))
+    try { setLstate(await launcher.set_screenshots_keep(Number.isFinite(n) ? n : 30)) } catch { /* ignore */ }
+    setKeepEdit(null)
   }
 
   const pick = async () => {
@@ -88,6 +95,19 @@ export function PositionPanel({ cardinalRotation, floorName }: { cardinalRotatio
               <input autoFocus value={pathEdit} onChange={(e) => setPathEdit(e.target.value)} placeholder="Путь к папке Screenshots (пусто — авто)" spellCheck={false} className="input focus:input-focus num h-7 text-[11px] flex-1" />
               <button type="submit" className="chip chip-on">Ок</button>
               <button type="button" onClick={() => setPathEdit(null)} className="chip">Отмена</button>
+            </form>
+          )}
+          {lstate && keepEdit == null && (
+            <button type="button" onClick={() => setKeepEdit(String(lstate.screenshots_keep ?? 30))} title="Сколько последних скриншотов оставлять" className="text-left text-[11px] leading-4 text-ink-4 hover:text-ink-2">
+              автоочистка: {lstate.screenshots_keep ? `храню последние ${lstate.screenshots_keep}` : 'выключена'}
+            </button>
+          )}
+          {keepEdit != null && (
+            <form className="flex gap-1 items-center" onSubmit={(e) => { e.preventDefault(); void saveKeep() }}>
+              <input autoFocus value={keepEdit} onChange={(e) => setKeepEdit(e.target.value.replace(/\D/g, ''))} placeholder="30" inputMode="numeric" spellCheck={false} className="input focus:input-focus num h-7 text-[11px] w-20" />
+              <button type="submit" className="chip chip-on">Ок</button>
+              <button type="button" onClick={() => setKeepEdit(null)} className="chip">Отмена</button>
+              <span className="text-[10px] text-ink-4">0 — не чистить</span>
             </form>
           )}
         </div>
