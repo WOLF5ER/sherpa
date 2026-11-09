@@ -200,6 +200,11 @@ UPDATE_API = os.environ.get("SHERPA_UPDATE_API") or f"https://api.github.com/rep
 UPDATE_PAGE = f"https://github.com/{UPDATE_REPO}/releases/latest"
 UPDATE_CHECK_EVERY = 6 * 3600
 
+# Множества состояний машин (см. MACHINES.md) — единственное место, где эти строки перечислены.
+UPDATE_STAGES = {"idle", "checking", "downloading", "extracting", "restarting", "error"}
+UPDATE_BUSY_STAGES = {"downloading", "extracting", "restarting"}  # установка уже идёт — новую не стартуем
+TUNNEL_STATES = {"off", "downloading", "starting", "up", "missing"}
+
 
 def app_version() -> str:
     """Версия сборки: vite кладёт dist/version.json из package.json."""
@@ -791,10 +796,13 @@ class Api:
     _cfg: dict = {}
     _port: int = 4879
     _tunnel_url: str | None = None
-    _tunnel_state: str = "off"  # off | starting | up | missing
+    # Машина «туннель» (см. MACHINES.md): off → downloading → starting → up; сбой — missing; выключение — off.
+    _tunnel_state: str = "off"  # значение из TUNNEL_STATES
     # обновления
     _update: dict | None = None            # найденная новая версия (см. fetch_latest_release)
-    _update_state: dict = {"stage": "idle"}  # idle | checking | downloading | extracting | restarting | error
+    # Машина «обновление» (см. MACHINES.md): idle →(check) checking → idle|error;
+    # idle →(install) downloading → extracting → restarting; любая активная стадия → error.
+    _update_state: dict = {"stage": "idle"}  # значение из UPDATE_STAGES
     _update_checked: float = 0.0
 
     @timed
@@ -1059,7 +1067,7 @@ class Api:
             return {"ok": False, "error": "обновление ставится только в собранной Sherpa.exe"}
         if not self._update:
             return {"ok": False, "error": "обновления нет"}
-        if self._update_state.get("stage") in ("downloading", "extracting", "restarting"):
+        if self._update_state.get("stage") in UPDATE_BUSY_STAGES:
             return {"ok": True}
         threading.Thread(target=self._install_update, daemon=True).start()
         return {"ok": True}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X, Copy, Wifi, Globe, Loader2 } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useLauncher, type LauncherState } from '@/lib/pywebview'
+import { asTunnelState, tunnelOn } from '@/lib/machines'
 import { Segmented } from './ui'
 
 type Mode = 'lan' | 'tunnel'
@@ -32,11 +33,12 @@ export function PhoneDialog({ onClose }: { onClose: () => void }) {
   }, [onClose])
 
   const lanOn = !!state?.lan_url
-  const tunnelOn = state?.tunnel_state === 'up' && !!state.tunnel_url
-  const tunnelStarting = state?.tunnel_state === 'starting'
-  const base = mode === 'lan' ? state?.lan_url : tunnelOn ? state?.tunnel_url : null
+  // машина «туннель» — lib/machines.ts: url готов только в up; поднимается в starting/downloading
+  const tunnelUp = asTunnelState(state?.tunnel_state) === 'up' && !!state?.tunnel_url
+  const tunnelStarting = tunnelOn(state?.tunnel_state) && !tunnelUp
+  const base = mode === 'lan' ? state?.lan_url : tunnelUp ? state?.tunnel_url : null
   const link = base ? `${base.replace(/\/+$/, '')}/#/live` : ''
-  const on = mode === 'lan' ? lanOn : tunnelOn || tunnelStarting
+  const on = mode === 'lan' ? lanOn : tunnelUp || tunnelStarting
 
   useEffect(() => {
     const c = canvasRef.current
@@ -49,7 +51,7 @@ export function PhoneDialog({ onClose }: { onClose: () => void }) {
     setBusy(true)
     try {
       if (mode === 'lan') setState(await launcher.enable_lan!(!lanOn))
-      else if (launcher.enable_tunnel) setState(await launcher.enable_tunnel(!(tunnelOn || tunnelStarting)))
+      else if (launcher.enable_tunnel) setState(await launcher.enable_tunnel(!(tunnelUp || tunnelStarting)))
     } catch { /* ignore */ } finally { setBusy(false) }
   }
   const copy = async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* ignore */ } }
@@ -95,7 +97,7 @@ export function PhoneDialog({ onClose }: { onClose: () => void }) {
             {mode === 'lan'
               ? (lanOn ? 'Не удалось определить адрес в сети — проверь подключение к Wi-Fi.' : 'Нажми «Включить» — лаунчер откроет доступ по локальной сети и покажет код.')
               : tunnelStarting ? 'Поднимаю туннель Cloudflare… обычно 5–10 секунд.'
-                : state?.tunnel_state === 'missing' ? 'Туннель не запустился — проверь интернет; cloudflared идёт в комплекте или качается сам.'
+                : asTunnelState(state?.tunnel_state) === 'missing' ? 'Туннель не запустился — проверь интернет; cloudflared идёт в комплекте или качается сам.'
                   : 'Нажми «Включить» — лаунчер поднимет публичный адрес через Cloudflare (без аккаунта) и покажет код.'}
           </div>
         )}

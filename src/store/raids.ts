@@ -6,6 +6,14 @@ import type { PlayerPos } from '@/lib/pywebview'
  * История рейдов: след «ты здесь» по скриншотам сохраняется целиком, по рейдам.
  * Живёт в IndexedDB (сотни точек за рейд — в localStorage не влезет): индекс без точек + документ на каждый рейд.
  * Рейд режется сам: новая карта в приложении, пауза дольше GAP_MS или «Сбросить след».
+ *
+ * Машина «текущий рейд» (см. MACHINES.md):
+ *   idle →(скриншот с позицией | beginLogRaid) recording
+ *   recording → recording (новая точка | уточнение карты)
+ *   recording → idle (endCurrent: «Сбросить след» / конец по логам / начало следующего рейда)
+ *   recording → recording (fresh-срез: пауза > GAP_MS | смена карты | t < start — закрывается и начинается новый)
+ * Состояние кодируется парой (current: Raid | null), эвристики резки — в record(); переходы из логов —
+ * beginLogRaid/endLogRaid. Фаза наружу — raidPhase(current).
  */
 
 export interface RaidPoint { x: number; y: number; z: number; r: number; t: number }
@@ -31,6 +39,12 @@ export interface RaidSummary {
 export interface Raid extends RaidSummary { points: RaidPoint[] }
 
 export const OUTCOME_LABEL: Record<Outcome, string> = { survived: 'Выжил', died: 'Погиб', runner: 'Сбежал' }
+
+/** Фаза машины «текущий рейд»: пишем точки или ничего не идёт. */
+export type RaidPhase = 'idle' | 'recording'
+export function raidPhase(current: Raid | null): RaidPhase {
+  return current ? 'recording' : 'idle'
+}
 
 export const INDEX_KEY = 'sherpa:raids:index'
 /** надгробия удалённых рейдов: id → когда удалили (для слияния с облаком) */

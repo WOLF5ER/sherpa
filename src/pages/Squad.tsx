@@ -5,6 +5,7 @@ import { useGame } from '@/store/data'
 import { useUI } from '@/store/ui'
 import { useLauncher, type LauncherState } from '@/lib/pywebview'
 import { makeRoomCode, makeInvite, parseInvite, ROOM_RE } from '@/lib/squad'
+import { SQUAD_PHASE_RU, asTunnelState, squadLinked, tunnelOn, tunnelStatusLabel } from '@/lib/machines'
 import { Eyebrow, Toggle, Empty } from '@/components/ui'
 
 type Mode = 'idle' | 'join'
@@ -16,7 +17,7 @@ export function SquadPage() {
   const squad = useUI((s) => s.squad)
   const setSquad = useUI((s) => s.setSquad)
   const members = useUI((s) => s.squadMembers)
-  const connected = useUI((s) => s.squadConnected)
+  const squadPhase = useUI((s) => s.squadPhase)
   const squadMap = useUI((s) => s.squadMap)
   const marks = useUI((s) => s.squadMarks)
   const [mode, setMode] = useState<Mode>('idle')
@@ -71,7 +72,7 @@ export function SquadPage() {
           <h1 className="display text-[34px] text-ink">Сквад</h1>
           <div className="mt-1 text-[13px] text-ink-3">Позиции друзей, общая карта и метки — через лаунчер одного из вас. Комната живёт, пока хост запущен.</div>
         </div>
-        {inRoom && <span className={`chip ${connected ? 'chip-on' : ''}`}>{connected ? 'на связи' : 'нет связи'}</span>}
+        {inRoom && <span className={`chip ${squadLinked(squadPhase) ? 'chip-on' : ''}`}>{SQUAD_PHASE_RU[squadPhase]}</span>}
       </header>
 
       <div className="grid gap-5 md:grid-cols-[1.2fr_1fr]">
@@ -146,14 +147,10 @@ export function SquadPage() {
               <div className="flex items-start gap-3">
                 <Globe size={16} className="mt-1 text-ink-3 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <Toggle value={state?.tunnel_state === 'up' || state?.tunnel_state === 'starting' || state?.tunnel_state === 'downloading'} onChange={toggleTunnel} label={busy === 'tunnel' ? 'Включаю…' : 'Через интернет (туннель Cloudflare)'} />
-                  <div className="mt-1 text-[12px] num text-ink-2 select-all truncate">
-                    {state?.tunnel_state === 'up' && state.tunnel_url ? state.tunnel_url
-                      : state?.tunnel_state === 'starting' ? <span className="text-ink-3">поднимаю туннель… (5–15 с)</span>
-                      : state?.tunnel_state === 'downloading' ? <span className="text-ink-3">скачиваю cloudflared (~55 МБ, один раз)…</span>
-                      : state?.tunnel_state === 'missing' ? <span className="text-danger">не удалось запустить туннель — проверь интернет или положи cloudflared.exe рядом с Sherpa.exe</span>
-                      : <span className="text-ink-4">публичный адрес появится здесь</span>}
-                  </div>
+                      <Toggle value={tunnelOn(state?.tunnel_state)} onChange={toggleTunnel} label={busy === 'tunnel' ? 'Включаю…' : 'Через интернет (туннель Cloudflare)'} />
+                      <div className={`mt-1 text-[12px] num select-all truncate ${asTunnelState(state?.tunnel_state) === 'up' ? 'text-ink-2' : asTunnelState(state?.tunnel_state) === 'missing' ? 'text-danger' : 'text-ink-3'}`}>
+                        {tunnelStatusLabel(state?.tunnel_state, state?.tunnel_url)}
+                      </div>
                 </div>
               </div>
               <div className="text-[11px] text-ink-4 leading-4">Настройки запоминаются и включатся при следующем запуске. Windows при первом включении может спросить про брандмауэр — разрешить. Туннельный адрес меняется при каждом запуске.</div>

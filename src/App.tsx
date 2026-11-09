@@ -27,6 +27,7 @@ import { KeysPage } from '@/pages/Keys'
 import { SkillsPage } from '@/pages/Skills'
 import type { PlayerPos, UpdateInfo, GameInfo, GameRaidLog } from '@/lib/pywebview'
 import { locationToMapName } from '@/lib/pywebview'
+import { gameInRaid } from '@/lib/machines'
 import { fetchTarkovTracker, mapProgress } from '@/lib/tarkovtracker'
 import { canPickFolder, folderPermission, savedFolder, watchFolder } from '@/lib/screenshots'
 import { publishSquad, subscribeSquad, ROOM_RE } from '@/lib/squad'
@@ -93,7 +94,7 @@ export function App() {
   const gameInfo = useUI((s) => s.gameInfo)
   const autoMapSwitch = useUI((s) => s.autoMapSwitch)
   useEffect(() => {
-    if (isMini || !autoMapSwitch || !data || !gameInfo || gameInfo.stage === 'menu') return
+    if (isMini || !autoMapSwitch || !data || !gameInfo || !gameInRaid(gameInfo)) return
     const norm = locationToMapName(gameInfo.location)
     if (!norm) return
     const target = Object.values(data.maps).find((m) => m.normalizedName === norm)
@@ -178,13 +179,13 @@ export function App() {
   }, [squadActive, squad.followMap, squadMap, data])
 
   useEffect(() => {
-    if (!squadActive) { useUI.getState().setSquadMembers({}); useUI.getState().setSquadConnected(false); useUI.getState().setSquadMarks({}); useUI.getState().setSquadMap(''); return }
+    if (!squadActive) { useUI.getState().setSquadMembers({}); useUI.getState().setSquadPhase('off'); useUI.getState().setSquadMarks({}); useUI.getState().setSquadMap(''); return }
     const stop = subscribeSquad(squad.url, squad.room, (snap) => {
       const ui = useUI.getState()
       ui.setSquadMembers(snap.members)
       ui.setSquadMarks(snap.marks ?? {})
       ui.setSquadMap(snap.map ?? '')
-    }, (ok) => useUI.getState().setSquadConnected(ok))
+    }, (phase) => useUI.getState().setSquadPhase(phase))
     return stop
   }, [squadActive, squad.url, squad.room])
   useEffect(() => {

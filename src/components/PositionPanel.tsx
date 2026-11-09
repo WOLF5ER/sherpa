@@ -5,9 +5,8 @@ import { useData } from '@/store/data'
 import { useLauncher, type LauncherState, locationToMapName } from '@/lib/pywebview'
 import { canPickFolder, pickScreenshotsFolder, savedFolder, folderPermission, forgetFolder } from '@/lib/screenshots'
 import { heading } from '@/lib/floors'
+import { GAME_STAGE_RU, gameInRaid } from '@/lib/machines'
 import { Eyebrow, Toggle } from './ui'
-
-const STAGE_RU: Record<string, string> = { raid: 'в рейде', loading: 'загрузка', menu: 'в меню' }
 
 /** Панель «Ты здесь»: источник позиции (лаунчер / папка в браузере / по сети), след, авто-этаж, компас. */
 export function PositionPanel({ cardinalRotation, floorName }: { cardinalRotation: number; floorName: string | null }) {
@@ -115,11 +114,11 @@ export function PositionPanel({ cardinalRotation, floorName }: { cardinalRotatio
         <div className="mt-2 panel px-2.5 py-2 text-[12px] flex items-center gap-2">
           <MapIcon size={12} className="text-brass-2" />
           <span className="text-ink">{gameMap?.name ?? gameInfo.location ?? '—'}</span>
-          <span className="text-ink-3">{STAGE_RU[gameInfo.stage] ?? gameInfo.stage}</span>
+          <span className="text-ink-3">{GAME_STAGE_RU[gameInfo.stage] ?? gameInfo.stage}</span>
           {gameInfo.gameMode === 'deathmatch' && <span className="ml-auto text-ink-4 text-[11px]">ивент</span>}
         </div>
       )}
-      {gameInfo && gameInfo.stage !== 'menu' && (
+      {gameInRaid(gameInfo) && (
         <div className="mt-1.5">
           <Toggle value={autoMapSwitch} onChange={setAutoMapSwitch} label="Открывать карту рейда самому" />
         </div>

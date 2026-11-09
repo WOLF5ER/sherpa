@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { PlayerPos, UpdateInfo, GameInfo } from '@/lib/pywebview'
 import type { SquadMember, SquadMark } from '@/lib/squad'
+import type { SquadPhase } from '@/lib/machines'
 import { reportError } from '@/lib/crashlog'
 import { useRaids } from './raids'
 
@@ -63,8 +64,9 @@ interface UIState {
   setSquad: (patch: Partial<SquadSettings>) => void
   squadMembers: Record<string, SquadMember>
   setSquadMembers: (m: Record<string, SquadMember>) => void
-  squadConnected: boolean
-  setSquadConnected: (v: boolean) => void
+  /** фаза подключения к комнате сквада (машина — lib/squad.ts subscribeSquad, стадии — lib/machines.ts) */
+  squadPhase: SquadPhase
+  setSquadPhase: (p: SquadPhase) => void
   /** общая карта комнаты (normalizedName) и общие метки */
   squadMap: string
   setSquadMap: (m: string) => void
@@ -133,8 +135,8 @@ export const useUI = create<UIState>()(
       setSquad: (patch) => set((s) => ({ squad: { ...s.squad, ...patch } })),
       squadMembers: {},
       setSquadMembers: (squadMembers) => set({ squadMembers }),
-      squadConnected: false,
-      setSquadConnected: (squadConnected) => set({ squadConnected }),
+      squadPhase: 'off',
+      setSquadPhase: (squadPhase) => set({ squadPhase }),
       squadMap: '',
       setSquadMap: (squadMap) => set({ squadMap }),
       squadMarks: {},

@@ -12,6 +12,7 @@ import { Eyebrow, Progress, Segmented, Stepper } from '@/components/ui'
 import { ProfileSwitcher } from '@/components/ProfileSwitcher'
 import { TarkovTrackerImport } from '@/components/TarkovTrackerImport'
 import { useLauncher } from '@/lib/pywebview'
+import { updateBusy } from '@/lib/machines'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -308,7 +309,7 @@ function UpdatePanel() {
   if (!info?.update) return null
   const u = info.update
   const st = info.state
-  const busy = st.stage === 'downloading' || st.stage === 'extracting' || st.stage === 'restarting'
+  const busy = updateBusy(st.stage)
   const pct = st.stage === 'downloading' && st.total ? (st.done ?? 0) / st.total : null
   const mb = (u.size / 1024 / 1024).toFixed(0)
   const openPage = () => { if (launcher?.open_url) void launcher.open_url(u.page); else window.open(u.page, '_blank') }

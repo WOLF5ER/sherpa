@@ -10,6 +10,7 @@ import { useData } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useUI } from '@/store/ui'
 import { ago } from '@/lib/format'
+import { updateBusy, updateBusyLabel } from '@/lib/machines'
 import { fmtMinutes, scavCooldown } from '@/lib/scav'
 import { Kbd } from './ui'
 import { ItemDrawer } from './ItemDrawer'
@@ -199,13 +200,13 @@ function UpdateButton() {
   const overlay = useUI((s) => s.overlay)
   if (!info?.update) return null
   const st = info.state.stage
-  const busy = st === 'downloading' || st === 'extracting' || st === 'restarting'
+  const busy = updateBusy(st)
   const pct = st === 'downloading' && info.state.total ? Math.round(((info.state.done ?? 0) / info.state.total) * 100) : null
   return (
     <NavLink to="/profile" title={`Доступна Sherpa ${info.update.version} (сейчас ${info.version}). Открыть профиль — там «Что нового» и установка.`}
       className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[4px] border border-brass-3 text-brass-2 bg-brass/10 hover:bg-brass/20 transition-colors text-[12px] font-display uppercase tracking-[.1em] whitespace-nowrap">
       <Download size={14} className={busy ? 'animate-bounce' : ''} />
-      {!overlay && (busy ? (st === 'downloading' ? `Качаю${pct != null ? ` ${pct}%` : '…'}` : st === 'restarting' ? 'Перезапуск…' : 'Распаковка…') : `Обновление ${info.update.version}`)}
+      {!overlay && (updateBusyLabel(st, pct) ?? `Обновление ${info.update.version}`)}
     </NavLink>
   )
 }

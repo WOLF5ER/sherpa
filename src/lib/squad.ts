@@ -1,4 +1,5 @@
 import type { PlayerPos } from './pywebview'
+import type { SquadLinkPhase } from './machines'
 
 /**
  * Сквад: позиции друзей через лаунчер-хост (`/api/squad/<room>`).
@@ -79,7 +80,7 @@ export async function publishSquadMark(url: string, room: string, name: string, 
  * «на связи», но список участников оставался пустым) — если за 5 с после открытия не пришло ни одного снимка,
  * переходим на опрос GET /api/squad/<room> раз в 2 с. Он работает через что угодно.
  */
-export function subscribeSquad(url: string, room: string, onSnap: (s: SquadSnapshot) => void, onState: (ok: boolean) => void): () => void {
+export function subscribeSquad(url: string, room: string, onSnap: (s: SquadSnapshot) => void, onState: (phase: SquadLinkPhase) => void): () => void {
   let es: EventSource | null = null
   let stopped = false
   let delay = 2000
@@ -91,27 +92,27 @@ export function subscribeSquad(url: string, room: string, onSnap: (s: SquadSnaps
     if (stopped) return
     try {
       const r = await fetch(`${squadBase(url)}/api/squad/${room}`, { cache: 'no-store' })
-      if (r.ok) { deliver(await r.json()); onState(true) } else onState(false)
-    } catch { onState(false) }
+      if (r.ok) { deliver(await r.json()); onState('polling') } else onState('offline')
+    } catch { onState('offline') }
     if (!stopped) pollTimer = window.setTimeout(poll, 2000)
   }
 
   const open = () => {
     if (stopped) return
     let gotData = false
+    onState('connecting')
     es = new EventSource(`${squadBase(url)}/api/squad/${room}/stream`)
     const watchdog = window.setTimeout(() => {
       if (gotData || stopped) return
       es?.close(); es = null
       void poll()
     }, 5000)
-    es.onopen = () => { delay = 2000; onState(true) }
+    es.onopen = () => { delay = 2000; onState('streaming') }
     es.onmessage = (e) => { gotData = true; clearTimeout(watchdog); try { deliver(JSON.parse(e.data)) } catch { /* ignore */ } }
     es.onerror = () => {
       clearTimeout(watchdog)
-      onState(false)
-      es?.close()
-      es = null
+      onState('offline')
+      es?.close(); es = null
       if (!stopped) setTimeout(open, delay)
       delay = Math.min(delay * 2, 30_000)
     }
