@@ -938,10 +938,17 @@ class Api:
                         apps = sorted(session.glob("* application_*.log"), key=lambda p: p.name)
                         if not apps:
                             continue
-                        self._game_tick(apps[-1])
+                        if apps[-1] != self._game_file and self._raid_closing:
+                            # Последний рейд прошлой сессии закрываем с её маркерами, до чтения нового output.
+                            self._raid_closing = (self._raid_closing[0], self._raid_closing[1], 0)
+                            self._raid_maybe_finalize()
                         outs = sorted(session.glob("* output_*.log"), key=lambda p: p.name)
                         if outs:
+                            # Маркеры должны быть загружены до закрытия рейдов следующими строками application.
                             self._out_tick(outs[-1])
+                        elif apps[-1] != self._game_file:
+                            self._deaths.clear()  # в новой сессии без output старые смерти недействительны
+                        self._game_tick(apps[-1])
                         self._sess_done = session.name
             except Exception:  # noqa: BLE001
                 pass
@@ -959,7 +966,6 @@ class Api:
             self._game = None  # новая сессия — прежнее состояние (например, «в рейде») недействительно
             self._raid_open = None  # и открытый рейд тоже
             self._raid_closing = None
-            self._deaths.clear()
         try:
             with open(app, encoding="utf-8", errors="replace") as f:
                 f.seek(self._game_pos)
@@ -972,10 +978,11 @@ class Api:
 
     def _out_tick(self, out: Path):
         """Output-лог: DeathScreen_Shown = смерть игрока. Строки смерти без timestamp — берём
-        время последней штампованной строки; копим отдельно от рейда (тик читает application раньше output)."""
+        время последней штампованной строки. Файл читается до application, чтобы не потерять исход рейда."""
         if out != self._outfile:
             self._outfile = out
             self._out_pos = 0
+            self._deaths.clear()  # смена output — граница игровой сессии
         try:
             with open(out, encoding="utf-8", errors="replace") as f:
                 f.seek(self._out_pos)
