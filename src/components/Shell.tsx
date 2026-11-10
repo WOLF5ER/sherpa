@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Coins, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Timer, Sun, Moon, Radar, Users, KeyRound, Footprints, Dumbbell, Download, Smartphone,
+  ListChecks, Coins, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Timer, Sun, Moon, Sparkles, Radar, Users, KeyRound, Footprints, Dumbbell, Download, Smartphone,
 } from 'lucide-react'
 import { PhoneDialog } from './PhoneDialog'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
@@ -230,19 +230,21 @@ function UpdateButton() {
   )
 }
 
-/** Тёмная / светлая тема. */
+/** Тёмная → светлая → «концепт» (стекло/хаки) тема. */
 function ThemeButton() {
   const theme = useUI((s) => s.theme)
   const setTheme = useUI((s) => s.setTheme)
-  const light = theme === 'light'
+  const next = theme === 'dark' ? 'light' : theme === 'light' ? 'concept' : 'dark'
+  const title = theme === 'dark' ? 'Светлая тема' : theme === 'light' ? 'Тема «Концепт» (стекло, хаки)' : 'Тёмная тема'
+  const Icon = theme === 'dark' ? <Sun size={14} /> : theme === 'light' ? <Sparkles size={14} /> : <Moon size={14} />
   return (
     <button
       type="button"
-      onClick={() => setTheme(light ? 'dark' : 'light')}
-      title={light ? 'Тёмная тема' : 'Светлая тема'}
-      className="h-8 w-8 grid place-items-center rounded-[4px] border border-line-2 text-ink-3 hover:text-ink hover:border-ink-4 transition-colors"
+      onClick={() => setTheme(next)}
+      title={title}
+      className={`h-8 w-8 grid place-items-center rounded-[4px] border transition-colors ${theme === 'concept' ? 'border-brass-3 text-brass-2 bg-brass/10' : 'border-line-2 text-ink-3 hover:text-ink hover:border-ink-4'}`}
     >
-      {light ? <Moon size={14} /> : <Sun size={14} />}
+      {Icon}
     </button>
   )
 }

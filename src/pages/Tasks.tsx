@@ -9,7 +9,7 @@ import { search } from '@/lib/search'
 import { rub } from '@/lib/format'
 import { ItemCell } from '@/components/ItemCell'
 import { WikiPics } from '@/components/WikiPics'
-import { Chip, Eyebrow, FirBadge, Segmented, TraderMark, Toggle, Empty } from '@/components/ui'
+import { Chip, Eyebrow, FirBadge, Progress, Segmented, TraderMark, Toggle, Empty } from '@/components/ui'
 import { ROUBLES } from '@/data/types'
 import { EVENT_LABEL, eventActive } from '@/data/eventTasks'
 import { CURRENCY } from '@/lib/needs'
@@ -113,18 +113,27 @@ export function TasksPage() {
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Название квеста" className="input focus:input-focus pl-8 w-64" />
         </label>
-        <div className="flex gap-1">
-          {traders.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              title={t.name}
-              onClick={() => setTrader(trader === t.id ? null : t.id)}
-              className={`rounded-[4px] border transition-all ${trader === t.id ? 'border-brass ring-1 ring-brass/40' : trader ? 'border-transparent opacity-50 hover:opacity-100' : 'border-transparent hover:border-line-2'}`}
-            >
-              <TraderMark id={t.id} size={30} className="border-0" />
-            </button>
-          ))}
+        <div className="flex gap-2">
+          {traders.map((t) => {
+            const avail = all.filter((v) => v.task.trader === t.id && v.status === 'available').length
+            const active = trader === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                title={`${t.name} · доступно ${avail}`}
+                onClick={() => setTrader(active ? null : t.id)}
+                className={`relative rounded-full transition-all ${active ? 'ring-2 ring-brass ring-offset-2 ring-offset-bg' : trader ? 'opacity-45 hover:opacity-100' : 'hover:ring-2 hover:ring-line-2 hover:ring-offset-2 hover:ring-offset-bg'}`}
+              >
+                <img src={t.imageLink} alt={t.name} className="w-10 h-10 rounded-full object-cover border border-line-2" />
+                {avail > 0 && (
+                  <span className={`absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 grid place-items-center rounded-full border text-[10px] num leading-none ${active ? 'bg-brass text-bg border-brass' : 'bg-bg-3 text-ink-2 border-line-2'}`}>
+                    {avail}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
         <select value={map ?? ''} onChange={(e) => setMap(e.target.value || null)} className="input focus:input-focus w-44">
           <option value="">Любая карта</option>
@@ -180,6 +189,16 @@ function TaskRow({ view, focus = false }: { view: TaskView; focus?: boolean }) {
     }
     return [...byType.entries()].map(([label, n]) => (n > 1 ? `${label} ×${n}` : label)).join(' · ')
   }, [t.objectives])
+  // статус-пилюля по отмеченным пунктам: «готов к сдаче» / «в процессе» / ничего
+  const reqObjs = t.objectives.filter((o) => !o.optional)
+  const objsDone = reqObjs.filter((o) => objectivesDone[o.id]).length
+  const pill: { text: string; cls: string } | null = done
+    ? { text: 'Выполнено', cls: 'text-fir border-fir/50 bg-fir/10' }
+    : reqObjs.length > 0 && objsDone === reqObjs.length
+      ? { text: 'Готов к сдаче', cls: 'text-fir border-fir/50 bg-fir/10' }
+      : objsDone > 0
+        ? { text: `В процессе ${objsDone}/${reqObjs.length}`, cls: 'text-brass-2 border-brass-3 bg-brass/10' }
+        : null
   const missingPrereqs = useMemo(() => prerequisites(data, t.id).filter((id) => views.get(id)?.status !== 'done'), [data, t.id, views])
   const dependentDone = useMemo(() => done ? dependents(data, t.id).filter((id) => views.get(id)?.status === 'done') : [], [data, t.id, views, done])
 
@@ -237,6 +256,9 @@ function TaskRow({ view, focus = false }: { view: TaskView; focus?: boolean }) {
               <span className="inline-flex items-center gap-1 truncate" title="Выдаётся по ходу сюжетной главы; главы приложение не отслеживает — отметь выполненным вручную, когда получишь"><Lock size={11} />{view.storyGate}</span>
             )}
           </div>
+          {!done && reqObjs.length > 0 && objsDone > 0 && (
+            <Progress value={objsDone / reqObjs.length} className="mt-1.5 max-w-[240px]" />
+          )}
         </button>
         <div className="hidden sm:flex items-center gap-1">
           {itemObjectives.slice(0, 5).map((o) => {
@@ -245,6 +267,11 @@ function TaskRow({ view, focus = false }: { view: TaskView; focus?: boolean }) {
           })}
         </div>
         {money > 0 && <span className="num text-[12px] text-ink-3 w-24 text-right hidden md:block">{rub(money)}</span>}
+        {pill && (
+          <span className={`shrink-0 display text-[10px] uppercase tracking-[.08em] rounded-[3px] border px-1.5 py-[2px] ${pill.cls}`}>
+            {pill.text}
+          </span>
+        )}
         <button type="button" onClick={() => setOpen(!open)} className="p-1 text-ink-3 hover:text-ink" aria-label="Подробнее">
           <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>

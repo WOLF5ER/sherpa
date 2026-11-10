@@ -92,6 +92,52 @@
 [data-theme="light"] .cell-count { text-shadow: none; background: rgba(246,243,236,.85); padding: 0 3px; border-radius: 2px; }
 /* карта остаётся тёмной — подложки и подписи нарисованы под тёмный фон */
 
+/* ── Тема «Концепт»: тёплый хаки, стеклянные панели на подложке ─────── */
+[data-theme="concept"] {
+  color-scheme: dark;
+  --color-bg: rgba(16,17,12,.88);
+  --color-bg-1: rgba(37,39,29,.74);
+  --color-bg-2: rgba(51,53,39,.62);
+  --color-bg-3: rgba(70,72,52,.55);
+  --color-line: rgba(122,120,90,.28);
+  --color-line-2: rgba(150,148,112,.38);
+
+  --color-ink: #eae6d4;
+  --color-ink-2: #bab69f;
+  --color-ink-3: #918e77;
+  --color-ink-4: #686654;
+
+  --color-brass: #dcae52;
+  --color-brass-2: #f2cd7e;
+  --color-brass-3: #a8842f;
+
+  --radius-sm: 5px;
+  --radius-md: 9px;
+  --shadow-pop: 0 30px 80px rgba(0,0,0,.55);
+}
+/* подложка: один неподвижный слой — дешёвое «стекло» без backdrop-filter на панелях */
+[data-theme="concept"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url('../assets/backdrop.jpg') center / cover no-repeat;
+}
+[data-theme="concept"] body { background: transparent; }
+/* панели и карточки на подложке: лёгкий блюр для глубины (один слой на панель, их немного на экране) */
+[data-theme="concept"] .panel,
+[data-theme="concept"] nav,
+[data-theme="concept"] header {
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+}
+[data-theme="concept"] .stash-grid {
+  background-image:
+    linear-gradient(rgba(122,120,90,.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(122,120,90,.14) 1px, transparent 1px);
+  background-color: transparent;
+}
+
 /* ── База ───────────────────────────────────────────────────────────── */
 :root {
   color-scheme: dark;

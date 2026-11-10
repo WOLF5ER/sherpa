@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, KeyRound, Skull, DoorOpen, TriangleAlert, Check } from 'lucide-react'
+import { MapPin, KeyRound, Skull, DoorOpen, TriangleAlert, Check, Clock, Users, Shield, Anchor, Trees, ShoppingBag, Landmark, Lighthouse, Building2, Radiation, FlaskConical, Grid3X3, TramFront, Ship, MoonStar, PackageCheck, Factory, Map as MapIcon } from 'lucide-react'
 import { useGame } from '@/store/data'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
@@ -11,9 +11,29 @@ import { extractsOf, FACTION_RU } from '@/lib/extracts'
 import type { Objective, GameMap, Task } from '@/data/types'
 import { ItemCell } from '@/components/ItemCell'
 import { useFreshPrices } from '@/lib/useFreshPrices'
-import { Chip, Eyebrow, FirBadge, TraderMark, Toggle } from '@/components/ui'
+import { Eyebrow, FirBadge, TraderMark, Toggle } from '@/components/ui'
 
 const MAP_ORDER = ['customs', 'factory', 'woods', 'shoreline', 'interchange', 'reserve', 'lighthouse', 'streets-of-tarkov', 'ground-zero', 'the-lab', 'the-labyrinth', 'terminal', 'icebreaker', 'night-factory', 'ground-zero-21', 'the-lab-dark']
+
+// иконка-тайл для каждой карты в сетке брифинга
+const MAP_ICONS: Record<string, typeof Anchor> = {
+  customs: PackageCheck,
+  factory: Factory,
+  'night-factory': MoonStar,
+  woods: Trees,
+  shoreline: Anchor,
+  interchange: ShoppingBag,
+  reserve: Landmark,
+  lighthouse: Lighthouse,
+  'streets-of-tarkov': Building2,
+  'ground-zero': Radiation,
+  'ground-zero-21': Radiation,
+  'the-lab': FlaskConical,
+  'the-lab-dark': FlaskConical,
+  'the-labyrinth': Grid3X3,
+  terminal: TramFront,
+  icebreaker: Ship,
+}
 
 function taskTouchesMap(t: Task, mapId: string): boolean {
   return t.map === mapId || t.objectives.some((o) => o.maps.includes(mapId) || o.zones?.some((z) => z.map === mapId))
@@ -140,19 +160,35 @@ export function RaidPage() {
         <Toggle value={includeLocked} onChange={setIncludeLocked} label="Показывать квесты впереди" />
       </header>
 
-      <div className="flex flex-wrap gap-1">
-        {maps.map((m) => <Chip key={m.id} on={m.id === gmap.id} onClick={() => pick(m.id)}>{m.name}</Chip>)}
+      <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+        {maps.map((m) => {
+          const Icon = MAP_ICONS[m.normalizedName] ?? MapIcon
+          const active = m.id === gmap.id
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => pick(m.id)}
+              className={`panel flex flex-col items-center gap-1.5 py-3 transition-all
+                ${active ? 'border-brass-3 bg-brass/10 shadow-[0_0_18px_rgba(212,162,71,.15)]' : 'hover:border-line-2 hover:bg-bg-2'}`}
+            >
+              <Icon size={22} strokeWidth={1.8} className={active ? 'text-brass-2' : 'text-ink-3'} />
+              <span className={`display text-[11px] uppercase tracking-[.06em] text-center leading-tight ${active ? 'text-brass-2' : 'text-ink-2'}`}>{m.name}</span>
+            </button>
+          )
+        })}
       </div>
 
-      <section className="panel p-4 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-        <div className="display text-[26px] text-ink">{gmap.name}</div>
-        <div className="num text-[13px] text-ink-2">{gmap.raidDuration} мин · {gmap.players} игроков · {faction} · {gameMode === 'pve' ? 'PvE' : 'PvP'}</div>
-        {gmap.bosses.length > 0 && (
-          <div className="flex items-center gap-2 text-[13px] text-ink-2 flex-wrap">
-            <Skull size={14} className="text-boss" />
-            {gmap.bosses.map((b, i) => <span key={i}>{b.name} <span className="num text-ink-3">{Math.round(b.spawnChance * 100)}%</span></span>)}
-          </div>
-        )}
+      <section className="panel p-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div className="display text-[26px] text-ink mr-2">{gmap.name}</div>
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2"><Clock size={14} className="text-ink-3" /><span className="num">{gmap.raidDuration} мин</span></span>
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2"><Users size={14} className="text-ink-3" /><span className="num">{gmap.players}</span></span>
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2"><Shield size={14} className="text-ink-3" />{faction} · {gameMode === 'pve' ? 'PvE' : 'PvP'}</span>
+        {gmap.bosses.map((b, i) => (
+          <span key={i} className="inline-flex items-center gap-1.5 text-[13px] text-ink-2" title={`Шанс спавна ${Math.round(b.spawnChance * 100)}%`}>
+            <Skull size={14} className="text-boss" />{b.name} <span className="num text-boss">{Math.round(b.spawnChance * 100)}%</span>
+          </span>
+        ))}
         <Link to={`/maps?map=${gmap.normalizedName}`} className="ml-auto chip hover:text-ink hover:border-ink-4"><MapPin size={12} /> Открыть карту</Link>
       </section>
 

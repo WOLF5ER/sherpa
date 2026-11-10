@@ -72,8 +72,8 @@ interface UIState {
   setSquadMap: (m: string) => void
   squadMarks: Record<string, SquadMark>
   setSquadMarks: (m: Record<string, SquadMark>) => void
-  theme: 'dark' | 'light'
-  setTheme: (t: 'dark' | 'light') => void
+  theme: 'dark' | 'light' | 'concept'
+  setTheme: (t: 'dark' | 'light' | 'concept') => void
   /** отслеживаемые квесты: их метки подсвечены на карте, остальные приглушены */
   trackedTasks: string[]
   toggleTracked: (id: string) => void
