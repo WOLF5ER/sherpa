@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Backpack, Coins, FlaskConical, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Target, Timer, Wrench, Sun, Moon, Radar, Users, KeyRound, Footprints, Dumbbell, Download, Smartphone,
+  ListChecks, Coins, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Timer, Sun, Moon, Radar, Users, KeyRound, Footprints, Dumbbell, Download, Smartphone,
 } from 'lucide-react'
 import { PhoneDialog } from './PhoneDialog'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
@@ -32,23 +32,14 @@ const NAV: { group: string; items: { to: string; label: string; icon: typeof Cro
   {
     group: 'База',
     items: [
-      { to: '/needs', label: 'Предметы', icon: Backpack },
       { to: '/hideout', label: 'Схрон', icon: Warehouse },
       { to: '/keys', label: 'Ключи', icon: KeyRound },
-    ],
-  },
-  {
-    group: 'Торговля',
-    items: [
       { to: '/market', label: 'Барахолка', icon: Coins },
-      { to: '/crafts', label: 'Крафты', icon: FlaskConical },
     ],
   },
   {
     group: 'Справка',
     items: [
-      { to: '/ammo', label: 'Патроны', icon: Target },
-      { to: '/builder', label: 'Сборка', icon: Wrench },
       { to: '/skills', label: 'Навыки', icon: Dumbbell },
       { to: '/season', label: 'Сезон', icon: Medal },
       { to: '/profile', label: 'Профиль', icon: UserRound },

@@ -8,16 +8,12 @@ import { useLauncher } from '@/lib/pywebview'
 import { Shell } from '@/components/Shell'
 import { Boot } from '@/components/Boot'
 import { TasksPage } from '@/pages/Tasks'
-import { NeedsPage } from '@/pages/Needs'
 import { MarketPage } from '@/pages/Market'
-import { CraftsPage } from '@/pages/Crafts'
 import { MapsPage } from '@/pages/Maps'
 import { ProfilePage } from '@/pages/Profile'
 import { SeasonPage } from '@/pages/Season'
 import { RaidPage } from '@/pages/Raid'
 import { HideoutPage } from '@/pages/Hideout'
-import { AmmoPage } from '@/pages/Ammo'
-import { BuilderPage } from '@/pages/Builder'
 import { MiniPage } from '@/pages/Mini'
 import { MapWindowPage } from '@/pages/MapWindow'
 import { LivePage } from '@/pages/Live'
@@ -249,11 +245,7 @@ export function App() {
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/raid" element={<RaidPage />} />
         <Route path="/hideout" element={<HideoutPage />} />
-        <Route path="/ammo" element={<AmmoPage />} />
-        <Route path="/builder" element={<BuilderPage />} />
-        <Route path="/needs" element={<NeedsPage />} />
         <Route path="/market" element={<MarketPage />} />
-        <Route path="/crafts" element={<CraftsPage />} />
         <Route path="/maps" element={<MapsPage />} />
         <Route path="/season" element={<SeasonPage />} />
         <Route path="/squad" element={<SquadPage />} />
