@@ -212,7 +212,7 @@ export const useRaids = create<RaidsState>()((set, get) => ({
       saveCurrentSoon(cur)
       const list = s.list.map((x) => (x.id === cur.id ? summary(cur) : x))
       saveIndex(list)
-      set({ current: cur, list })
+      set({ current: null, list })
       s.onChanged?.()
       return
     }

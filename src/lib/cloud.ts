@@ -35,6 +35,54 @@ function localAt(): number {
   try { return Number(localStorage.getItem(AT_KEY)) || 0 } catch { return 0 }
 }
 
+/** В облако уходит прогресс, но не учётные данные сторонних сервисов. Локальный state.json не затрагивается. */
+function cloudSnapshot(snap: StateBackup): StateBackup {
+  const keys = { ...snap.keys }
+  const raw = keys['sherpa:profile']
+  if (!raw) return { ...snap, keys }
+  const withoutToken = (value: unknown): unknown => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+    const clean = { ...(value as Record<string, unknown>) }
+    delete clean.ttToken
+    return clean
+  }
+  try {
+    const persisted = JSON.parse(raw) as Record<string, unknown>
+    const state = withoutToken(persisted.state) as Record<string, unknown>
+    if (state.profiles && typeof state.profiles === 'object' && !Array.isArray(state.profiles)) {
+      state.profiles = Object.fromEntries(Object.entries(state.profiles).map(([id, profile]) => [id, withoutToken(profile)]))
+    }
+    keys['sherpa:profile'] = JSON.stringify({ ...persisted, state })
+  } catch {
+    // Повреждённый профиль нельзя безопасно очистить — не отправляем его вовсе.
+    delete keys['sherpa:profile']
+  }
+  return { ...snap, keys }
+}
+
+/** Облако не хранит ttToken: применяя его снимок, оставляем авторизацию, уже настроенную на этом устройстве. */
+type SyncProfile = { ttToken?: string; profiles?: Record<string, SyncProfile>; [key: string]: unknown }
+
+function withLocalTokens(remote: StateBackup): StateBackup {
+  try {
+    const localRaw = localStorage.getItem('sherpa:profile')
+    const remoteRaw = remote.keys['sherpa:profile']
+    if (!localRaw || !remoteRaw) return remote
+    const local = JSON.parse(localRaw) as { state?: SyncProfile }
+    const persisted = JSON.parse(remoteRaw) as { state?: SyncProfile }
+    if (!local.state || !persisted.state) return remote
+    const state = { ...persisted.state }
+    if (local.state.ttToken) state.ttToken = local.state.ttToken
+    const profiles = { ...(state.profiles ?? {}) }
+    for (const [id, profile] of Object.entries(profiles)) {
+      const token = local.state.profiles?.[id]?.ttToken
+      if (token) profiles[id] = { ...profile, ttToken: token }
+    }
+    state.profiles = profiles
+    return { ...remote, keys: { ...remote.keys, 'sherpa:profile': JSON.stringify({ ...persisted, state }) } }
+  } catch { return remote }
+}
+
 export const useCloud = create<CloudState>()((set, get) => ({
   available: false, info: null, busy: false, syncedAt: 0, note: '',
   refresh: async () => {
@@ -77,16 +125,17 @@ export const useCloud = create<CloudState>()((set, get) => ({
       const mine = localAt()
       if (remote && remote.keys && typeof remote.savedAt === 'number' && remote.savedAt > mine + 1000) {
         // в облаке новее — применяем и перезагружаем страницу
-        if (applyFn(remote)) {
+        if (applyFn(withLocalTokens(remote))) {
           console.info('[sherpa] прогресс подтянут из облака', new Date(remote.savedAt).toLocaleString('ru-RU'))
           location.reload()
           return
         }
       }
       if (!remote || remote.savedAt < mine) {
-        const snap = snapshotFn()
+        const local = snapshotFn()
+        local.savedAt = mine || local.savedAt
+        const snap = cloudSnapshot(local)
         if (meaningful(snap)) {
-          snap.savedAt = mine || snap.savedAt
           const r = await api.cloud_put(JSON.stringify(snap))
           if (!r.ok && r.error) { set({ note: r.error }); await get().refresh(); return }
         }
@@ -107,10 +156,11 @@ export const useCloud = create<CloudState>()((set, get) => ({
 export async function cloudPush(snap: StateBackup) {
   if (!api?.cloud_put) return
   const s = useCloud.getState()
-  if (!s.info?.user || !meaningful(snap)) return
+  const outgoing = cloudSnapshot(snap)
+  if (!s.info?.user || !meaningful(outgoing)) return
   if (s.busy) { pendingPush = snap; return }
   try {
-    const r = await api.cloud_put(JSON.stringify(snap))
+    const r = await api.cloud_put(JSON.stringify(outgoing))
     if (r.ok) useCloud.setState({ syncedAt: Date.now(), note: '' })
     else if (r.stale) void s.sync() // в облаке новее — подтянем
     else if (r.error) useCloud.setState({ note: r.error })
