@@ -223,9 +223,9 @@ export function MarketPage() {
                   <td className="py-1.5 px-2 text-right"><Delta value={r.item.changeLast48hPercent} /></td>
                   <td className="py-1.5 px-2 text-right">
                     {r.trader && (
-                      <span className="inline-flex items-center gap-1.5 justify-end">
+                      <span className="inline-flex items-center gap-1.5 justify-end" title={r.best?.source === 'trader' ? `${data.traders[r.trader.trader!]?.name ?? 'Торговец'} даёт лучшую цену — она в колонке «На руки»` : undefined}>
                         <TraderMark id={r.trader.trader!} size={16} />
-                        <Price value={r.trader.net} dim={r.best?.source !== 'trader'} />
+                        {r.best?.source !== 'trader' && <Price value={r.trader.net} dim />}
                       </span>
                     )}
                   </td>

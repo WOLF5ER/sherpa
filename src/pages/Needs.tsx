@@ -11,6 +11,7 @@ import { ROUBLES, DOLLARS, EUROS } from '@/data/types'
 import { ItemCell } from '@/components/ItemCell'
 import { useFreshPrices } from '@/lib/useFreshPrices'
 import { Chip, Empty, FirBadge, Progress, Segmented, Stepper, Toggle, TraderMark } from '@/components/ui'
+import { toast } from '@/store/toast'
 
 type Src = 'all' | 'tasks' | 'hideout'
 
@@ -75,6 +76,12 @@ export function NeedsPage() {
               <span key={m.item.id}> · {rub(m.total).replace(' ₽', '')} {CUR_SIGN[m.item.id] ?? m.item.shortName}</span>
             ))}
           </div>
+          {totals.total > 0 && (
+            <div className="mt-2 flex items-center gap-2 max-w-[420px]">
+              <Progress value={totals.got / totals.total} thick className="flex-1" />
+              <span className="num text-[11px] text-ink-3 w-9 text-right">{Math.round((totals.got / totals.total) * 100)}%</span>
+            </div>
+          )}
         </div>
         <Segmented value={src} onChange={setSrc} options={[{ value: 'all', label: 'Всё' }, { value: 'tasks', label: 'Квесты' }, { value: 'hideout', label: 'Схрон' }]} />
       </header>
@@ -130,11 +137,15 @@ function NeedRow({ need }: { need: Need }) {
             {any > 0 && <span className="num">любые <span className="text-ink-2">{any}</span></span>}
             {need.questFir + need.questAny > 0 && <span className="num">квесты {need.questFir + need.questAny}</span>}
             {need.hideoutFir + need.hideoutAny > 0 && <span className="num">схрон {need.hideoutFir + need.hideoutAny}</span>}
+            {!done && need.have > 0 && <span className="num text-brass-2">осталось {need.total - Math.min(need.have, need.total)}</span>}
           </div>
-          <Progress value={needProgress(need)} className="mt-1.5 max-w-[260px]" />
+          <div className="mt-1.5 flex items-center gap-2">
+            <Progress value={needProgress(need)} thick className="flex-1" />
+            <span className={`num text-[11px] w-9 text-right ${done ? 'text-fir' : 'text-ink-3'}`}>{Math.round(needProgress(need) * 100)}%</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Stepper value={need.have} onChange={(v) => setHave(it.id, v)} />
+          <Stepper value={need.have} onChange={(v) => { setHave(it.id, v); if (v >= need.total && need.have < need.total) toast(`Собрано: ${it.name}`) }} />
           <span className="num text-ink-3 text-[13px] w-10">/ {need.total}</span>
         </div>
         <button type="button" onClick={() => setOpen(!open)} className="p-1 text-ink-3 hover:text-ink" aria-label="Источники">

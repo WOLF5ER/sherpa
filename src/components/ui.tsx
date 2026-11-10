@@ -112,11 +112,11 @@ export function FirBadge({ className = '' }: { className?: string }) {
   )
 }
 
-export function Progress({ value, className = '' }: { value: number; className?: string }) {
+export function Progress({ value, className = '', thick = false }: { value: number; className?: string; thick?: boolean }) {
   const v = Math.max(0, Math.min(1, value))
   return (
-    <div className={`h-[3px] w-full rounded-full bg-bg-3 overflow-hidden ${className}`}>
-      <div className={`h-full rounded-full ${v >= 1 ? 'bg-fir' : 'bg-brass'}`} style={{ width: `${v * 100}%` }} />
+    <div className={`${thick ? 'h-[6px]' : 'h-[3px]'} w-full rounded-full bg-bg-3 overflow-hidden ${className}`}>
+      <div className={`h-full rounded-full transition-[width] ${v >= 1 ? 'bg-fir' : 'bg-brass'}`} style={{ width: `${v * 100}%` }} />
     </div>
   )
 }

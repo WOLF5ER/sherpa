@@ -16,24 +16,46 @@ import { Kbd } from './ui'
 import { ItemDrawer } from './ItemDrawer'
 import { SearchPalette } from './SearchPalette'
 import { Lightbox } from './WikiPics'
+import { Toaster } from './Toaster'
 
-const NAV = [
-  { to: '/raid', label: 'Брифинг', icon: Crosshair },
-  { to: '/tasks', label: 'Задачи', icon: ListChecks },
-  { to: '/maps', label: 'Карты', icon: MapIcon },
-  { to: '/raids', label: 'Рейды', icon: Footprints },
-  { to: '/squad', label: 'Сквад', icon: Users },
-  { to: '/market', label: 'Барахолка', icon: Coins },
-  { to: '/crafts', label: 'Крафты', icon: FlaskConical },
-  { to: '/profile', label: 'Профиль', icon: UserRound },
-  { to: '/needs', label: 'Предметы', icon: Backpack },
-  { to: '/hideout', label: 'Схрон', icon: Warehouse },
-  { to: '/keys', label: 'Ключи', icon: KeyRound },
-  { to: '/ammo', label: 'Патроны', icon: Target },
-  { to: '/builder', label: 'Сборка', icon: Wrench },
-  { to: '/skills', label: 'Навыки', icon: Dumbbell },
-  { to: '/season', label: 'Сезон', icon: Medal },
+const NAV: { group: string; items: { to: string; label: string; icon: typeof Crosshair }[] }[] = [
+  {
+    group: 'Рейд',
+    items: [
+      { to: '/raid', label: 'Брифинг', icon: Crosshair },
+      { to: '/tasks', label: 'Задачи', icon: ListChecks },
+      { to: '/maps', label: 'Карты', icon: MapIcon },
+      { to: '/raids', label: 'Рейды', icon: Footprints },
+      { to: '/squad', label: 'Сквад', icon: Users },
+    ],
+  },
+  {
+    group: 'База',
+    items: [
+      { to: '/needs', label: 'Предметы', icon: Backpack },
+      { to: '/hideout', label: 'Схрон', icon: Warehouse },
+      { to: '/keys', label: 'Ключи', icon: KeyRound },
+    ],
+  },
+  {
+    group: 'Торговля',
+    items: [
+      { to: '/market', label: 'Барахолка', icon: Coins },
+      { to: '/crafts', label: 'Крафты', icon: FlaskConical },
+    ],
+  },
+  {
+    group: 'Справка',
+    items: [
+      { to: '/ammo', label: 'Патроны', icon: Target },
+      { to: '/builder', label: 'Сборка', icon: Wrench },
+      { to: '/skills', label: 'Навыки', icon: Dumbbell },
+      { to: '/season', label: 'Сезон', icon: Medal },
+      { to: '/profile', label: 'Профиль', icon: UserRound },
+    ],
+  },
 ]
+const NAV_FLAT = NAV.flatMap((g) => g.items)
 
 export function Shell() {
   const overlay = useUI((s) => s.overlay)
@@ -60,22 +82,27 @@ export function Shell() {
             <Logo />
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col py-1.5 [scrollbar-width:none]">
-            {NAV.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `relative shrink-0 flex flex-col items-center gap-0.5 py-1 text-[10px] font-display uppercase tracking-[.1em] transition-colors
-                   ${isActive ? 'text-brass-2' : 'text-ink-3 hover:text-ink'}`}
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-brass rounded-r" />}
-                    <Icon size={20} strokeWidth={1.8} />
-                    <span>{label}</span>
-                  </>
-                )}
-              </NavLink>
+            {NAV.map((g) => (
+              <div key={g.group} className="shrink-0">
+                <div className="eyebrow text-[9px] text-ink-4 text-center mt-2 mb-0.5 select-none">{g.group}</div>
+                {g.items.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={({ isActive }) =>
+                      `relative shrink-0 flex flex-col items-center gap-0.5 py-1 mx-1 rounded-[4px] text-[10px] font-display uppercase tracking-[.1em] transition-colors
+                       ${isActive ? 'text-brass-2 bg-brass/10' : 'text-ink-3 hover:text-ink hover:bg-bg-2'}`}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-brass rounded-r" />}
+                        <Icon size={20} strokeWidth={1.8} />
+                        <span>{label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </div>
           <LevelBadge />
@@ -87,7 +114,7 @@ export function Shell() {
           {overlay && <Logo small />}
           {overlay && (
             <div className="flex gap-1">
-              {NAV.map(({ to, label, icon: Icon }) => (
+              {NAV_FLAT.map(({ to, label, icon: Icon }) => (
                 <NavLink key={to} to={to} title={label} className={({ isActive }) => `p-1.5 rounded ${isActive ? 'text-brass-2 bg-bg-3' : 'text-ink-3 hover:text-ink'}`}>
                   <Icon size={16} />
                 </NavLink>
@@ -135,6 +162,7 @@ export function Shell() {
       <ItemDrawer />
       <SearchPalette />
       <Lightbox />
+      <Toaster />
     </div>
   )
 }

@@ -13,6 +13,7 @@ import { Chip, Eyebrow, FirBadge, Segmented, TraderMark, Toggle, Empty } from '@
 import { ROUBLES } from '@/data/types'
 import { EVENT_LABEL, eventActive } from '@/data/eventTasks'
 import { CURRENCY } from '@/lib/needs'
+import { toast } from '@/store/toast'
 
 type Filter = 'all' | TaskStatus
 
@@ -169,20 +170,31 @@ function TaskRow({ view, focus = false }: { view: TaskView; focus?: boolean }) {
 
   const itemObjectives = t.objectives.filter((o) => o.items?.length && (o.type === 'giveItem' || o.type === 'plantItem' || (o.type === 'findItem' && !t.objectives.some((g) => g.type === 'giveItem' && g.items?.[0] === o.items?.[0]))))
   const money = t.rewardItems.find((r) => r.item === ROUBLES)?.count ?? 0
+  // сводка условий одной строкой: «устранить ×2 · найти» — чтобы середина строки не пустовала
+  const objectiveSummary = useMemo(() => {
+    const byType = new Map<string, number>()
+    for (const o of t.objectives) {
+      if (o.optional) continue
+      const label = objectiveLabel(o.type)
+      byType.set(label, (byType.get(label) ?? 0) + 1)
+    }
+    return [...byType.entries()].map(([label, n]) => (n > 1 ? `${label} ×${n}` : label)).join(' · ')
+  }, [t.objectives])
   const missingPrereqs = useMemo(() => prerequisites(data, t.id).filter((id) => views.get(id)?.status !== 'done'), [data, t.id, views])
   const dependentDone = useMemo(() => done ? dependents(data, t.id).filter((id) => views.get(id)?.status === 'done') : [], [data, t.id, views, done])
 
   const onToggle = () => {
     if (done) {
       if (dependentDone.length) {
-        if (confirm(`Снять отметку также с ${dependentDone.length} зависимых квестов?`)) uncompleteMany([t.id, ...dependentDone])
-        else toggle(t.id, false)
-      } else toggle(t.id, false)
+        if (confirm(`Снять отметку также с ${dependentDone.length} зависимых квестов?`)) { uncompleteMany([t.id, ...dependentDone]); toast(`Отметка снята: ${t.name} (и ${dependentDone.length} зависимых)`, 'info') }
+        else { toggle(t.id, false); toast(`Отметка снята: ${t.name}`, 'info') }
+      } else { toggle(t.id, false); toast(`Отметка снята: ${t.name}`, 'info') }
       return
     }
     if (missingPrereqs.length) {
       completeMany([t.id, ...missingPrereqs])
-    } else toggle(t.id, true)
+      toast(`Выполнено: ${t.name} (и ${missingPrereqs.length} предыдущих)`)
+    } else { toggle(t.id, true); toast(`Выполнено: ${t.name}`) }
   }
 
   return (
@@ -207,9 +219,11 @@ function TaskRow({ view, focus = false }: { view: TaskView; focus?: boolean }) {
             {t.event && <span className="shrink-0 display text-[10px] text-danger border border-danger/50 rounded-[3px] px-1 leading-[14px]" title={`Задание ивента «${EVENT_LABEL}» — данных нет в tarkov.dev, собрано вручную`}>СОБЫТИЕ</span>}
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-3">
+            <span className="text-ink-2">{data.traders[t.trader]?.name}</span>
             {t.minPlayerLevel > 0 && <span className={`num ${view.levelLocked ? 'text-danger' : ''}`}>{t.minPlayerLevel} ур.</span>}
             {!done && t.objectives.some((o) => objectivesDone[o.id]) && <span className="num text-fir">{t.objectives.filter((o) => objectivesDone[o.id]).length}/{t.objectives.length} пунктов</span>}
             {t.map && <span className="inline-flex items-center gap-1"><MapPin size={11} />{data.maps[t.map]?.name}</span>}
+            {objectiveSummary && <span className="truncate text-ink-4">{objectiveSummary}</span>}
             {locked && view.missing.length > 0 && (
               <span className="inline-flex items-center gap-1 truncate"><Lock size={11} />после: {view.missing.map((m) => m.name).join(', ')}</span>
             )}

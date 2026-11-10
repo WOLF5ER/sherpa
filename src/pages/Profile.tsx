@@ -13,6 +13,7 @@ import { ProfileSwitcher } from '@/components/ProfileSwitcher'
 import { TarkovTrackerImport } from '@/components/TarkovTrackerImport'
 import { useLauncher } from '@/lib/pywebview'
 import { updateBusy } from '@/lib/machines'
+import { toast } from '@/store/toast'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -68,8 +69,9 @@ export function ProfilePage() {
         completed: j.completed ?? {}, stations: j.stations ?? {}, have: j.have ?? {}, traderLevels: j.traderLevels ?? {},
         objectivesDone: j.objectivesDone ?? {}, skills: j.skills ?? {}, fenceRep: typeof j.fenceRep === 'number' ? j.fenceRep : 0,
       })
+      toast('Профиль импортирован')
     } catch {
-      alert('Файл не похож на профиль Sherpa')
+      toast('Файл не похож на профиль Sherpa', 'err')
     }
   }
 
