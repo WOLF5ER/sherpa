@@ -4,7 +4,7 @@ import { BookOpen, Check, Lock, Sparkles } from 'lucide-react'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
 import type { TaskView } from '@/lib/tasks'
-import { Progress, TraderMark, Empty } from '@/components/ui'
+import { Progress, TraderMark } from '@/components/ui'
 import { toast } from '@/store/toast'
 
 interface StoryObjective {
@@ -20,11 +20,28 @@ interface Chapter {
 
 /** Переводим главы и цели с английского (в данных они en-строками). */
 const CHAPTER_RU: Record<string, string> = {
-  Tour: 'Экскурсия',
+  Tour: 'Тур',
   Boreas: 'Борей',
 }
 /** Сюжетный порядок глав (Tour — вступительная) */
-const CHAPTER_ORDER = ['Tour', 'Boreas']
+const CHAPTER_ORDER = ['Tour', 'Falling Skies', 'The Ticket', 'Batya', 'Accidental Witness', 'Blue Fire', 'Boreas', 'The Labyrinth', 'The Unheard', 'They Are Already Here']
+
+/**
+ * Гид по главам (данных tarkov.dev по ним нет — главы после Тура открываются через мир: записки, места).
+ * main — обязательные для основной концовки, остальные влияют на «лучшую» концовку.
+ */
+const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean }> = {
+  'Tour': { ru: 'Тур', main: true, how: 'Вступительная глава — открывается после обучения. Знакомство с торговцами и доступ к картам.' },
+  'Falling Skies': { ru: 'Падающие небеса', main: true, how: 'Найди упавший самолёт в Лесу. Первая глава с сюжетным выбором.' },
+  'The Ticket': { ru: 'Билет', main: true, how: 'Открывается после «Падающих небес». Основная линия — ведёт к одной из четырёх концовок.' },
+  'Batya': { ru: 'Батя', how: 'Подбери нашивку «Богатырь» на Таможне: металлическое строение у электростанции южнее заправки.' },
+  'Accidental Witness': { ru: 'Случайный свидетель', how: 'Осмотри разрисованные машины между общежитиями на Таможне.' },
+  'Blue Fire': { ru: 'Синее пламя', how: 'Прочти листовку МЧС в зелёном контейнере на военной базе в Лесу.' },
+  'Boreas': { ru: 'Борей', how: 'Сигнал бедствия ведёт на замёрзший Ледокол — штурм надстройки и спасение капитана.' },
+  'The Labyrinth': { ru: 'Лабиринт', how: 'Тоннель в подвале санатория на Берегу — туда ведёт цепочка Механика.' },
+  'The Unheard': { ru: 'Неслышимый', how: 'Прочти записку об «Очищении» на первом этаже офисов TerraGroup на Улицах Таркова.' },
+  'They Are Already Here': { ru: 'Они уже здесь', how: 'Записка об «Оке мира»: добывается с сектанта, в общаге 314 на Таможне или в круге сектантов у Заброшенной деревни в Лесу.' },
+}
 const OBJECTIVE_RU: Record<string, string> = {
   'Talk to Therapist': 'Поговорить с Терапевтом',
   'Talk to Skier': 'Поговорить с Лыжником',
@@ -48,6 +65,8 @@ export function StoryPage() {
       ;(byChapter.get(chapter) ?? byChapter.set(chapter, new Map()).get(chapter)!)
         .set(g, [...(byChapter.get(chapter)!.get(g) ?? []), v])
     }
+    // главы из гида без данных тоже показываем (открываются через мир, а не квесты)
+    for (const name of CHAPTER_ORDER) if (!byChapter.has(name)) byChapter.set(name, new Map())
     const out: Chapter[] = []
     for (const [name, objs] of byChapter) {
       const objectives: StoryObjective[] = [...objs.entries()]
@@ -55,7 +74,7 @@ export function StoryPage() {
         .sort((a, b) => a.objective.localeCompare(b.objective, 'ru'))
       out.push({ name, objectives })
     }
-    // порядок глав — сюжетный (Экскурсия первая), остальные за ней по алфавиту
+    // порядок глав — сюжетный (Тур первая), неизвестные — в конец по алфавиту
     const order = (name: string) => { const i = CHAPTER_ORDER.indexOf(name); return i === -1 ? CHAPTER_ORDER.length : i }
     return out.sort((a, b) => order(a.name) - order(b.name) || a.name.localeCompare(b.name, 'ru'))
   }, [views])
@@ -68,21 +87,37 @@ export function StoryPage() {
       <header>
         <h1 className="display text-[34px] text-ink">Сюжет</h1>
         <div className="mt-1 text-[13px] text-ink-3">
-          Сюжетные главы и их цели. Прогресс глав игра не отдаёт — отмечай цели вручную, и запертые за ними квесты сразу пересчитаются в «доступные».
+          Главы сюжета и их цели. Прогресс глав игра не отдаёт — отмечай вручную; цели «Тура» и «Борея» отпирают запертые за ними квесты.
           {total > 0 && <span className="num"> · <span className="text-fir">{doneN}</span> из {total} целей</span>}
         </div>
       </header>
 
-      {chapters.length === 0 ? (
-        <Empty title="Нет глав" hint="В текущих данных сюжетных глав нет." />
-      ) : (
-        chapters.map((c) => (
+      {chapters.map((c) => {
+        const guide = CHAPTER_GUIDE[c.name]
+        const chapterKey = `chapter:${c.name}`
+        const chapterDone = !!storyDone[chapterKey]
+        const gatesDone = c.objectives.filter((o) => storyDone[o.gate]).length
+        return (
           <section key={c.name} className="panel p-4 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <BookOpen size={15} className="text-brass-2" />
-              <h2 className="display text-[20px] text-ink">{CHAPTER_RU[c.name] ?? c.name}</h2>
-              {c.name !== (CHAPTER_RU[c.name] ?? c.name) && <span className="text-[12px] text-ink-4">{c.name}</span>}
+            <div className="flex items-center gap-2 flex-wrap">
+              <BookOpen size={15} className={guide?.main ? 'text-brass-2' : 'text-ink-3'} />
+              <h2 className="display text-[20px] text-ink">{guide?.ru ?? CHAPTER_RU[c.name] ?? c.name}</h2>
+              <span className="text-[12px] text-ink-4">{c.name}</span>
+              {guide?.main
+                ? <span className="display text-[10px] text-brass border border-brass-3 rounded-[3px] px-1 leading-[14px]" title="Обязательна для основной концовки">Основная</span>
+                : <span className="display text-[10px] text-ink-3 border border-line-2 rounded-[3px] px-1 leading-[14px]" title="Необязательная глава — нужна для «лучшей» концовки">Побочная</span>}
+              {c.objectives.length > 0 && <span className="ml-auto num text-[12px] text-ink-3">{gatesDone}/{c.objectives.length} целей</span>}
             </div>
+            {guide && <p className="text-[13px] text-ink-3 leading-snug">{guide.how}</p>}
+            {c.objectives.length === 0 && (
+              <button
+                type="button"
+                onClick={() => { toggleStory(chapterKey); toast(chapterDone ? `Отметка снята: ${guide?.ru ?? c.name}` : `Глава пройдена: ${guide?.ru ?? c.name}`, chapterDone ? 'info' : 'ok') }}
+                className={`self-start inline-flex items-center gap-2 rounded-[5px] border px-2.5 py-1.5 text-[12px] display transition-colors ${chapterDone ? 'border-fir/60 bg-fir/10 text-fir' : 'border-line-2 text-ink-3 hover:border-brass hover:text-brass-2'}`}
+              >
+                <Check size={13} strokeWidth={3} /> {chapterDone ? 'Глава пройдена' : 'Отметить главу пройденной'}
+              </button>
+            )}
             <div className="flex flex-col gap-2.5">
               {c.objectives.map((o) => (
                 <ObjectiveCard key={o.gate} obj={o} done={!!storyDone[o.gate]} onToggle={() => {
@@ -92,8 +127,8 @@ export function StoryPage() {
               ))}
             </div>
           </section>
-        ))
-      )}
+        )
+      })}
     </div>
   )
 }
