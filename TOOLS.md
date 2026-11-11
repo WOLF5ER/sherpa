@@ -17,7 +17,7 @@
 
 ## Релизный цикл
 
-1. Поднять версию: `npm version X.Y.Z --no-git-tag-version` (package.json → dist/version.json при сборке).
+1. Поднять версию: `npm version X.Y.Z --no-git-tag-version` (package.json → dist/version.json при сборке). **Строго ДО `npm run build`**: если поднять версию после сборки, в zip уедет старый version.json — приложение обновится, но будет показывать старую версию и снова предлагать обновление (было в 0.1.79). Перед сборкой exe закрыть запущенный Sherpa.exe — иначе PyInstaller не перезапишет `_internal` (WinError 5).
 2. `npm run build`.
 3. exe: `cmd //c "python -m PyInstaller --noconfirm --clean --distpath release --workpath build-pyi launcher\sherpa.spec"`.
 4. zip: `powershell -NoProfile -Command "Compress-Archive -Force -Path 'release\Sherpa\*' -DestinationPath 'release\Sherpa-X.Y.Z.zip'"`.
