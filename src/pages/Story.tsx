@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Check, ChevronDown, ChevronRight, Lock, Sparkles } from 'lucide-react'
+import { BookOpen, Check, ChevronDown, ChevronRight, Gift, Lock, Sparkles } from 'lucide-react'
 import { useProfile } from '@/store/profile'
 import { useTaskViews } from '@/lib/useCtx'
 import type { TaskView } from '@/lib/tasks'
@@ -30,8 +30,8 @@ const CHAPTER_ORDER = ['Tour', 'Falling Skies', 'The Ticket', 'Batya', 'Accident
  * Гид по главам (данных tarkov.dev по ним нет — главы после Тура открываются через мир: записки, места).
  * main — обязательные для основной концовки, остальные влияют на «лучшую» концовку.
  */
-const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; steps?: string[] }> = {
-  'Tour': { ru: 'Тур', main: true, how: 'Вступительная глава — добавляется автоматически при запуске игры. Знакомство с торговцами и доступ к картам.', steps: [
+const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; steps?: string[]; reward?: string }> = {
+  'Tour': { ru: 'Тур', main: true, how: 'Вступительная глава — добавляется автоматически при запуске игры. Знакомство с торговцами и доступ к картам.', reward: 'Открывает торговцев (Лыжник, Механик, Прапор, Миротворец) и локации: Улицы Таркова, Таможня, Завод, Лес, Берег, Резерв, Маяк, Лаборатория.', steps: [
     'Выбраться из Эпицентра — обучающий рейд, выход «Улица Климова (Сигнал)» за бизнес-центром Skyside',
     'Поговорить с Терапевтом и передать 250 000 ₽ — откроет Улицы Таркова',
     'Поговорить с Барахольщиком; выжить на Развязке или посетить её 3 раза — откроет Лыжника и Таможню',
@@ -44,7 +44,7 @@ const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; s
     'Доступ на Маяк: передать Механику 8 000 $',
     'Доступ в Лабораторию: попасть на секретный объект TerraGroup, найти путь отхода через водосток, осмотреть серверную и офисы топ-менеджеров',
   ] },
-  'Falling Skies': { ru: 'Небеса в огне', main: true, how: 'Спроси Механика про упавший самолёт по ходу главы «Тур». Первая глава с сюжетным выбором.', steps: [
+  'Falling Skies': { ru: 'Небеса в огне', main: true, how: 'Спроси Механика про упавший самолёт по ходу главы «Тур». Первая глава с сюжетным выбором.', reward: '+80 000 EXP · кейс Прапору: 1 500 000 ₽ и достижение «Слово мужчины» · кейс себе: сам кейс, −0.7 репутации Прапора и достижение «Просто бизнес». Плюс 300 000 ₽ по ходу главы.', steps: [
     'Найти упавший самолёт в Лесу (восточная часть карты)',
     'Поднять лояльность с Прапором до 2 ур. и расспросить торговцев о самолёте (опц.: заплатить Терапевту 2 000 $ за подсказку про внедорожник)',
     'Найти флешку на подножке чёрного Gelandewagen у выхода «Туннель» на Берегу и передать её Прапору',
@@ -55,7 +55,7 @@ const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; s
     'Найти бронированный кейс (опц.: дополнительные улики — записка от Mr. Kerman)',
     'Выбор: оставить бронированный кейс себе или передать его Прапору',
   ] },
-  'The Ticket': { ru: 'Билет', main: true, how: 'Открывается после «Небес в огне». Основная линия — ведёт к одной из четырёх концовок.', steps: [
+  'The Ticket': { ru: 'Билет', main: true, how: 'Открывается после «Небес в огне». Основная линия — ведёт к одной из четырёх концовок.', reward: 'Выход из Таркова — одна из четырёх концовок (рейд на Терминал).', steps: [
     'Нужен Разведцентр 1 ур. — поговорить с мистером Керманом и дождаться его выхода на связь',
     'Поговорить с Прапором, найти лагерь его людей на Маяке и зацепки об их намерениях',
     'Получить доступ к Смотрителю и не терять его',
@@ -80,7 +80,7 @@ const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; s
     'Забрать у Прапора обновлённые хэш-коды и дождаться информации',
     'Финал — Терминал: проверка на КПП, арсенал конфиската, контейнер «Альфа-1», путь через погрузочную зону и насосную к пирсу — сбежать из Таркова',
   ] },
-  'Batya': { ru: 'Батя', how: 'Найди след спецподразделения BEAR — патч Богатырей (Таможня, Резерв, Берег или Лес).', steps: [
+  'Batya': { ru: 'Батя', how: 'Найди след спецподразделения BEAR — патч Богатырей (Таможня, Резерв, Берег или Лес).', reward: '+144 000 EXP · диктофон Воеводы · достижение «Это всё (не) случайность».', steps: [
     'Найти след спецподразделения BEAR (опц.: патч Богатырей)',
     'Узнать у торговцев больше о Богатырях',
     'Найти позицию «Рябина» и информацию о Богатырях (опц.: памятный предмет одного из них)',
@@ -100,7 +100,7 @@ const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; s
     'Допросить Прапора; узнать, как сектанты связаны с Генералом (опц.: круги сектантов на Таможне, Резерве, в Лесу и на Берегу)',
     'Поговорить со Смотрителем, дождаться документов о Неизвестных и прочесть отчёт о развёртывании агентурной сети',
   ] },
-  'Accidental Witness': { ru: 'Случайный свидетель', how: 'Осмотри разрисованные машины между общежитиями на Таможне.', steps: [
+  'Accidental Witness': { ru: 'Случайный свидетель', how: 'Осмотри разрисованные машины между общежитиями на Таможне.', reward: '+64 000 EXP · достижение «Верни долг».', steps: [
     'Узнать, где жил Козлов, и прочитать записку на двери его комнаты',
     'Узнать, чем занимался Козлов (опц.: найти ключ и осмотреть комнату 110)',
     'Спросить у торговцев про Анастасию',
@@ -114,7 +114,7 @@ const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; s
     'Осмотреть времянку Решалы (опц.: его рабочие заметки и вещи курьера Паши)',
     'Найти убежище Козлова и его компромат',
   ] },
-  'Blue Fire': { ru: 'Синий огонь', how: 'Прочти листовку МЧС — зелёный контейнер на военной базе в Лесу или палатки/медзона на Развязке.', steps: [
+  'Blue Fire': { ru: 'Синий огонь', how: 'Прочти листовку МЧС — зелёный контейнер на военной базе в Лесу или палатки/медзона на Развязке.', reward: '+112 000 EXP · 1 500 000 ₽ · достижения «Себе нужнее» и «Гори!».', steps: [
     'Поговорить с Механиком об ЭМИ-импульсе (опц.: получить доступ к Механику)',
     'Найти обломок устройства и передать его Механику',
     'Заложить устройство взлома в серверной на локации Лаборатория',
@@ -125,7 +125,7 @@ const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; s
     'Найти машину «Почты Руси»',
     'Найти чертежи Изделия 1156',
   ] },
-  'Boreas': { ru: 'Борей', how: 'Сигнал бедствия ведёт на замёрзший Ледокол — штурм надстройки и спасение капитана.', steps: [
+  'Boreas': { ru: 'Борей', how: 'Сигнал бедствия ведёт на замёрзший Ледокол — штурм надстройки и спасение капитана.', reward: 'СЗ-1 в продаже у Прапора · данные из архива ледокола · ключ-карта от отсека С-3.', steps: [
     'Узнать у торговцев о связи TerraGroup и Paradigm Shipping / спросить Механика, откуда пришёл сигнал бедствия',
     'Найти и починить оборудование под вышкой сотовой связи в Лесу, вернуться к Механику',
     'Найти документацию Paradigm Shipping и рассказать Механику про «Борей»',
@@ -156,7 +156,7 @@ const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; s
     'Попади в запертый офис (ключ у одного из шести учёных в белых халатах — возьми большой пустой рюкзак) и прослушай кассету',
     'Отнеси кассету Егерю; найди отчёт о разработке комплекса «Лабиринт» (сброшен в канализацию)',
   ] },
-  'The Unheard': { ru: 'Неизвестные', how: 'Прочти записку об «Очищении» — пост охраны или офисы TerraGroup на Улицах Таркова, либо офис №4 в главном здании TerraGroup в Центре (нужен ключ учёного).', steps: [
+  'The Unheard': { ru: 'Неизвестные', how: 'Прочти записку об «Очищении» — пост охраны или офисы TerraGroup на Улицах Таркова, либо офис №4 в главном здании TerraGroup в Центре (нужен ключ учёного).', reward: '+128 000 EXP · достижение «Дорога из хлебных крошек».', steps: [
     'Узнать больше о Неизвестных',
     'Найти больше информации о деятельности TerraGroup и о «топливе» из записки',
     'Найти больше информации об особой поставке катализатора',
@@ -173,7 +173,7 @@ const CHAPTER_GUIDE: Record<string, { ru: string; how: string; main?: boolean; s
     'Изучить документацию TerraGroup в кабинете А.П. и роль катализатора Blue Ice в протоколе Неизвестных',
     'Узнать, как Неизвестные связаны с Тарковом',
   ] },
-  'They Are Already Here': { ru: 'Они уже здесь', how: 'Записка об «Оке мира»: «комнаты пыток» сектантов (общага на Таможне, RB-BK / RB-PKPM / RB-VO на Резерве, Заброшенная деревня в Лесу, остров на Берегу) или тело сектанта.', steps: [
+  'They Are Already Here': { ru: 'Они уже здесь', how: 'Записка об «Оке мира»: «комнаты пыток» сектантов (общага на Таможне, RB-BK / RB-PKPM / RB-VO на Резерве, Заброшенная деревня в Лесу, остров на Берегу) или тело сектанта.', reward: '+128 000 EXP · достижения «Чужими глазами» и «И свет погас».', steps: [
     'Узнать больше о людях в капюшонах и тех, кто оставляет в Таркове странные символы',
     'Найти место, связанное с Глазом Мира',
     'Узнать больше о жертве сектантов в пыточной и найти её квартиру (опц.: ключ от квартиры)',
@@ -207,6 +207,32 @@ export function StoryPage() {
   const toggleStory = useProfile((s) => s.toggleStory)
   /** раскрытые главы (по умолчанию всё свёрнуто) */
   const [open, setOpen] = useState<Record<string, boolean>>({})
+
+  /** проставить/снять сразу несколько ключей */
+  const setMany = (keys: string[], value: boolean) => { for (const k of keys) if (!!storyDone[k] !== value) toggleStory(k) }
+  /** каскад: отметил шаг — закрылись все предыдущие; снял — открылись все следующие; последний шаг закрывает главу */
+  const toggleStep = (c: Chapter, steps: string[], i: number) => {
+    const keys = steps.map((_, j) => `step:${c.name}:${j}`)
+    const chapterKey = `chapter:${c.name}`
+    if (!storyDone[keys[i]]) {
+      setMany(keys.slice(0, i + 1), true)
+      if (i === steps.length - 1) {
+        if (!storyDone[chapterKey]) toggleStory(chapterKey)
+        toast(`Глава пройдена: ${CHAPTER_GUIDE[c.name]?.ru ?? c.name}`, 'ok')
+      }
+    } else {
+      setMany(keys.slice(i), false)
+      if (storyDone[chapterKey]) toggleStory(chapterKey)
+    }
+  }
+  /** галочка на главе: закрыть/открыть главу целиком (шаги + цели) */
+  const toggleChapterAll = (c: Chapter) => {
+    const guide = CHAPTER_GUIDE[c.name]
+    const keys = [`chapter:${c.name}`, ...c.objectives.map((o) => o.gate), ...(guide?.steps ?? []).map((_, j) => `step:${c.name}:${j}`)]
+    const done = !storyDone[`chapter:${c.name}`]
+    setMany(keys, done)
+    toast(done ? `Глава пройдена: ${guide?.ru ?? c.name}` : `Отметки сняты: ${guide?.ru ?? c.name}`, done ? 'ok' : 'info')
+  }
 
   const chapters = useMemo(() => {
     const byChapter = new Map<string, Map<string, TaskView[]>>()
@@ -254,26 +280,41 @@ export function StoryPage() {
         const isOpen = !!open[c.name]
         return (
           <section key={c.name} className="panel p-4 flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => setOpen((o) => ({ ...o, [c.name]: !o[c.name] }))}
-              title={isOpen ? 'Свернуть главу' : 'Развернуть главу'}
-              className="flex items-center gap-2 flex-wrap text-left group"
-            >
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => toggleChapterAll(c)}
+                title={chapterDone ? 'Снять отметку со всей главы' : 'Отметить главу пройденной целиком'}
+                className={`w-5 h-5 shrink-0 rounded-[4px] border grid place-items-center transition-colors ${chapterDone ? 'bg-fir/20 border-fir text-fir' : 'border-line-2 text-transparent hover:border-brass hover:text-brass/60'}`}
+              >
+                <Check size={13} strokeWidth={3} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen((o) => ({ ...o, [c.name]: !o[c.name] }))}
+                title={isOpen ? 'Свернуть главу' : 'Развернуть главу'}
+                className="flex-1 min-w-0 flex items-center gap-2 flex-wrap text-left group"
+              >
               {isOpen
                 ? <ChevronDown size={15} className="text-ink-3 group-hover:text-brass-2 transition-colors" />
                 : <ChevronRight size={15} className="text-ink-3 group-hover:text-brass-2 transition-colors" />}
               <BookOpen size={15} className={guide?.main ? 'text-brass-2' : 'text-ink-3'} />
-              <h2 className="display text-[20px] text-ink group-hover:text-brass-2 transition-colors">{guide?.ru ?? CHAPTER_RU[c.name] ?? c.name}</h2>
+              <h2 className={`display text-[20px] transition-colors ${chapterDone ? 'text-ink-3 line-through' : 'text-ink group-hover:text-brass-2'}`}>{guide?.ru ?? CHAPTER_RU[c.name] ?? c.name}</h2>
               <span className="text-[12px] text-ink-4">{c.name}</span>
               {guide?.main
                 ? <span className="display text-[10px] text-brass border border-brass-3 rounded-[3px] px-1 leading-[14px]" title="Обязательна для основной концовки">Основная</span>
                 : <span className="display text-[10px] text-ink-3 border border-line-2 rounded-[3px] px-1 leading-[14px]" title="Необязательная глава — нужна для «лучшей» концовки">Побочная</span>}
               {c.objectives.length > 0 && <span className="ml-auto num text-[12px] text-ink-3">{gatesDone}/{c.objectives.length} целей</span>}
               {guide?.steps && <span className={`${c.objectives.length > 0 ? '' : 'ml-auto '}num text-[12px] ${stepsDone === guide.steps.length ? 'text-fir' : 'text-ink-3'}`}>{stepsDone}/{guide.steps.length} шагов</span>}
-            </button>
+              </button>
+            </div>
             {isOpen && <>
             {guide && <p className="text-[13px] text-ink-3 leading-snug">{guide.how}</p>}
+            {guide?.reward && (
+              <p className="flex items-start gap-1.5 text-[12.5px] text-brass-2/90 leading-snug">
+                <Gift size={13} className="mt-0.5 shrink-0" /> <span><span className="display text-[11px] text-brass">НАГРАДА: </span>{guide.reward}</span>
+              </p>
+            )}
             {guide?.steps && (
               <ol className="flex flex-col gap-1">
                 {guide.steps.map((step, i) => {
@@ -283,26 +324,17 @@ export function StoryPage() {
                     <li key={key} className="flex items-start gap-2">
                       <button
                         type="button"
-                        onClick={() => toggleStory(key)}
-                        title={stepDone ? 'Снять отметку' : 'Отметить шаг пройденным'}
+                        onClick={() => toggleStep(c, guide.steps!, i)}
+                        title={stepDone ? 'Снять отметку (снимет и следующие шаги)' : 'Отметить шаг (закроет и предыдущие)'}
                         className={`mt-0.5 w-4 h-4 shrink-0 rounded-[3px] border grid place-items-center transition-colors ${stepDone ? 'bg-fir/20 border-fir text-fir' : 'border-line-2 text-transparent hover:border-brass hover:text-brass/60'}`}
                       >
                         <Check size={11} strokeWidth={3} />
                       </button>
-                      <span className={`text-[12.5px] leading-snug ${stepDone ? 'text-ink-4 line-through' : 'text-ink-2'}`}>{step}</span>
+                      <span className={`text-[12.5px] leading-snug ${stepDone ? 'text-ink-4 line-through' : 'text-ink-2'}`}><span className="num text-ink-4 mr-1">{i + 1}.</span>{step}</span>
                     </li>
                   )
                 })}
               </ol>
-            )}
-            {c.objectives.length === 0 && (
-              <button
-                type="button"
-                onClick={() => { toggleStory(chapterKey); toast(chapterDone ? `Отметка снята: ${guide?.ru ?? c.name}` : `Глава пройдена: ${guide?.ru ?? c.name}`, chapterDone ? 'info' : 'ok') }}
-                className={`self-start inline-flex items-center gap-2 rounded-[5px] border px-2.5 py-1.5 text-[12px] display transition-colors ${chapterDone ? 'border-fir/60 bg-fir/10 text-fir' : 'border-line-2 text-ink-3 hover:border-brass hover:text-brass-2'}`}
-              >
-                <Check size={13} strokeWidth={3} /> {chapterDone ? 'Глава пройдена' : 'Отметить главу пройденной'}
-              </button>
             )}
             <div className="flex flex-col gap-2.5">
               {c.objectives.map((o) => (
