@@ -256,7 +256,7 @@ function TaskRow({ view, focus = false }: { view: TaskView; focus?: boolean }) {
               <span className="inline-flex items-center gap-1" title="Квесты торговца выдаются по мере выполнения других его квестов на этом уровне лояльности (EFT 1.1); цепочки и сюжетные квесты не считаются"><Lock size={11} />{view.storyLocked.have < 0 ? `${data.traders[view.storyLocked.trader]?.name ?? ''} ур. ${view.storyLocked.ll}` : `квесты ${data.traders[view.storyLocked.trader]?.name ?? ''} ур. ${view.storyLocked.ll}: ${view.storyLocked.have} из ${view.storyLocked.need}`}</span>
             )}
             {locked && view.storyGate && (
-              <span className="inline-flex items-center gap-1 truncate" title="Выдаётся по ходу сюжетной главы; главы приложение не отслеживает — отметь выполненным вручную, когда получишь"><Lock size={11} />{view.storyGate}</span>
+              <span className="inline-flex items-center gap-1 truncate" title="Выдаётся по ходу сюжетной главы — отметь цель главы пройденной на вкладке «Сюжет»"><Lock size={11} />{view.storyGate}</span>
             )}
           </div>
           {!done && reqObjs.length > 0 && objsDone > 0 && (

@@ -9,6 +9,7 @@ import { Shell } from '@/components/Shell'
 import { Boot } from '@/components/Boot'
 import { TasksPage } from '@/pages/Tasks'
 import { TreePage } from '@/pages/Tree'
+import { StoryPage } from '@/pages/Story'
 import { MarketPage } from '@/pages/Market'
 import { MapsPage } from '@/pages/Maps'
 import { ProfilePage } from '@/pages/Profile'
@@ -245,6 +246,7 @@ export function App() {
         <Route index element={<Navigate to="/tasks" replace />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/tree" element={<TreePage />} />
+        <Route path="/story" element={<StoryPage />} />
         <Route path="/raid" element={<RaidPage />} />
         <Route path="/hideout" element={<HideoutPage />} />
         <Route path="/market" element={<MarketPage />} />

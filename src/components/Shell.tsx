@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  ListChecks, Coins, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Timer, Sun, Moon, Sparkles, Radar, Users, KeyRound, Footprints, Dumbbell, Download, Smartphone, Network,
+  ListChecks, Coins, Map as MapIcon, UserRound, Search, RefreshCw, PictureInPicture2, Pin, Medal, Crosshair, Warehouse, Timer, Sun, Moon, Sparkles, Radar, Users, KeyRound, Footprints, Dumbbell, Download, Smartphone, Network, BookOpen,
 } from 'lucide-react'
 import { PhoneDialog } from './PhoneDialog'
 import { useLauncher, useOnTop } from '@/lib/pywebview'
@@ -25,6 +25,7 @@ const NAV: { group: string; items: { to: string; label: string; icon: typeof Cro
       { to: '/raid', label: 'Брифинг', icon: Crosshair },
       { to: '/tasks', label: 'Задачи', icon: ListChecks },
       { to: '/tree', label: 'Дерево', icon: Network },
+      { to: '/story', label: 'Сюжет', icon: BookOpen },
       { to: '/maps', label: 'Карты', icon: MapIcon },
       { to: '/raids', label: 'Рейды', icon: Footprints },
       { to: '/squad', label: 'Сквад', icon: Users },

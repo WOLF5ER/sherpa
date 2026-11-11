@@ -27,6 +27,8 @@ export interface TaskCtx {
   traderLevel: (traderId: string) => number
   /** репутация у Скупщика (карма дикого) — у части его квестов требование по репутации */
   fenceRep?: number
+  /** пройденные цели сюжетных глав (ручные отметки со страницы «Сюжет») */
+  storyDone?: Record<string, true>
   /** сезон: квесты Ref (Арена) в игре недоступны — прячем */
   hideArena?: boolean
 }
@@ -91,7 +93,7 @@ export function computeTaskViews(data: GameData, ctx: TaskCtx): Map<string, Task
     if (ok) ok = traderLocks(t, ctx).length === 0
     if (ok) ok = repLocks(t, ctx).length === 0
     if (ok) ok = storyLock(t) === null
-    if (ok && t.storyGate) ok = false
+    if (ok && t.storyGate && !ctx.storyDone?.[t.storyGate]) ok = false
     if (ok) {
       const unlocker = traderUnlockedBy.get(t.trader)
       if (unlocker && unlocker !== id && status(unlocker) !== 'done') ok = false

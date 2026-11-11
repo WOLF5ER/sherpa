@@ -52,8 +52,9 @@ export function useTaskViews(): Map<string, TaskView> {
   const completed = useProfile((s) => s.completed)
   const gameMode = useProfile((s) => s.gameMode)
   const fenceRep = useProfile((s) => s.fenceRep)
+  const storyDone = useProfile((s) => s.storyDone)
   return useMemo(
-    () => computeTaskViews(data, { level: ctx.level, faction, completed, traderLevel: ctx.traderLevel, fenceRep, hideArena: gameMode === 'pvp-season' }),
-    [data, ctx, faction, completed, gameMode, fenceRep],
+    () => computeTaskViews(data, { level: ctx.level, faction, completed, traderLevel: ctx.traderLevel, fenceRep, storyDone, hideArena: gameMode === 'pvp-season' }),
+    [data, ctx, faction, completed, gameMode, fenceRep, storyDone],
   )
 }
