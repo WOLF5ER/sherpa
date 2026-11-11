@@ -341,8 +341,17 @@ export function normalize(raw: RawBundle): GameData {
   })).filter((b) => b.rewardItems.length > 0)
 
   // ── карты ──
+  /** Ручные имена мобов, которых нет в переводах данных (ключ — id или имя в lowercase). */
+  const MOB_NAME_FIXES: Record<string, string> = {
+    infectedscreamer: 'Зомби',
+  }
   const mobNames: Record<string, string> = {}
   for (const m of Object.values<any>(raw.maps.data.mobs ?? {})) mobNames[m.id] = tMap(m.name)
+  // у ивентовых мобов нет перевода в данных — вручную (Хэллоуин: заражённые)
+  for (const [id, name] of Object.entries(mobNames)) {
+    const fix = MOB_NAME_FIXES[name.toLowerCase()] ?? MOB_NAME_FIXES[id.toLowerCase()]
+    if (fix) mobNames[id] = fix
+  }
   const lootContainerNames: Record<string, string> = {}
   const lootContainerTypes: Record<string, string> = {}
   for (const c of Object.values<any>(raw.maps.data.lootContainers ?? {})) {
@@ -382,7 +391,7 @@ export function normalize(raw: RawBundle): GameData {
       })),
       bosses: (m.bosses ?? []).map((b: any) => ({
         mob: b.mob,
-        name: mobNames[b.mob] ?? b.mob,
+        name: mobNames[b.mob] ?? MOB_NAME_FIXES[String(b.mob).toLowerCase()] ?? b.mob,
         spawnChance: b.spawnChance,
         positions: (b.spawnLocations ?? []).flatMap((s: any) => s.positions ?? []),
         escorts: (b.escorts ?? []).map((e: any) => ({ name: mobNames[e.mob] ?? e.mob, amount: e.amount?.[0]?.count ?? 0 })),

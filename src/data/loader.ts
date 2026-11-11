@@ -13,7 +13,7 @@ export const MODE_LABEL: Record<GameMode, string> = { regular: 'PvP', pve: 'PvE'
 const BASE = 'https://json.tarkov.dev'
 export const PRICE_TTL_MS = 15 * 60 * 1000
 
-const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v17`
+const cacheKey = (mode: GameMode) => `sherpa:data:${mode}:v18`
 
 async function getJson<T = unknown>(path: string, signal?: AbortSignal): Promise<T> {
   // json.tarkov.dev не шлёт Cache-Control — WebView2 по эвристике (Last-Modified) отдаёт вчерашний ответ из кэша часами.
