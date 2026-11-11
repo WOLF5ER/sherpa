@@ -184,8 +184,13 @@ export function RaidPage() {
         <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2"><Clock size={14} className="text-ink-3" /><span className="num">{gmap.raidDuration} мин</span></span>
         <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2"><Users size={14} className="text-ink-3" /><span className="num">{gmap.players}</span></span>
         <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2"><Shield size={14} className="text-ink-3" />{faction} · {gameMode === 'pve' ? 'PvE' : 'PvP'}</span>
-        {gmap.bosses.map((b, i) => (
-          <span key={i} className="inline-flex items-center gap-1.5 text-[13px] text-ink-2" title={`Шанс спавна ${Math.round(b.spawnChance * 100)}%`}>
+        {[...gmap.bosses.reduce((m, b) => {
+          // у босса может быть несколько спавнов (дубликаты в данных) — схлопываем по имени, берём макс. шанс
+          const prev = m.get(b.name)
+          if (!prev || b.spawnChance > prev.spawnChance) m.set(b.name, b)
+          return m
+        }, new Map<string, typeof gmap.bosses[number]>()).values()].map((b) => (
+          <span key={b.name} className="inline-flex items-center gap-1.5 text-[13px] text-ink-2" title={`Шанс спавна ${Math.round(b.spawnChance * 100)}%`}>
             <Skull size={14} className="text-boss" />{b.name} <span className="num text-boss">{Math.round(b.spawnChance * 100)}%</span>
           </span>
         ))}

@@ -12,6 +12,8 @@ export interface TaskView {
   levelLocked: boolean
   /** не хватает уровня лояльности: traderId → нужный уровень */
   traderLocked: { trader: string; level: number }[]
+  /** не хватает репутации у Скупщика */
+  repLocked: { trader: string; value: number }[]
   /** заперт пулом торговца: нужно выполнить N квестов торговца на этом уровне лояльности, выполнено M */
   storyLocked?: { need: number; have: number; trader: string; ll: number }
   /** заперт сюжетной главой (главы не отслеживаем — подсказка, отметить можно вручную) */
@@ -23,8 +25,27 @@ export interface TaskCtx {
   faction: Faction
   completed: Record<string, true>
   traderLevel: (traderId: string) => number
+  /** репутация у Скупщика (карма дикого) — у части его квестов требование по репутации */
+  fenceRep?: number
   /** сезон: квесты Ref (Арена) в игре недоступны — прячем */
   hideArena?: boolean
+}
+
+const FENCE = '579dc571d53a0658a154fbec'
+
+/**
+ * Ручные ворота торговцев: tarkov.dev не отдаёт условия разблокировки самих торговцев (кроме Егеря/Ref),
+ * а в EFT 1.x эти торговцы закрыты. Источники — fandom wiki / tarkov.help:
+ * - Миротворец: открывается по цепочке Лыжника «Друг с Запада» (часть 2 в 1.1 вырезана — оверлей её отключает,
+ *   поэтому ворота на части 1: она есть в данных и в любом случае предшествует открытию)
+ * - Водитель БТР: линейка открывается после принятия квеста Механика «A Helping Hand»
+ * - Смотритель: цепочка «Сетевой провайдер» (её квестов нет в данных API) — только подсказка
+ */
+interface TraderGate { task?: string; mode?: 'complete' | 'active'; hint?: string }
+const TRADER_GATES: Record<string, TraderGate> = {
+  '5935c25fb3acc3127c3d8cd9': { task: '5a27c99a86f7747d2c6bdd8e', mode: 'complete' }, // peacekeeper ← Friend From the West
+  '656f0f98d80a697f855d34b1': { task: '6752f6d83038f7df520c83e8', mode: 'active' }, // btr-driver ← A Helping Hand (принят)
+  '638f541a29ffd1183d187f57': { hint: 'Смотрителя открывает цепочка «Сетевой провайдер» у Механика — в данных API её нет, отметь выполненным вручную' }, // lightkeeper
 }
 
 export function visibleForFaction(task: Task, faction: Faction): boolean {
@@ -68,11 +89,19 @@ export function computeTaskViews(data: GameData, ctx: TaskCtx): Map<string, Task
     visiting.add(id)
     let ok = ctx.level >= t.minPlayerLevel
     if (ok) ok = traderLocks(t, ctx).length === 0
+    if (ok) ok = repLocks(t, ctx).length === 0
     if (ok) ok = storyLock(t) === null
     if (ok && t.storyGate) ok = false
     if (ok) {
       const unlocker = traderUnlockedBy.get(t.trader)
       if (unlocker && unlocker !== id && status(unlocker) !== 'done') ok = false
+    }
+    if (ok) {
+      const gate = TRADER_GATES[t.trader]
+      if (gate?.task && data.tasks[gate.task]) {
+        const gs = status(gate.task)
+        if ((gate.mode === 'active' && gs === 'locked') || (gate.mode !== 'active' && gs !== 'done')) ok = false
+      } else if (gate?.hint) ok = false
     }
     if (ok) {
       for (const r of t.taskRequirements) {
@@ -110,9 +139,12 @@ export function computeTaskViews(data: GameData, ctx: TaskCtx): Map<string, Task
       }
       const unlocker = traderUnlockedBy.get(t.trader)
       if (unlocker && unlocker !== t.id && status(unlocker) !== 'done' && data.tasks[unlocker]) missing.push(data.tasks[unlocker])
+      const gate = TRADER_GATES[t.trader]
+      if (gate?.task && gate.mode !== 'active' && data.tasks[gate.task] && status(gate.task) !== 'done' && !missing.some((m) => m.id === gate.task)) missing.push(data.tasks[gate.task])
     }
     const sl = s === 'locked' ? storyLock(t) : null
-    out.set(t.id, { task: t, status: s, missing, levelLocked: ctx.level < t.minPlayerLevel, traderLocked: s === 'locked' ? traderLocks(t, ctx) : [], storyLocked: sl ?? undefined, storyGate: s === 'locked' ? t.storyGate : undefined })
+    const gateHint = s === 'locked' ? TRADER_GATES[t.trader]?.hint : undefined
+    out.set(t.id, { task: t, status: s, missing, levelLocked: ctx.level < t.minPlayerLevel, traderLocked: s === 'locked' ? traderLocks(t, ctx) : [], repLocked: s === 'locked' ? repLocks(t, ctx) : [], storyLocked: sl ?? undefined, storyGate: s === 'locked' ? (t.storyGate ?? gateHint) : undefined })
   }
   return out
 }
@@ -137,12 +169,22 @@ export function poolKeyOf(t: Task, traderIdByName: Map<string, string>): string 
 }
 const POOL_TRADERS = new Set(Object.values(STORY_POOLS).map((p) => p.trader))
 
-/** Требования по уровню лояльности торговца, которые пока не выполнены. Репутацию не проверяем. */
+/** Требования по уровню лояльности торговца, которые пока не выполнены. */
 function traderLocks(t: Task, ctx: TaskCtx): { trader: string; level: number }[] {
   const out: { trader: string; level: number }[] = []
   for (const r of t.traderRequirements) {
     if (r.requirementType !== 'level') continue
     if (ctx.traderLevel(r.trader) < r.value) out.push({ trader: r.trader, level: r.value })
+  }
+  return out
+}
+
+/** Требования по репутации Скупщика (карма дикого из профиля). У остальных торговцев репутацию не отслеживаем. */
+function repLocks(t: Task, ctx: TaskCtx): { trader: string; value: number }[] {
+  const out: { trader: string; value: number }[] = []
+  for (const r of t.traderRequirements) {
+    if (r.requirementType !== 'reputation' || r.trader !== FENCE) continue
+    if ((ctx.fenceRep ?? 0) < r.value) out.push({ trader: r.trader, value: r.value })
   }
   return out
 }
